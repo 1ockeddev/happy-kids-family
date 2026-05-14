@@ -1,0 +1,598 @@
+'use client';
+import { useState, useEffect, useCallback } from 'react';
+import {
+  DailyReport, MilkStatus, ExcretionType, ExcretionAction,
+  ChildExcretion, Daily, Child, Cohort, BehaviorCategory, BehaviorItem,
+} from '@/types';
+import CrudTable from '@/components/admin/CrudTable';
+import Modal from '@/components/ui/Modal';
+import { Pencil, Trash2, Plus, X } from 'lucide-react';
+
+/* ─── constants ─────────────────────────────────────────────── */
+const AL: Record<MilkStatus, string> = { all: 'หมด', some: 'บางส่วน', not_must: 'ไม่จำเป็น', skip: 'ข้าม' };
+const AC: Record<MilkStatus, string> = { all: 'badge-active', some: 'badge-leave', not_must: 'badge-inactive', skip: 'badge-inactive' };
+const ET: Record<ExcretionType,   string> = { pee: '💛 ปัสสาวะ', poo: '💩 อุจจาระ' };
+const EA: Record<ExcretionAction, string> = { diaper: '🩱 ผ้าอ้อม', potty: '🚽 กระโถน' };
+
+const EMPTY_FORM = {
+  cohort_id: '', daily_id: '', child_id: '',
+  nap_from: '', nap_to: '',
+  milk1: 'skip' as MilkStatus, milk2: 'skip' as MilkStatus,
+  food_amount: 'skip' as MilkStatus, fruit_amount: 'skip' as MilkStatus,
+  note: '',
+};
+const EMPTY_EX = { time: '', type: 'pee' as ExcretionType, action: 'potty' as ExcretionAction };
+
+type BehaviorScore = { item_id: string; score: number | null; note: string };
+type ExLocal = ChildExcretion & { _new?: boolean; _del?: boolean };
+
+/* ─── AmountSelect ───────────────────────────────────────────── */
+function AmountSelect({ label, value, onChange }: { label: string; value: MilkStatus; onChange: (v: MilkStatus) => void }) {
+  return (
+    <div className="form-group">
+      <label className="form-label">{label}</label>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {(Object.entries(AL) as [MilkStatus, string][]).map(([v, l]) => (
+          <button key={v} type="button" onClick={() => onChange(v)}
+            className={`badge ${AC[v]}`}
+            style={{ cursor: 'pointer', padding: '5px 12px', fontSize: 13, border: value === v ? '2px solid currentColor' : '2px solid transparent' }}>
+            {l}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── ScoreInput ─────────────────────────────────────────────── */
+function ScoreInput({ item, score, onChange }: {
+  item: BehaviorItem; score: BehaviorScore | undefined;
+  onChange: (item_id: string, score: number | null) => void;
+}) {
+  const val = score?.score ?? null;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid #F3F4F6' }}>
+      <div style={{ flex: 1, fontSize: 13 }}>
+        <span>{item.name_th}</span>
+        <span style={{ color: '#9CA3AF', fontSize: 11, marginLeft: 6 }}>{item.name_en}</span>
+      </div>
+      <div style={{ display: 'flex', gap: 4 }}>
+        {Array.from({ length: item.max_score }, (_, i) => i + 1).map(s => (
+          <button key={s} type="button" onClick={() => onChange(item.id, val === s ? null : s)}
+            style={{
+              width: 28, height: 28, borderRadius: '50%', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+              background: (val ?? 0) >= s ? '#6C5CE7' : '#F3F4F6',
+              color: (val ?? 0) >= s ? 'white' : '#9CA3AF',
+              transition: 'all 0.1s',
+            }}>
+            {s}
+          </button>
+        ))}
+        {val !== null && (
+          <button type="button" onClick={() => onChange(item.id, null)}
+            style={{ width: 28, height: 28, borderRadius: '50%', border: 'none', cursor: 'pointer', background: '#FDECEC', color: '#E85C5C', fontSize: 11 }}>
+            ✕
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Page ───────────────────────────────────────────────────── */
+export default function ReportsPage() {
+  const [data, setData]           = useState<DailyReport[]>([]);
+  const [cohorts, setCohorts]     = useState<Cohort[]>([]);
+  const [search, setSearch]       = useState('');
+  const [loading, setLoading]     = useState(true);
+  const [saving, setSaving]       = useState(false);
+  const [error, setError]         = useState<string | null>(null);
+  const [modal, setModal]         = useState<'add' | 'edit' | 'delete' | null>(null);
+  const [selected, setSelected]   = useState<DailyReport | null>(null);
+  const [form, setForm]           = useState(EMPTY_FORM);
+
+  // cascade selectors (add modal)
+  const [dailiesForCohort, setDailiesForCohort]     = useState<Daily[]>([]);
+  const [childrenForCohort, setChildrenForCohort]   = useState<Child[]>([]);
+  const [selectedDaily, setSelectedDaily]           = useState<Daily | null>(null);
+  const [behaviorsForCohort, setBehaviorsForCohort] = useState<BehaviorCategory[]>([]);
+  const [scores, setScores]       = useState<BehaviorScore[]>([]);
+  const [excretions, setExcretions] = useState<ExLocal[]>([]);
+
+  /* fetch list */
+  const fetchData = useCallback(async () => {
+    setLoading(true); setError(null);
+    try {
+      const qs = new URLSearchParams();
+      if (search) qs.set('search', search);
+      const res = await fetch(`/api/daily-reports?${qs}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'โหลดข้อมูลไม่ได้');
+      setData(json.data);
+    } catch (e) { setError(e instanceof Error ? e.message : 'เกิดข้อผิดพลาด'); }
+    finally { setLoading(false); }
+  }, [search]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetch('/api/cohorts').then(r => r.json()).then(j => setCohorts(j.data ?? []));
+  }, []);
+
+  /* when cohort changes in add modal → load dailies + behaviors */
+  useEffect(() => {
+    if (!form.cohort_id) {
+      setDailiesForCohort([]); setChildrenForCohort([]);
+      setBehaviorsForCohort([]); setSelectedDaily(null);
+      return;
+    }
+    fetch(`/api/daily?cohort_id=${form.cohort_id}`)
+      .then(r => r.json()).then(j => setDailiesForCohort(j.data ?? []));
+    fetch(`/api/enrollments?cohort_id=${form.cohort_id}`)
+      .then(r => r.json()).then(j => {
+        const kids = (j.data ?? []).map((e: { child?: Child }) => e.child).filter(Boolean) as Child[];
+        setChildrenForCohort(kids);
+      });
+    fetch(`/api/behavior-categories?cohort_id=${form.cohort_id}`)
+      .then(r => r.json()).then(j => setBehaviorsForCohort(j.data ?? []));
+  }, [form.cohort_id]);
+
+  /* when daily_id changes → update selectedDaily */
+  useEffect(() => {
+    setSelectedDaily(dailiesForCohort.find(d => d.id === form.daily_id) ?? null);
+  }, [form.daily_id, dailiesForCohort]);
+
+  /* open add */
+  const openAdd = () => {
+    setForm(EMPTY_FORM);
+    setScores([]);
+    setExcretions([]);
+    setSelectedDaily(null);
+    setModal('add');
+  };
+
+  /* open edit — fetch cohort behaviors + existing scores */
+  const openEdit = async (r: DailyReport) => {
+    setSelected(r);
+    setSelectedDaily(r.daily as Daily ?? null);
+    setExcretions(r.excretions ?? []);
+    setScores([]);
+    setBehaviorsForCohort([]);
+
+    const cohortId = (r.daily as Daily & { cohort?: { id: string } })?.cohort?.id ?? '';
+
+    setForm({
+      cohort_id: cohortId,
+      daily_id: r.daily_id, child_id: r.child_id,
+      nap_from: r.nap_from ?? '', nap_to: r.nap_to ?? '',
+      milk1: r.milk1, milk2: r.milk2,
+      food_amount: r.food_amount, fruit_amount: r.fruit_amount,
+      note: r.note ?? '',
+    });
+
+    if (cohortId) {
+      fetch(`/api/behavior-categories?cohort_id=${cohortId}`)
+        .then(res => res.json())
+        .then(j => setBehaviorsForCohort(j.data ?? []));
+    }
+
+    fetch(`/api/behavior-scores?daily_id=${r.daily_id}&child_id=${r.child_id}`)
+      .then(res => res.json())
+      .then(j => {
+        const existing = (j.data ?? []) as { item_id: string; score: number | null; note: string }[];
+        setScores(existing.map(s => ({ item_id: s.item_id, score: s.score, note: s.note ?? '' })));
+      });
+
+    setModal('edit');
+  };
+
+  /* save */
+  const handleSave = async () => {
+    if (modal === 'add' && (!form.daily_id || !form.child_id)) { alert('กรุณาเลือกวันและนักเรียน'); return; }
+    setSaving(true);
+    try {
+      let reportId: string;
+      if (modal === 'add') {
+        const res = await fetch('/api/daily-reports', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...form, nap_from: form.nap_from || null, nap_to: form.nap_to || null, note: form.note || null }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error);
+        reportId = json.data.id;
+      } else {
+        const res = await fetch(`/api/daily-reports/${selected!.id}`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nap_from: form.nap_from || null, nap_to: form.nap_to || null,
+            milk1: form.milk1, milk2: form.milk2,
+            food_amount: form.food_amount, fruit_amount: form.fruit_amount,
+            note: form.note || null,
+          }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error);
+        reportId = selected!.id;
+      }
+
+      const daily_id = form.daily_id || selected!.daily_id;
+      const child_id = form.child_id || selected!.child_id;
+
+      // excretions
+      await Promise.all(excretions.filter(ex => ex._del && !ex._new).map(ex =>
+        fetch(`/api/excretions/${ex.id}`, { method: 'DELETE' })
+      ));
+      await Promise.all(excretions.filter(ex => ex._new && !ex._del).map(ex =>
+        fetch('/api/excretions', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ daily_id, child_id, time: ex.time || null, type: ex.type, action: ex.action }),
+        })
+      ));
+
+      // behavior scores (upsert for both add and edit)
+      if (scores.length > 0) {
+        await Promise.all(scores.filter(s => s.score !== null).map(s =>
+          fetch('/api/behavior-scores', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ daily_id, child_id, item_id: s.item_id, score: s.score }),
+          })
+        ));
+      }
+
+      void reportId;
+      setModal(null); fetchData();
+    } catch (e) { alert(e instanceof Error ? e.message : 'เกิดข้อผิดพลาด'); }
+    finally { setSaving(false); }
+  };
+
+  const handleDelete = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/daily-reports/${selected!.id}`, { method: 'DELETE' });
+      if (res.status !== 204) { const j = await res.json(); throw new Error(j.error); }
+      setModal(null); fetchData();
+    } catch (e) { alert(e instanceof Error ? e.message : 'เกิดข้อผิดพลาด'); }
+    finally { setSaving(false); }
+  };
+
+  /* excretions helpers */
+  const addEx = () => setExcretions(p => [...p, { ...EMPTY_EX, id: `_n_${Date.now()}`, daily_id: '', child_id: '', created_at: '', _new: true }]);
+  const delEx = (id: string) => setExcretions(p => p.map(ex => ex.id === id ? { ...ex, _del: true } : ex));
+  const updEx = (id: string, patch: Partial<ExLocal>) => setExcretions(p => p.map(ex => ex.id === id ? { ...ex, ...patch } : ex));
+
+  /* score helpers */
+  const setScore = (item_id: string, score: number | null) =>
+    setScores(p => {
+      const rest = p.filter(s => s.item_id !== item_id);
+      return score === null ? rest : [...rest, { item_id, score, note: '' }];
+    });
+
+  const visibleEx = excretions.filter(ex => !ex._del);
+
+  return (
+    <>
+      {error && (
+        <div style={{ margin: '16px 32px', padding: '12px 16px', background: '#FDECEC', borderRadius: 8, color: '#E85C5C', fontSize: 14 }}>
+          ⚠️ {error}
+        </div>
+      )}
+
+      <CrudTable<DailyReport>
+        title="รายงานรายวัน"
+        description="บันทึกการนอน นม อาหาร การขับถ่าย และพฤติกรรมรายวัน"
+        loading={loading} onRefresh={fetchData}
+        columns={[
+          { key: 'child', label: 'นักเรียน', render: r => (
+            <div>
+              <div style={{ fontWeight: 500 }}>{r.child?.name_th ?? '-'}</div>
+              <div style={{ fontSize: 12, color: '#9CA3AF' }}>{r.daily?.cohort?.name}</div>
+            </div>
+          )},
+          { key: 'date', label: 'วันที่', render: r => r.daily?.date
+            ? new Date(r.daily.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }) : '-' },
+          { key: 'nap', label: 'นอน', render: r => r.nap_from && r.nap_to
+            ? <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 13 }}>{r.nap_from.slice(0,5)}–{r.nap_to.slice(0,5)}</span>
+            : <span style={{ color: '#D1D5DB' }}>—</span> },
+          { key: 'milk1', label: 'นม 1', render: r => <span className={`badge ${AC[r.milk1]}`}>{AL[r.milk1]}</span> },
+          { key: 'milk2', label: 'นม 2', render: r => <span className={`badge ${AC[r.milk2]}`}>{AL[r.milk2]}</span> },
+          { key: 'food_amount', label: 'อาหาร', render: r => <span className={`badge ${AC[r.food_amount]}`}>{AL[r.food_amount]}</span> },
+          { key: 'fruit_amount', label: 'ผลไม้', render: r => <span className={`badge ${AC[r.fruit_amount]}`}>{AL[r.fruit_amount]}</span> },
+          { key: 'excretions', label: '🚽', render: r => {
+            const exs = r.excretions ?? [];
+            if (!exs.length) return <span style={{ color: '#D1D5DB' }}>—</span>;
+            return (
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                {exs.map((ex, i) => (
+                  <span key={i} style={{ fontSize: 11, background: ex.type === 'poo' ? '#FEF6E6' : '#EBF4FA', color: ex.type === 'poo' ? '#F5A623' : '#4A90B8', padding: '2px 7px', borderRadius: 99 }}>
+                    {ex.type === 'pee' ? '💛' : '💩'} {ex.action === 'diaper' ? 'ผ้าอ้อม' : 'กระโถน'}
+                    {ex.time ? ` ${ex.time.slice(0,5)}` : ''}
+                  </span>
+                ))}
+              </div>
+            );
+          }},
+        ]}
+        data={data}
+        onAdd={openAdd} addLabel="เพิ่มรายงาน"
+        searchValue={search} onSearchChange={setSearch} searchPlaceholder="ค้นหาชื่อนักเรียน..."
+        actions={row => (
+          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+            <button className="btn btn-ghost btn-sm" onClick={() => openEdit(row)}><Pencil size={13} /> แก้ไข</button>
+            <button className="btn btn-danger btn-sm" onClick={() => { setSelected(row); setModal('delete'); }}><Trash2 size={13} /> ลบ</button>
+          </div>
+        )}
+      />
+
+      {/* ════════════════ Add / Edit Modal ════════════════ */}
+      <Modal
+        open={modal === 'add' || modal === 'edit'}
+        title={modal === 'add' ? 'เพิ่มรายงานรายวัน' : `แก้ไขรายงาน — ${selected?.child?.name_th}`}
+        onClose={() => setModal(null)}
+        onConfirm={handleSave}
+        confirmLabel={saving ? 'กำลังบันทึก...' : 'บันทึก'}
+      >
+
+        {/* ── Step 1: cohort (add only) ── */}
+        {modal === 'add' && (
+          <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '14px 16px' }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+              1 · เลือกรุ่น
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {cohorts.map(c => (
+                <button key={c.id} type="button"
+                  onClick={() => setForm(f => ({ ...f, cohort_id: c.id, daily_id: '', child_id: '' }))}
+                  style={{
+                    padding: '7px 16px', borderRadius: 99, border: 'none', cursor: 'pointer',
+                    fontSize: 14, fontFamily: 'Sarabun, sans-serif',
+                    background: form.cohort_id === c.id ? '#1A1A2E' : '#FFFFFF',
+                    color: form.cohort_id === c.id ? 'white' : '#6B7280',
+                    fontWeight: form.cohort_id === c.id ? 700 : 400,
+                    boxShadow: form.cohort_id === c.id ? 'none' : '0 0 0 1px #E5E7EB',
+                    transition: 'all 0.15s',
+                  }}>
+                  {c.name}
+                  <span style={{ marginLeft: 6, fontSize: 11, opacity: 0.6 }}>({c.level})</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 2: day (add only) ── */}
+        {modal === 'add' && form.cohort_id && (
+          <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '14px 16px' }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+              2 · เลือกวัน
+            </p>
+            {dailiesForCohort.length === 0 ? (
+              <p style={{ fontSize: 13, color: '#9CA3AF' }}>ยังไม่มีบันทึกรายวันในรุ่นนี้</p>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {dailiesForCohort.map(d => {
+                  const picked = form.daily_id === d.id;
+                  return (
+                    <button key={d.id} type="button"
+                      onClick={() => setForm(f => ({ ...f, daily_id: d.id }))}
+                      style={{
+                        padding: '7px 14px', borderRadius: 99, border: 'none', cursor: 'pointer',
+                        fontSize: 13, fontFamily: 'Sarabun, sans-serif',
+                        background: picked ? '#E8754A' : '#FFFFFF',
+                        color: picked ? 'white' : '#6B7280',
+                        fontWeight: picked ? 700 : 400,
+                        boxShadow: picked ? 'none' : '0 0 0 1px #E5E7EB',
+                        transition: 'all 0.15s',
+                      }}>
+                      {new Date(d.date).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' })}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* activity / food / fruit when day is picked */}
+        {selectedDaily && (selectedDaily.activity || selectedDaily.food || selectedDaily.fruit) && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {selectedDaily.activity && (
+              <div style={{ flex: '1 1 100%', background: '#EBF4FA', borderRadius: 8, padding: '10px 14px' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#4A90B8', marginBottom: 4 }}>🎨 กิจกรรมวันนี้</p>
+                <p style={{ fontSize: 14, fontWeight: 600, color: '#1A1A2E' }}>{selectedDaily.activity}</p>
+              </div>
+            )}
+            {selectedDaily.food && (
+              <div style={{ flex: 1, background: '#EBF7F0', borderRadius: 8, padding: '10px 14px' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#4CAF76', marginBottom: 4 }}>🍱 อาหารวันนี้</p>
+                <p style={{ fontSize: 14, fontWeight: 600, color: '#1A1A2E' }}>{selectedDaily.food}</p>
+              </div>
+            )}
+            {selectedDaily.fruit && (
+              <div style={{ flex: 1, background: '#EBF7F0', borderRadius: 8, padding: '10px 14px' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#4CAF76', marginBottom: 4 }}>🍎 ผลไม้วันนี้</p>
+                <p style={{ fontSize: 14, fontWeight: 600, color: '#1A1A2E' }}>{selectedDaily.fruit}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Step 3: student (add only) ── */}
+        {modal === 'add' && form.daily_id && (
+          <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '14px 16px' }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+              3 · เลือกนักเรียน
+            </p>
+            {childrenForCohort.length === 0 ? (
+              <p style={{ fontSize: 13, color: '#9CA3AF' }}>ยังไม่มีนักเรียนในรุ่นนี้</p>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {childrenForCohort.map(c => {
+                  const picked = form.child_id === c.id;
+                  return (
+                    <button key={c.id} type="button"
+                      onClick={() => setForm(f => ({ ...f, child_id: c.id }))}
+                      style={{
+                        padding: '7px 14px', borderRadius: 99, border: 'none', cursor: 'pointer',
+                        fontSize: 14, fontFamily: 'Sarabun, sans-serif',
+                        background: picked ? '#6C5CE7' : '#FFFFFF',
+                        color: picked ? 'white' : '#6B7280',
+                        fontWeight: picked ? 700 : 400,
+                        boxShadow: picked ? 'none' : '0 0 0 1px #E5E7EB',
+                        transition: 'all 0.15s',
+                      }}>
+                      {c.name_th}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* edit: info chip */}
+        {modal === 'edit' && selected && (
+          <div style={{ padding: '10px 14px', background: '#F7F5F2', borderRadius: 8, fontSize: 14, color: '#6B7280', display: 'flex', gap: 12 }}>
+            <span>👧 <strong style={{ color: '#1A1A2E' }}>{selected.child?.name_th}</strong></span>
+            {selected.daily?.date && (
+              <span>📅 <strong style={{ color: '#1A1A2E' }}>{new Date(selected.daily.date).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long' })}</strong></span>
+            )}
+          </div>
+        )}
+        {modal === 'edit' && selected?.daily && (selected.daily.activity || selected.daily.food || selected.daily.fruit) && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {selected.daily.activity && (
+              <div style={{ flex: '1 1 100%', background: '#EBF4FA', borderRadius: 8, padding: '10px 14px' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#4A90B8', marginBottom: 2 }}>🎨 กิจกรรม</p>
+                <p style={{ fontSize: 14 }}>{selected.daily.activity}</p>
+              </div>
+            )}
+            {selected.daily.food && (
+              <div style={{ flex: 1, background: '#EBF7F0', borderRadius: 8, padding: '10px 14px' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#4CAF76', marginBottom: 2 }}>🍱 อาหาร</p>
+                <p style={{ fontSize: 14 }}>{selected.daily.food}</p>
+              </div>
+            )}
+            {selected.daily.fruit && (
+              <div style={{ flex: 1, background: '#EBF7F0', borderRadius: 8, padding: '10px 14px' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#4CAF76', marginBottom: 2 }}>🍎 ผลไม้</p>
+                <p style={{ fontSize: 14 }}>{selected.daily.fruit}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Nap ── */}
+        <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '14px 16px' }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>😴 การนอน</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-group">
+              <label className="form-label">เริ่มนอน</label>
+              <input className="form-input" type="time" value={form.nap_from} onChange={e => setForm(f => ({ ...f, nap_from: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">ตื่นนอน</label>
+              <input className="form-input" type="time" value={form.nap_to} onChange={e => setForm(f => ({ ...f, nap_to: e.target.value }))} />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Milk ── */}
+        <div style={{ background: '#FEF0EB', borderRadius: 8, padding: '14px 16px' }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: '#E8754A', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>🍼 นม</p>
+          <AmountSelect label="นม มื้อ 1" value={form.milk1} onChange={v => setForm(f => ({ ...f, milk1: v }))} />
+          <div style={{ marginTop: 10 }}>
+            <AmountSelect label="นม มื้อ 2" value={form.milk2} onChange={v => setForm(f => ({ ...f, milk2: v }))} />
+          </div>
+        </div>
+
+        {/* ── Food & Fruit ── */}
+        <div style={{ background: '#EBF7F0', borderRadius: 8, padding: '14px 16px' }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: '#4CAF76', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>🍱 ปริมาณที่รับประทาน</p>
+          <AmountSelect label="ปริมาณอาหาร" value={form.food_amount} onChange={v => setForm(f => ({ ...f, food_amount: v }))} />
+          <div style={{ marginTop: 10 }}>
+            <AmountSelect label="ปริมาณผลไม้" value={form.fruit_amount} onChange={v => setForm(f => ({ ...f, fruit_amount: v }))} />
+          </div>
+        </div>
+
+        {/* ── Excretions ── */}
+        <div style={{ background: '#F0EEFF', borderRadius: 8, padding: '14px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#6C5CE7', textTransform: 'uppercase', letterSpacing: '0.08em' }}>🚽 การขับถ่าย</p>
+            <button type="button" className="btn btn-sm" style={{ background: '#6C5CE7', color: 'white', fontSize: 12 }} onClick={addEx}>
+              <Plus size={12} /> เพิ่ม
+            </button>
+          </div>
+          {visibleEx.length === 0 && <p style={{ color: '#9CA3AF', fontSize: 13 }}>ยังไม่มีบันทึก</p>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {visibleEx.map(ex => (
+              <div key={ex.id} style={{ background: 'white', borderRadius: 8, padding: '8px 12px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <input type="time" className="form-input" value={ex.time ?? ''}
+                  onChange={e => updEx(ex.id, { time: e.target.value || null })}
+                  style={{ width: 100, padding: '5px 8px', fontSize: 13 }} />
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {(['pee', 'poo'] as ExcretionType[]).map(t => (
+                    <button key={t} type="button" onClick={() => updEx(ex.id, { type: t })}
+                      style={{ padding: '3px 10px', borderRadius: 99, border: 'none', cursor: 'pointer', fontSize: 12,
+                        background: ex.type === t ? (t === 'pee' ? '#EBF4FA' : '#FEF6E6') : '#F3F4F6',
+                        color: ex.type === t ? (t === 'pee' ? '#4A90B8' : '#F5A623') : '#9CA3AF',
+                        fontWeight: ex.type === t ? 600 : 400 }}>
+                      {ET[t]}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {(['diaper', 'potty'] as ExcretionAction[]).map(a => (
+                    <button key={a} type="button" onClick={() => updEx(ex.id, { action: a })}
+                      style={{ padding: '3px 10px', borderRadius: 99, border: 'none', cursor: 'pointer', fontSize: 12,
+                        background: ex.action === a ? '#F0EEFF' : '#F3F4F6',
+                        color: ex.action === a ? '#6C5CE7' : '#9CA3AF',
+                        fontWeight: ex.action === a ? 600 : 400 }}>
+                      {EA[a]}
+                    </button>
+                  ))}
+                </div>
+                <button type="button" onClick={() => delEx(ex.id)}
+                  style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF' }}>
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Behavior Scores ── */}
+        {behaviorsForCohort.map(cat => (
+          <div key={cat.id} style={{ background: '#FAFAFA', border: '1px solid #F3F4F6', borderRadius: 8, padding: '14px 16px' }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#6C5CE7', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+              🧠 {cat.name_th} <span style={{ fontWeight: 400, color: '#9CA3AF' }}>{cat.name_en}</span>
+            </p>
+            {(cat as BehaviorCategory & { items?: BehaviorItem[] }).items?.map(item => (
+              <ScoreInput
+                key={item.id}
+                item={item}
+                score={scores.find(s => s.item_id === item.id)}
+                onChange={setScore}
+              />
+            ))}
+          </div>
+        ))}
+
+        {/* ── Note ── */}
+        <div className="form-group">
+          <label className="form-label">💬 ข้อความถึงผู้ปกครอง</label>
+          <textarea className="form-input" rows={2} value={form.note}
+            onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
+            style={{ resize: 'vertical' }} placeholder="เพิ่มเติม..." />
+        </div>
+      </Modal>
+
+      {/* Delete Modal */}
+      <Modal open={modal === 'delete'} title="ยืนยันการลบ"
+        onClose={() => setModal(null)} onConfirm={handleDelete}
+        confirmLabel={saving ? 'กำลังลบ...' : 'ลบ'} confirmDanger>
+        <p style={{ color: '#6B7280' }}>
+          ลบรายงานของ <strong>{selected?.child?.name_th}</strong>?
+        </p>
+      </Modal>
+    </>
+  );
+}

@@ -1,0 +1,57 @@
+import { queryOne } from '@/lib/db';
+import { ok, notFound, noContent, serverError } from '@/lib/api-helpers';
+import { NextRequest } from 'next/server';
+
+type Params = { params: Promise<{ id: string }> };
+
+export async function GET(_req: NextRequest, { params }: Params) {
+  try {
+    const { id } = await params;
+    const row = await queryOne(
+      `SELECT d.*,
+        json_build_object('id', co.id, 'name', co.name, 'level', co.level) AS cohort
+       FROM daily d
+       JOIN cohort co ON co.id = d.cohort_id
+       WHERE d.id = $1`,
+      [id]
+    );
+    if (!row) return notFound('ไม่พบบันทึก');
+    return ok(row);
+  } catch (err) {
+    return serverError(err);
+  }
+}
+
+export async function PATCH(req: NextRequest, { params }: Params) {
+  try {
+    const { id } = await params;
+    const body = await req.json();
+    const { activity, food, fruit, note, updated_by } = body;
+    const row = await queryOne(
+      `UPDATE daily SET
+        activity = COALESCE($1, activity),
+        food = COALESCE($2, food),
+        fruit = COALESCE($3, fruit),
+        note = COALESCE($4, note),
+        updated_by = $5,
+        updated_at = NOW()
+       WHERE id = $6 RETURNING *`,
+      [activity ?? null, food ?? null, fruit ?? null, note ?? null, updated_by ?? null, id]
+    );
+    if (!row) return notFound('ไม่พบบันทึก');
+    return ok(row);
+  } catch (err) {
+    return serverError(err);
+  }
+}
+
+export async function DELETE(_req: NextRequest, { params }: Params) {
+  try {
+    const { id } = await params;
+    const row = await queryOne(`DELETE FROM daily WHERE id = $1 RETURNING id`, [id]);
+    if (!row) return notFound('ไม่พบบันทึก');
+    return noContent();
+  } catch (err) {
+    return serverError(err);
+  }
+}

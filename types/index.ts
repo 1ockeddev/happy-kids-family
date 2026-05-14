@@ -1,0 +1,75 @@
+export type AttendanceStatus = 'present' | 'absent' | 'sick' | 'leave';
+export type MilkStatus = 'all' | 'some' | 'not_must' | 'skip';
+export type ExcretionType = 'pee' | 'poo';
+export type ExcretionAction = 'diaper' | 'potty';
+export type UserRole = 'teacher' | 'parent';
+export type UserStatus = 'active' | 'inactive';
+
+export interface AppUser {
+  id: string; line_user_id: string; role: UserRole; status: UserStatus;
+  display_name: string | null; created_at: string;
+}
+export interface Child {
+  id: string; name_en: string | null; name_th: string | null;
+  deleted_at: string | null; created_at: string;
+}
+export interface Cohort {
+  id: string; name: string | null; level: string | null;
+  academic_year: number | null; start_date: string; end_date: string; created_at: string;
+}
+export interface Enrollment {
+  id: string; child_id: string; cohort_id: string;
+  start_date: string; end_date: string | null; graduated: boolean; created_at: string;
+  child?: Child; cohort?: Cohort;
+}
+export interface Daily {
+  id: string; cohort_id: string; date: string;
+  activity: string | null; food: string | null; fruit: string | null; note: string | null;
+  created_by: string | null; updated_by: string | null; updated_at: string | null; created_at: string;
+  cohort?: Cohort;
+}
+export interface Attendance {
+  id: string; daily_id: string; child_id: string; status: AttendanceStatus; note: string | null;
+  created_by: string | null; updated_by: string | null; updated_at: string | null; created_at: string;
+  child?: Child;
+}
+
+export interface FoodAmount {
+  food_amount: MilkStatus;   // reuse enum: all/some/not_must/skip
+  fruit_amount: MilkStatus;
+}
+
+export interface DailyReport extends FoodAmount {
+  id: string; daily_id: string; child_id: string;
+  nap_from: string | null; nap_to: string | null;
+  milk1: MilkStatus; milk2: MilkStatus;
+  note: string | null;
+  created_by: string | null; updated_by: string | null; updated_at: string | null; created_at: string;
+  child?: Child;
+  daily?: Pick<Daily, 'id' | 'date' | 'activity' | 'food' | 'fruit'> & { cohort?: Pick<Cohort, 'id' | 'name'> };
+  excretions?: ChildExcretion[];
+}
+
+export interface BehaviorCategory {
+  id: string; name_en: string; name_th: string; sort_order: number;
+  is_active: boolean; created_at: string;
+  cohort_ids: string[];   // UUID[] — ผูกกับห้องเรียน
+}
+export interface BehaviorItem {
+  id: string; category_id: string; name_en: string; name_th: string;
+  max_score: number; sort_order: number; is_active: boolean; created_at: string;
+  category?: BehaviorCategory;
+}
+export interface ChildBehaviorScore {
+  id: string; daily_id: string; child_id: string; item_id: string;
+  score: number | null; note: string | null; created_at: string;
+}
+export interface ChildExcretion {
+  id: string; daily_id: string; child_id: string;
+  time: string | null; type: ExcretionType | null; action: ExcretionAction | null;
+  created_at: string;
+}
+export interface TeacherPermission {
+  user_id: string; can_manage_daily: boolean;
+  can_manage_attendance: boolean; can_manage_report: boolean;
+}
