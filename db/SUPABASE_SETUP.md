@@ -1,0 +1,50 @@
+# วิธี Deploy ขึ้น Supabase
+
+## ขั้นตอนที่ 1 — รัน Schema
+
+เปิด **Supabase → SQL Editor** แล้วรันทีละขั้น:
+
+### 1a. รัน Schema หลัก
+paste ไฟล์ `db/migrations/001_initial.sql` ทั้งหมด → กด **Run**
+
+> ถ้า DB local เก่ามี schema อยู่แล้ว ให้รัน `002_add_new_fields.sql` เพิ่มเติม
+
+---
+
+## ขั้นตอนที่ 2 — Export Data จาก Local
+
+```bash
+bash scripts/export-data.sh kindergarten postgres localhost
+```
+
+ได้ไฟล์ `local_data.sql` → paste ใน SQL Editor → Run
+
+---
+
+## ขั้นตอนที่ 3 — Connection String
+
+Supabase → **Project Settings → Database → Connection string**
+
+เลือก **Transaction pooler (port 6543)**:
+```
+postgresql://postgres.xxxx:[PASSWORD]@aws-0-xx.pooler.supabase.com:6543/postgres
+```
+
+---
+
+## ขั้นตอนที่ 4 — Vercel Environment Variables
+
+| Key | Value |
+|-----|-------|
+| `DATABASE_URL` | connection string ข้างบน |
+| `ADMIN_USERNAME` | ชื่อ admin |
+| `ADMIN_PASSWORD` | password |
+| `AUTH_SECRET` | รัน `openssl rand -hex 32` |
+
+---
+
+## ตรวจสอบ
+
+เปิด `https://your-app.vercel.app/api/health`
+
+ต้องขึ้น: `{ "status": "ok", "database": "connected" }`

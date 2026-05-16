@@ -4,33 +4,59 @@ import { childrenApi } from '@/lib/api-client';
 import { Child } from '@/types';
 import CrudTable from '@/components/admin/CrudTable';
 import Modal from '@/components/ui/Modal';
+import AvatarCropper from '@/components/ui/AvatarCropper';
 import { Pencil, Trash2 } from 'lucide-react';
 
+const EMPTY_FORM = { name_en: '', name_th: '', photo_url: null as string | null };
+
+/* ── inline avatar for table ── */
+function ChildAvatar({ child }: { child: Child }) {
+  const initials = (child.name_th ?? child.name_en ?? '?').slice(0, 1).toUpperCase();
+  const colors = ['#E8754A','#6C5CE7','#4A90B8','#4CAF76','#F5A623','#E85C5C'];
+  const bg = colors[initials.charCodeAt(0) % colors.length];
+  return child.photo_url ? (
+    <img src={child.photo_url} alt={child.name_th ?? ''}
+      style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', border: '2px solid #E5E7EB', flexShrink: 0 }} />
+  ) : (
+    <div style={{ width: 36, height: 36, borderRadius: '50%', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 14, fontWeight: 700, flexShrink: 0 }}>
+      {initials}
+    </div>
+  );
+}
+
 export default function ChildrenPage() {
-  const [data, setData] = useState<Child[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
-  const [modal, setModal] = useState<'add' | 'edit' | 'delete' | null>(null);
+  const [data, setData]         = useState<Child[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState<string | null>(null);
+  const [search, setSearch]     = useState('');
+  const [modal, setModal]       = useState<'add' | 'edit' | 'delete' | null>(null);
   const [selected, setSelected] = useState<Child | null>(null);
-  const [form, setForm] = useState({ name_en: '', name_th: '' });
-  const [saving, setSaving] = useState(false);
+  const [form, setForm]         = useState(EMPTY_FORM);
+  const [saving, setSaving]     = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
-    try {
-      const rows = await childrenApi.list(search) as Child[];
-      setData(rows);
-    } catch (e) { setError(e instanceof Error ? e.message : 'เกิดข้อผิดพลาด'); }
+    try { setData(await childrenApi.list(search) as Child[]); }
+    catch (e) { setError(e instanceof Error ? e.message : 'เกิดข้อผิดพลาด'); }
     finally { setLoading(false); }
   }, [search]);
 
   useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t); }, [load]);
 
+  const openAdd = () => { setForm(EMPTY_FORM); setModal('add'); };
+  const openEdit = (row: Child) => {
+    setSelected(row);
+    setForm({ name_en: row.name_en ?? '', name_th: row.name_th ?? '', photo_url: row.photo_url ?? null });
+    setModal('edit');
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      modal === 'add' ? await childrenApi.create(form) : await childrenApi.update(selected!.id, form);
+      const payload = { name_en: form.name_en || null, name_th: form.name_th || null, photo_url: form.photo_url };
+      modal === 'add'
+        ? await childrenApi.create(payload)
+        : await childrenApi.update(selected!.id, payload);
       setModal(null); load();
     } catch (e) { alert(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ'); }
     finally { setSaving(false); }
@@ -43,32 +69,75 @@ export default function ChildrenPage() {
     finally { setSaving(false); }
   };
 
+  const initials = (s: string) => (s || '?').slice(0, 2).toUpperCase();
+
   return (
     <>
       <CrudTable<Child>
         title="นักเรียน" description="จัดการข้อมูลนักเรียนทั้งหมดในระบบ"
         columns={[
-          { key: 'name_th', label: 'ชื่อ (ไทย)' },
-          { key: 'name_en', label: 'ชื่อ (อังกฤษ)' },
-          { key: 'created_at', label: 'วันที่เพิ่ม', render: (r) => new Date(r.created_at).toLocaleDateString('th-TH') },
-          { key: 'status', label: 'สถานะ', render: (r) => <span className={`badge ${r.deleted_at ? 'badge-inactive' : 'badge-active'}`}>{r.deleted_at ? 'ลบแล้ว' : 'ใช้งาน'}</span> },
+          { key: 'photo', label: '', render: r => <ChildAvatar child={r} /> },
+          { key: 'name_th', label: 'ชื่อ (ไทย)', render: r => (
+            <div>
+              <div style={{ fontWeight: 600 }}>{r.name_th ?? '-'}</div>
+              <div style={{ fontSize: 12, color: '#9CA3AF' }}>{r.name_en}</div>
+            </div>
+          )},
+          { key: 'created_at', label: 'วันที่เพิ่ม', render: r => new Date(r.created_at).toLocaleDateString('th-TH') },
+          { key: 'status', label: 'สถานะ', render: r => (
+            <span className={`badge ${r.deleted_at ? 'badge-inactive' : 'badge-active'}`}>
+              {r.deleted_at ? 'ลบแล้ว' : 'ใช้งาน'}
+            </span>
+          )},
         ]}
         data={data} loading={loading} error={error} onRefresh={load}
-        onAdd={() => { setForm({ name_en: '', name_th: '' }); setModal('add'); }}
-        addLabel="เพิ่มนักเรียน" searchValue={search} onSearchChange={setSearch} searchPlaceholder="ค้นหาชื่อนักเรียน..."
-        actions={(row) => (
-          <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-            <button className="btn btn-ghost btn-sm" onClick={() => { setSelected(row); setForm({ name_en: row.name_en ?? '', name_th: row.name_th ?? '' }); setModal('edit'); }}><Pencil size={13} /> แก้ไข</button>
+        onAdd={openAdd} addLabel="เพิ่มนักเรียน"
+        searchValue={search} onSearchChange={setSearch} searchPlaceholder="ค้นหาชื่อนักเรียน..."
+        actions={row => (
+          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+            <button className="btn btn-ghost btn-sm" onClick={() => openEdit(row)}><Pencil size={13} /> แก้ไข</button>
             <button className="btn btn-danger btn-sm" onClick={() => { setSelected(row); setModal('delete'); }}><Trash2 size={13} /> ลบ</button>
           </div>
         )}
       />
-      <Modal open={modal === 'add' || modal === 'edit'} title={modal === 'add' ? 'เพิ่มนักเรียนใหม่' : 'แก้ไขข้อมูลนักเรียน'} onClose={() => setModal(null)} onConfirm={handleSave} confirmLabel={saving ? 'กำลังบันทึก...' : 'บันทึก'}>
-        <div className="form-group"><label className="form-label">ชื่อ (ภาษาไทย)</label><input className="form-input" value={form.name_th} onChange={e => setForm({ ...form, name_th: e.target.value })} /></div>
-        <div className="form-group"><label className="form-label">ชื่อ (ภาษาอังกฤษ)</label><input className="form-input" value={form.name_en} onChange={e => setForm({ ...form, name_en: e.target.value })} /></div>
+
+      <Modal
+        open={modal === 'add' || modal === 'edit'}
+        title={modal === 'add' ? 'เพิ่มนักเรียนใหม่' : 'แก้ไขข้อมูลนักเรียน'}
+        onClose={() => setModal(null)}
+        onConfirm={handleSave}
+        confirmLabel={saving ? 'กำลังบันทึก...' : 'บันทึก'}
+      >
+        {/* Avatar Cropper */}
+        <AvatarCropper
+          value={form.photo_url}
+          onChange={url => setForm(f => ({ ...f, photo_url: url }))}
+          defaultInitials={initials(form.name_th || form.name_en || '?')}
+        />
+
+        <div className="form-group">
+          <label className="form-label">ชื่อ (ภาษาไทย) <span style={{ color: '#E85C5C' }}>*</span></label>
+          <input className="form-input" value={form.name_th}
+            onChange={e => setForm(f => ({ ...f, name_th: e.target.value }))}
+            placeholder="เช่น เอมมา จอห์นสัน" />
+        </div>
+        <div className="form-group">
+          <label className="form-label">ชื่อ (ภาษาอังกฤษ)</label>
+          <input className="form-input" value={form.name_en}
+            onChange={e => setForm(f => ({ ...f, name_en: e.target.value }))}
+            placeholder="e.g. Emma Johnson" />
+        </div>
       </Modal>
-      <Modal open={modal === 'delete'} title="ยืนยันการลบ" onClose={() => setModal(null)} onConfirm={handleDelete} confirmLabel={saving ? 'กำลังลบ...' : 'ลบ'} confirmDanger>
-        <p style={{ color: '#6B7280' }}>คุณต้องการลบ <strong>{selected?.name_th}</strong> ออกจากระบบหรือไม่?</p>
+
+      <Modal open={modal === 'delete'} title="ยืนยันการลบ"
+        onClose={() => setModal(null)} onConfirm={handleDelete}
+        confirmLabel={saving ? 'กำลังลบ...' : 'ลบ'} confirmDanger>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {selected && <ChildAvatar child={selected} />}
+          <p style={{ color: '#6B7280' }}>
+            คุณต้องการลบ <strong>{selected?.name_th}</strong> ออกจากระบบหรือไม่?
+          </p>
+        </div>
       </Modal>
     </>
   );

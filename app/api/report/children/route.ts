@@ -6,7 +6,7 @@ import { ok, serverError } from '@/lib/api-helpers';
 export async function GET() {
   try {
     const rows = await query(
-      `SELECT DISTINCT c.id, c.name_th, c.name_en
+      `SELECT DISTINCT c.id, c.name_th, c.name_en, c.photo_url
        FROM child c
        JOIN daily_report dr ON dr.child_id = c.id
        WHERE c.deleted_at IS NULL

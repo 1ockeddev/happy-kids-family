@@ -11,7 +11,7 @@ export interface AppUser {
 }
 export interface Child {
   id: string; name_en: string | null; name_th: string | null;
-  deleted_at: string | null; created_at: string;
+  photo_url: string | null; deleted_at: string | null; created_at: string;
 }
 export interface Cohort {
   id: string; name: string | null; level: string | null;

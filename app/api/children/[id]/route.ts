@@ -21,11 +21,15 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
     const body = await req.json();
-    const { name_en, name_th } = body;
+    const { name_en, name_th, photo_url } = body;
     if (!name_th && !name_en) return badRequest('ต้องกรอกชื่ออย่างน้อยหนึ่งช่อง');
     const row = await queryOne(
-      `UPDATE child SET name_en = COALESCE($1, name_en), name_th = COALESCE($2, name_th) WHERE id = $3 RETURNING *`,
-      [name_en ?? null, name_th ?? null, id]
+      `UPDATE child SET
+        name_en   = COALESCE($1, name_en),
+        name_th   = COALESCE($2, name_th),
+        photo_url = CASE WHEN $3::text IS NULL THEN photo_url ELSE $3 END
+       WHERE id = $4 RETURNING *`,
+      [name_en ?? null, name_th ?? null, photo_url ?? null, id]
     );
     if (!row) return notFound('ไม่พบนักเรียน');
     return ok(row);

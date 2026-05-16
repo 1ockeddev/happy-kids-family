@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Home, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Child, DailyReport, Attendance, MilkStatus, ExcretionType, ExcretionAction } from '@/types';
+import BehaviorSummary from '@/components/report/BehaviorSummary';
 
 /* ─── label maps ──────────────────────────────── */
 const amtL: Record<MilkStatus, string> = { all: 'ทานหมด', some: 'ทานครึ่งเดียว', not_must: 'ไม่จำเป็น', skip: 'ไม่ทาน' };
@@ -55,7 +56,7 @@ const CardHeader = ({ emoji, title, color = '#4338ca' }: { emoji: string; title:
 );
 
 const StatusPill = ({ status }: { status: MilkStatus }) => (
-  <span style={{ display: 'inline-block', marginTop: 7, padding: '2px 10px', borderRadius: 12, fontSize: '0.7rem', fontWeight: 700, ...amtStyle[status] }}>
+  <span style={{ fontSize: '0.72rem', padding: '2px 10px', borderRadius: 10, fontWeight: 700, background: amtStyle[status].bg, color: amtStyle[status].color }}>
     {amtL[status]}
   </span>
 );
@@ -311,6 +312,7 @@ export default function ReportPage() {
   const [attendance, setAttendance]     = useState<Attendance | null>(null);
   const [scores, setScores]             = useState<BehaviorScore[]>([]);
   const [reportLoading, setReportLoading] = useState(false);
+  const [activeTab, setActiveTab]         = useState<'daily' | 'summary'>('daily');
 
   useEffect(() => {
     fetch('/api/report/children').then(r => r.json())
@@ -322,6 +324,7 @@ export default function ReportPage() {
     if (!childId) return;
     setDaysLoading(true);
     setDayEntries([]); setDayIdx(0); setReport(null); setAttendance(null); setScores([]);
+    setActiveTab('daily');
     fetch(`/api/report/dates?child_id=${childId}`).then(r => r.json())
       .then(j => setDayEntries(j.data ?? []))
       .finally(() => setDaysLoading(false));
@@ -383,9 +386,14 @@ export default function ReportPage() {
         <div style={{ padding: '44px 20px 28px', textAlign: 'center', background: 'white' }}>
           <div style={{ position: 'relative', display: 'inline-block', marginBottom: 18 }}>
             <div style={{ position: 'absolute', inset: -8, border: '2px solid #f1f5f9', borderRadius: '50%' }} />
-            <div style={{ width: 90, height: 90, borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, border: '4px solid white', boxShadow: '0 10px 20px rgba(0,0,0,0.08)', position: 'relative' }}>
-              {selectedChild ? selectedChild.name_th?.[0] ?? '🌻' : '🌻'}
-            </div>
+            {selectedChild?.photo_url ? (
+              <img src={selectedChild.photo_url} alt={selectedChild.name_en ?? ''}
+                style={{ width: 90, height: 90, borderRadius: '50%', objectFit: 'cover', border: '4px solid white', boxShadow: '0 10px 20px rgba(0,0,0,0.08)', position: 'relative' }} />
+            ) : (
+              <div style={{ width: 90, height: 90, borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, fontWeight: 800, color: 'white', border: '4px solid white', boxShadow: '0 10px 20px rgba(0,0,0,0.08)', position: 'relative', fontFamily: 'Prompt, sans-serif' }}>
+                {selectedChild ? (selectedChild.name_en?.[0] ?? '🌻') : '🌻'}
+              </div>
+            )}
           </div>
 
           {selectedChild ? (
@@ -404,7 +412,7 @@ export default function ReportPage() {
             </>
           ) : (
             <>
-              <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: '#1e293b' }}>KinderCare</h1>
+              <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: '#1e293b' }}>Happy Kids</h1>
               <p style={{ margin: '6px 0 0', fontSize: '0.88rem', color: '#64748b' }}>รายงานรายวัน</p>
             </>
           )}
@@ -487,10 +495,10 @@ export default function ReportPage() {
                 </button>
               </div>
 
-              {/* ── Report loading ── */}
-              {reportLoading && <><Skeleton h={72} /><Skeleton h={180} /><Skeleton h={120} /><Skeleton h={160} /></>}
+              {/* ── Report loading (daily tab) ── */}
+              {activeTab === 'daily' && reportLoading && <><Skeleton h={72} /><Skeleton h={180} /><Skeleton h={120} /><Skeleton h={160} /></>}
 
-              {!reportLoading && (
+              {!reportLoading && activeTab === 'daily' && (
                 <div className="fade">
 
                   {/* ── Attendance ── */}
@@ -535,14 +543,14 @@ export default function ReportPage() {
                                 <div style={{ background: '#fdfdfd', border: '1px solid #edf2f7', padding: 14, borderRadius: 16, textAlign: 'center' }}>
                                   <span style={{ display: 'block', fontSize: '0.72rem', color: '#94a3b8', marginBottom: 4 }}>มื้อกลางวัน</span>
                                   <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1e293b' }}>{report.daily.food}</span>
-                                  {report.food_amount && report.food_amount !== 'skip' && <StatusPill status={report.food_amount} />}
+                                  &nbsp;{report.food_amount && report.food_amount !== 'skip' && <StatusPill status={report.food_amount} />}
                                 </div>
                               )}
                               {report.daily?.fruit && (
                                 <div style={{ background: '#fdfdfd', border: '1px solid #edf2f7', padding: 14, borderRadius: 16, textAlign: 'center' }}>
                                   <span style={{ display: 'block', fontSize: '0.72rem', color: '#94a3b8', marginBottom: 4 }}>ผลไม้</span>
                                   <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1e293b' }}>{report.daily.fruit}</span>
-                                  {report.fruit_amount && report.fruit_amount !== 'skip' && <StatusPill status={report.fruit_amount} />}
+                                  &nbsp;{report.fruit_amount && report.fruit_amount !== 'skip' && <StatusPill status={report.fruit_amount} />}
                                 </div>
                               )}
                             </div>
@@ -669,6 +677,7 @@ export default function ReportPage() {
                                     { label: 'ฉี่ (Wet)',    items: exDiaperPee, color: '#9a3412' },
                                     { label: 'อึ (Soiled)',   items: exDiaperPoo, color: '#9a3412' },
                                   ].map(g => (
+                                    g.items.length ? (
                                     <div key={g.label} style={{ background: 'white', padding: 10, borderRadius: 10, textAlign: 'center' }}>
                                       <span style={{ display: 'block', fontSize: '0.7rem', color: g.color, marginBottom: 3 }}>{g.label}</span>
                                       <span style={{ fontWeight: 700, color: '#4a5568' }}>{g.items.length} ครั้ง</span>
@@ -676,6 +685,7 @@ export default function ReportPage() {
                                         {g.items.map(e => e.time?.slice(0,5) ?? '').filter(Boolean).join(', ') || '-'}
                                       </small>
                                     </div>
+                                    ):''
                                   ))}
                                 </div>
                               </div>
@@ -719,7 +729,7 @@ export default function ReportPage() {
                       {/* ── Footer ── */}
                       <div style={{ textAlign: 'center', padding: '16px 0 4px', borderTop: '1px solid #f1f5f9', marginTop: 6 }}>
                         <p style={{ margin: '2px 0', color: '#94a3b8', fontSize: '0.82rem' }}>บันทึกโดยคุณครู</p>
-                        <p style={{ margin: '2px 0', color: '#64748b', fontWeight: 700, fontSize: '0.88rem' }}>KinderCare</p>
+                        {/* <p style={{ margin: '2px 0', color: '#64748b', fontWeight: 700, fontSize: '0.88rem' }}>KinderCare</p> */}
                         {currentEntry && (
                           <p style={{ marginTop: 6, fontSize: '0.72rem', color: '#94a3b8' }}>
                             {thDate(currentEntry.date)}

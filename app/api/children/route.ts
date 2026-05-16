@@ -23,11 +23,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name_en, name_th } = body;
+    const { name_en, name_th, photo_url } = body;
     if (!name_th && !name_en) return badRequest('name_th หรือ name_en ต้องกรอกอย่างน้อยหนึ่งช่อง');
     const row = await queryOne(
-      `INSERT INTO child (name_en, name_th) VALUES ($1, $2) RETURNING *`,
-      [name_en ?? null, name_th ?? null]
+      `INSERT INTO child (name_en, name_th, photo_url) VALUES ($1, $2, $3) RETURNING *`,
+      [name_en ?? null, name_th ?? null, photo_url ?? null]
     );
     return created(row);
   } catch (err) {

@@ -1,12 +1,12 @@
 import { AppUser, Child, Cohort, Enrollment, Daily, Attendance, DailyReport, BehaviorCategory, BehaviorItem } from '@/types';
 
 export const mockChildren: Child[] = [
-  { id: '1', name_en: 'Emma Johnson', name_th: 'เอมมา จอห์นสัน', deleted_at: null, created_at: '2024-05-01' },
-  { id: '2', name_en: 'Liam Smith', name_th: 'เลียม สมิธ', deleted_at: null, created_at: '2024-05-01' },
-  { id: '3', name_en: 'Olivia Brown', name_th: 'โอลิเวีย บราวน์', deleted_at: null, created_at: '2024-05-01' },
-  { id: '4', name_en: 'Noah Davis', name_th: 'โนอาห์ เดวิส', deleted_at: null, created_at: '2024-05-01' },
-  { id: '5', name_en: 'Ava Wilson', name_th: 'อาวา วิลสัน', deleted_at: null, created_at: '2024-05-02' },
-  { id: '6', name_en: 'Elijah Moore', name_th: 'อีไลจา มัวร์', deleted_at: null, created_at: '2024-05-02' },
+  { id: '1', name_en: 'Emma Johnson', name_th: 'เอมมา จอห์นสัน', photo_url: null, deleted_at: null, created_at: '2024-05-01' },
+  { id: '2', name_en: 'Liam Smith', name_th: 'เลียม สมิธ', photo_url: null, deleted_at: null, created_at: '2024-05-01' },
+  { id: '3', name_en: 'Olivia Brown', name_th: 'โอลิเวีย บราวน์', photo_url: null, deleted_at: null, created_at: '2024-05-01' },
+  { id: '4', name_en: 'Noah Davis', name_th: 'โนอาห์ เดวิส', photo_url: null, deleted_at: null, created_at: '2024-05-01' },
+  { id: '5', name_en: 'Ava Wilson', name_th: 'อาวา วิลสัน', photo_url: null, deleted_at: null, created_at: '2024-05-02' },
+  { id: '6', name_en: 'Elijah Moore', name_th: 'อีไลจา มัวร์', photo_url: null, deleted_at: null, created_at: '2024-05-02' },
 ];
 
 export const mockCohorts: Cohort[] = [

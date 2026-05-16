@@ -25,7 +25,7 @@ export default function AdminDashboard() {
   return (
     <>
       {/* Header */}
-      <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E5E7EB', padding: '20px 32px' }}>
+      <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E5E7EB', padding: '14px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#1A1A2E' }}>Dashboard</h1>
@@ -39,9 +39,9 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div style={{ padding: '32px' }}>
+      <div style={{ padding: '16px' }}>
         {/* Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '32px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '32px' }}>
           {stats.map((stat) => (
             <div key={stat.label} className="card" style={{ padding: '20px 24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -58,7 +58,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Today's dailies */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px', marginBottom: '32px' }}>
           <div className="card">
             <div style={{ padding: '16px 20px', borderBottom: '1px solid #F3F4F6' }}>
               <h3 style={{ fontSize: '15px', fontWeight: '600' }}>📅 บันทึกวันนี้</h3>
@@ -98,7 +98,7 @@ export default function AdminDashboard() {
         {/* Quick Links */}
         <div>
           <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '16px' }}>⚡ เมนูลัด</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
             {quickLinks.map((link) => (
               <Link key={link.href} href={link.href} style={{ textDecoration: 'none' }}>
                 <div className="card" style={{ padding: '16px', cursor: 'pointer', transition: 'all 0.15s' }}>
