@@ -1,21 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 
-// Next.js 16+: proxy.ts ใช้ชื่อ export "proxy" แทน "middleware"
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // protect only /admin/* — /login is always public
   if (!pathname.startsWith('/admin')) return NextResponse.next();
 
-  const session = await getSessionFromRequest(req);
-  if (!session) {
+  try {
+    const session = await getSessionFromRequest(req);
+    if (!session) {
+      const loginUrl = new URL('/login', req.url);
+      loginUrl.searchParams.set('from', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+    return NextResponse.next();
+  } catch {
+    // cookie เสียหาย / JWT ไม่ valid → redirect ไป login และลบ cookie
     const loginUrl = new URL('/login', req.url);
     loginUrl.searchParams.set('from', pathname);
-    return NextResponse.redirect(loginUrl);
+    const res = NextResponse.redirect(loginUrl);
+    res.cookies.delete('admin_session');
+    return res;
   }
-
-  return NextResponse.next();
 }
 
 export const config = { matcher: ['/admin/:path*'] };

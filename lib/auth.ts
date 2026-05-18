@@ -19,10 +19,13 @@ export async function createSession(username: string): Promise<string> {
 }
 
 export async function verifySession(token: string) {
+  // guard: JWT ต้องเป็น string ที่มี 3 ส่วนคั่นด้วย "." เท่านั้น
+  if (!token || token.split('.').length !== 3) return null;
   try {
     const { payload } = await jwtVerify(token, getSecret());
     return payload as { username: string; role: string };
   } catch {
+    // ครอบ error ทุกแบบ: InvalidCompactJWS, expired, wrong secret ฯลฯ
     return null;
   }
 }
