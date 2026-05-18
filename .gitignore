@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# upload avatar
+/public/uploads/avatars
+
 # production
 /build
 
