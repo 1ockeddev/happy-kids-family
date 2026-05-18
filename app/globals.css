@@ -41,6 +41,11 @@ html, body {
   -webkit-text-size-adjust: 100%;
 }
 
+/* รองรับ safe area บน iOS/Android (หลีกเลี่ยง browser UI) */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  html { padding-bottom: env(safe-area-inset-bottom); }
+}
+
 h1, h2, h3, h4, h5 { font-family: 'Prompt', sans-serif; }
 
 /* ── card ── */
@@ -118,16 +123,19 @@ tbody tr:hover { background: var(--border-light); }
 }
 .sidebar-overlay.open { display: block; }
 
-.admin-main { margin-left: 0; min-height: 100dvh; background: var(--bg); padding-bottom: var(--bottomnav-h); }
+.admin-main { margin-left: 0; min-height: 100dvh; background: var(--bg); padding-bottom: calc(var(--bottomnav-h) + env(safe-area-inset-bottom, 0px)); }
 
 /* ── bottom nav (mobile admin) ── */
 .bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0;
-  height: var(--bottomnav-h);
   background: var(--sidebar-bg);
-  display: flex; align-items: center; justify-content: space-around;
+  display: flex; align-items: flex-start; justify-content: space-around;
   z-index: 90; border-top: 1px solid rgba(255,255,255,0.06);
-  padding: 0 4px;
+  padding: 6px 4px 0;
+  /* ขยายพื้นที่ลงล่างตาม safe area (home indicator / browser bar) */
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  height: auto;
+  min-height: var(--bottomnav-h);
 }
 .bottom-nav-item {
   display: flex; flex-direction: column; align-items: center;

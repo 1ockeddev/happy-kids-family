@@ -56,7 +56,7 @@ const CardHeader = ({ emoji, title, color = '#4338ca' }: { emoji: string; title:
 );
 
 const StatusPill = ({ status }: { status: MilkStatus }) => (
-  <span style={{ fontSize: '0.72rem', padding: '2px 10px', borderRadius: 10, fontWeight: 700, background: amtStyle[status].bg, color: amtStyle[status].color }}>
+  <span style={{ display: 'inline-block', padding: '3px 12px', borderRadius: 99, fontSize: '0.72rem', fontWeight: 700, background: amtStyle[status].bg, color: amtStyle[status].color }}>
     {amtL[status]}
   </span>
 );
@@ -542,15 +542,15 @@ export default function ReportPage() {
                               {report.daily?.food && (
                                 <div style={{ background: '#fdfdfd', border: '1px solid #edf2f7', padding: 14, borderRadius: 16, textAlign: 'center' }}>
                                   <span style={{ display: 'block', fontSize: '0.72rem', color: '#94a3b8', marginBottom: 4 }}>มื้อกลางวัน</span>
-                                  <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1e293b' }}>{report.daily.food}</span>
-                                  &nbsp;{report.food_amount && report.food_amount !== 'skip' && <StatusPill status={report.food_amount} />}
+                                  <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1e293b', display: 'block', marginBottom: 6 }}>{report.daily.food}</span>
+                                  {report.food_amount && report.food_amount !== 'skip' && <StatusPill status={report.food_amount} />}
                                 </div>
                               )}
                               {report.daily?.fruit && (
                                 <div style={{ background: '#fdfdfd', border: '1px solid #edf2f7', padding: 14, borderRadius: 16, textAlign: 'center' }}>
                                   <span style={{ display: 'block', fontSize: '0.72rem', color: '#94a3b8', marginBottom: 4 }}>ผลไม้</span>
-                                  <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1e293b' }}>{report.daily.fruit}</span>
-                                  &nbsp;{report.fruit_amount && report.fruit_amount !== 'skip' && <StatusPill status={report.fruit_amount} />}
+                                  <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1e293b', display: 'block', marginBottom: 6 }}>{report.daily.fruit}</span>
+                                  {report.fruit_amount && report.fruit_amount !== 'skip' && <StatusPill status={report.fruit_amount} />}
                                 </div>
                               )}
                             </div>

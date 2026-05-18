@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromRequest } from '@/lib/auth';
 
-// Next.js 16+: proxy.ts ใช้ชื่อ export "proxy" แทน "middleware"
-export async function proxy(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // protect only /admin/* — /login is always public

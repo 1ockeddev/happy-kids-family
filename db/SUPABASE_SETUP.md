@@ -48,3 +48,26 @@ postgresql://postgres.xxxx:[PASSWORD]@aws-0-xx.pooler.supabase.com:6543/postgres
 เปิด `https://your-app.vercel.app/api/health`
 
 ต้องขึ้น: `{ "status": "ok", "database": "connected" }`
+
+---
+
+## ตั้งค่า Supabase Storage (สำหรับรูป Avatar)
+
+### 1. สร้าง Bucket
+Supabase → **Storage → New bucket**
+- Name: `child-avatars`
+- Public bucket: ✅ เปิด (เพื่อแสดงรูปได้โดยไม่ต้อง auth)
+
+### 2. เพิ่ม env vars ใน Vercel
+| Key | ที่มา |
+|-----|------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Project Settings → API → Project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | Project Settings → API → service_role (secret) |
+
+> ⚠️ `SUPABASE_SERVICE_ROLE_KEY` ใช้ใน server-side เท่านั้น — **ห้าม** expose ฝั่ง client
+
+### 3. ตั้งค่า local .env.local
+```
+NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
