@@ -23,10 +23,10 @@ export const mockEnrollments: Enrollment[] = [
 ];
 
 export const mockUsers: AppUser[] = [
-  { id: '1', line_user_id: 'U001', role: 'teacher', status: 'active', display_name: 'Ms. Sarah', created_at: '2024-04-01' },
-  { id: '2', line_user_id: 'U002', role: 'teacher', status: 'active', display_name: 'Mr. James', created_at: '2024-04-01' },
-  { id: '3', line_user_id: 'U003', role: 'parent', status: 'active', display_name: 'Mrs. Johnson', created_at: '2024-05-01' },
-  { id: '4', line_user_id: 'U004', role: 'parent', status: 'active', display_name: 'Mr. Smith', created_at: '2024-05-01' },
+  { id: '1', line_user_id: 'U001', role: 'teacher', status: 'active', display_name: 'Ms. Sarah', picture_url: null, created_at: '2024-04-01' },
+  { id: '2', line_user_id: 'U002', role: 'teacher', status: 'active', display_name: 'Mr. James', picture_url: null, created_at: '2024-04-01' },
+  { id: '3', line_user_id: 'U003', role: 'parent', status: 'active', display_name: 'Mrs. Johnson', picture_url: null, created_at: '2024-05-01' },
+  { id: '4', line_user_id: 'U004', role: 'parent', status: 'active', display_name: 'Mr. Smith', picture_url: null, created_at: '2024-05-01' },
 ];
 
 export const mockDailies: Daily[] = [

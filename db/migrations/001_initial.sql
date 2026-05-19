@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS app_user (
   role          user_role NOT NULL,
   status        user_status DEFAULT 'active',
   display_name  TEXT,
+  picture_url   TEXT,
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 

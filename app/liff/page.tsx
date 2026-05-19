@@ -70,7 +70,7 @@ export default function LiffPage() {
   const [reportLoading, setReportLoading] = useState(false);
   const [notRegistered, setNotRegistered] = useState(false);
 
-  // ── เมื่อ LIFF ready → ดึงลูกของผู้ปกครองคนนี้ ────────────
+  // ── เมื่อ LIFF ready → register/upsert user แล้วดึงลูก ───────
   useEffect(() => {
     if (!liff.ready) return;
     if (!liff.profile?.userId) {
@@ -79,15 +79,28 @@ export default function LiffPage() {
       return;
     }
     setChildLoading(true);
-    fetch(`/api/report/line-children?line_user_id=${liff.profile.userId}`)
-      .then(r => r.json())
-      .then(j => {
-        const kids = j.data ?? [];
-        setChildren(kids);
-        if (kids.length === 0) setNotRegistered(true);
-        if (kids.length === 1) setChildId(kids[0].id); // auto-select ถ้ามีลูกคนเดียว
-      })
-      .finally(() => setChildLoading(false));
+
+    // step 1: register/upsert LINE user เข้า DB
+    fetch('/api/auth/line-register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        line_user_id: liff.profile.userId,
+        display_name: liff.profile.displayName,
+        picture_url:  liff.profile.pictureUrl ?? null,
+      }),
+    })
+    // step 2: ดึงลูกที่ผูกกับ user นี้
+    .then(() => fetch(`/api/report/line-children?line_user_id=${liff.profile!.userId}`))
+    .then(r => r.json())
+    .then(j => {
+      const kids = j.data ?? [];
+      setChildren(kids);
+      if (kids.length === 0) setNotRegistered(true);
+      if (kids.length === 1) setChildId(kids[0].id);
+    })
+    .catch(() => setNotRegistered(true))
+    .finally(() => setChildLoading(false));
   }, [liff.ready, liff.profile?.userId]);
 
   // ── เมื่อเลือกลูก → ดึงวันที่มีรายงาน ────────────────────
