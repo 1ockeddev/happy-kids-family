@@ -38,9 +38,120 @@ const Pill = ({ status }: { status: MilkStatus }) => (
   </span>
 );
 
-const Skeleton = ({ h = 72 }: { h?: number }) => (
-  <div style={{ height: h, background: '#f1f5f9', borderRadius: 16, marginBottom: 12, animation: 'pulse 1.5s infinite' }} />
+
+/* ─── Shimmer Skeleton ─────────────────────────────────────── */
+const shimmerStyle: React.CSSProperties = {
+  background: 'linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%)',
+  backgroundSize: '200% 100%',
+  animation: 'shimmer 1.4s infinite',
+  borderRadius: 8,
+};
+const SkRow  = ({ w = '100%', h = 14, r = 8, mb = 0 }: { w?: string|number; h?: number; r?: number; mb?: number }) => (
+  <div style={{ ...shimmerStyle, width: w, height: h, borderRadius: r, marginBottom: mb }} />
 );
+const SkCircle = ({ size = 40 }: { size?: number }) => (
+  <div style={{ ...shimmerStyle, width: size, height: size, borderRadius: '50%', flexShrink: 0 }} />
+);
+const SkCard = ({ children, p = 18 }: { children: React.ReactNode; p?: number }) => (
+  <div style={{ background: 'white', borderRadius: 20, border: '1px solid #f0f0f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', marginBottom: 14, padding: p, overflow: 'hidden' }}>
+    {children}
+  </div>
+);
+
+/* skeleton สำหรับ date strip */
+const SkDateStrip = () => (
+  <SkCard p={14}>
+    <SkRow w={80} h={10} mb={10} />
+    <div style={{ display: 'flex', gap: 6 }}>
+      {[1,2,3,4,5].map(i => <div key={i} style={{ ...shimmerStyle, width: 52, height: 68, borderRadius: 12, flexShrink: 0 }} />)}
+    </div>
+    <SkRow w={180} h={13} r={6} mb={0} />
+  </SkCard>
+);
+
+/* skeleton สำหรับ attendance card */
+const SkAttendance = () => (
+  <div style={{ borderRadius: 20, padding: '14px 18px', marginBottom: 14, background: '#f8fafc', display: 'flex', alignItems: 'center', gap: 14 }}>
+    <SkCircle size={46} />
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <SkRow w={60} h={10} />
+      <SkRow w={120} h={20} r={6} />
+    </div>
+  </div>
+);
+
+/* skeleton สำหรับ content card */
+const SkContentCard = ({ lines = 3, hasHeader = true }: { lines?: number; hasHeader?: boolean }) => (
+  <SkCard p={0}>
+    {hasHeader && <div style={{ ...shimmerStyle, height: 44, borderRadius: '20px 20px 0 0', marginBottom: 0 }} />}
+    <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {Array.from({ length: lines }, (_, i) => (
+        <SkRow key={i} w={i === lines-1 ? '60%' : '100%'} h={14} />
+      ))}
+    </div>
+  </SkCard>
+);
+
+/* skeleton สำหรับ food grid */
+const SkFoodCard = () => (
+  <SkCard p={0}>
+    <div style={{ ...shimmerStyle, height: 44, borderRadius: '20px 20px 0 0' }} />
+    <div style={{ padding: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+        {[1,2].map(i => (
+          <div key={i} style={{ background: '#f8fafc', border: '1px solid #edf2f7', padding: 14, borderRadius: 14, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
+            <SkRow w={60} h={10} />
+            <SkRow w={80} h={16} r={6} />
+            <SkRow w={50} h={22} r={99} />
+          </div>
+        ))}
+      </div>
+      <div style={{ borderTop: '1px dashed #edf2f7', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <SkRow w={80} h={12} mb={4} />
+        {[1,2].map(i => <SkRow key={i} h={38} r={10} />)}
+      </div>
+    </div>
+  </SkCard>
+);
+
+/* skeleton สำหรับ behavior card */
+const SkBehaviorCard = () => (
+  <SkCard p={0}>
+    <div style={{ ...shimmerStyle, height: 44, borderRadius: '20px 20px 0 0' }} />
+    <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {[1,2].map(g => (
+        <div key={g}>
+          <SkRow w={100} h={12} mb={8} />
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {[80,70,90].map((w,i) => <div key={i} style={{ ...shimmerStyle, width: w, height: 28, borderRadius: 8 }} />)}
+          </div>
+        </div>
+      ))}
+    </div>
+  </SkCard>
+);
+
+/* skeleton สำหรับ child selector */
+const SkChildSelector = () => (
+  <SkCard p={14}>
+    <SkRow w={80} h={10} mb={10} />
+    <div style={{ display: 'flex', gap: 8 }}>
+      {[100, 90, 110].map((w, i) => <div key={i} style={{ ...shimmerStyle, width: w, height: 36, borderRadius: 99 }} />)}
+    </div>
+  </SkCard>
+);
+
+/* skeleton header (child info) */
+const SkChildHeader = () => (
+  <div style={{ background: 'white', borderRadius: 16, padding: '14px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+    <SkCircle size={52} />
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <SkRow w={140} h={18} r={6} />
+      <SkRow w={100} h={12} />
+    </div>
+  </div>
+);
+
 
 const Card = ({ children, style = {} }: { children: React.ReactNode; style?: React.CSSProperties }) => (
   <div style={{ background: 'white', borderRadius: 20, border: '1px solid #f0f0f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', marginBottom: 14, overflow: 'hidden', ...style }}>
@@ -183,7 +294,7 @@ export default function LiffPage() {
   return (
     <div style={{ background: '#f0f4f8', minHeight: '100dvh', paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}>
       <style>{`
-        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
         @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
         .fade{animation:fadeIn .25s ease}
         *{box-sizing:border-box}
@@ -240,8 +351,8 @@ export default function LiffPage() {
         )}
 
         {/* ── Loading states ── */}
-        {childLoading && <><Skeleton /><Skeleton h={48} /></>}
-        {daysLoading  && <><Skeleton h={80} /><Skeleton h={60} /></>}
+        {childLoading && <><SkChildSelector /><SkChildHeader /></>}
+        {daysLoading  && <><SkDateStrip /></>}
 
         {/* ── No reports ── */}
         {childId && !daysLoading && dayEntries.length === 0 && (
@@ -279,7 +390,7 @@ export default function LiffPage() {
             </div>
 
             {/* ── Report loading ── */}
-            {reportLoading && <><Skeleton h={70}/><Skeleton h={160}/><Skeleton h={110}/></>}
+            {reportLoading && <><SkAttendance /><SkFoodCard /><SkBehaviorCard /><SkContentCard lines={2} /></>}
 
             {!reportLoading && (
               <div className="fade">

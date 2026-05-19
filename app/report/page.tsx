@@ -351,9 +351,105 @@ export default function ReportPage() {
   const currentEntry  = dayEntries[dayIdx];
   const totalDays     = dayEntries.length;
 
-  const Skeleton = ({ h = 80 }: { h?: number }) => (
-    <div style={{ height: h, background: '#f1f5f9', borderRadius: 16, marginBottom: 12, animation: 'pulse 1.5s infinite' }} />
-  );
+
+/* ─── Shimmer Skeleton ─────────────────────────────────────── */
+const shimmerStyle: React.CSSProperties = {
+  background: 'linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%)',
+  backgroundSize: '200% 100%',
+  animation: 'shimmer 1.4s infinite',
+  borderRadius: 8,
+};
+const SkRow  = ({ w = '100%', h = 14, r = 8, mb = 0 }: { w?: string|number; h?: number; r?: number; mb?: number }) => (
+  <div style={{ ...shimmerStyle, width: w, height: h, borderRadius: r, marginBottom: mb }} />
+);
+const SkCircle = ({ size = 40 }: { size?: number }) => (
+  <div style={{ ...shimmerStyle, width: size, height: size, borderRadius: '50%', flexShrink: 0 }} />
+);
+const SkCard = ({ children, p = 18 }: { children: React.ReactNode; p?: number }) => (
+  <div style={{ background: 'white', borderRadius: 20, border: '1px solid #f0f0f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', marginBottom: 14, padding: p, overflow: 'hidden' }}>
+    {children}
+  </div>
+);
+const SkDateStrip = () => (
+  <SkCard p={14}>
+    <SkRow w={80} h={10} mb={10} />
+    <div style={{ display: 'flex', gap: 6 }}>
+      {[1,2,3,4,5].map(i => <div key={i} style={{ ...shimmerStyle, width: 52, height: 68, borderRadius: 12, flexShrink: 0 }} />)}
+    </div>
+    <div style={{ marginTop: 10 }}><SkRow w={180} h={13} r={6} mb={0} /></div>
+  </SkCard>
+);
+const SkAttendance = () => (
+  <div style={{ borderRadius: 20, padding: '14px 18px', marginBottom: 14, background: '#f8fafc', display: 'flex', alignItems: 'center', gap: 14 }}>
+    <SkCircle size={46} />
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <SkRow w={60} h={10} />
+      <SkRow w={120} h={20} r={6} />
+    </div>
+  </div>
+);
+const SkContentCard = ({ lines = 3, hasHeader = true }: { lines?: number; hasHeader?: boolean }) => (
+  <SkCard p={0}>
+    {hasHeader && <div style={{ ...shimmerStyle, height: 44, borderRadius: '20px 20px 0 0' }} />}
+    <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {Array.from({ length: lines }, (_, i) => (
+        <SkRow key={i} w={i === lines-1 ? '60%' : '100%'} h={14} />
+      ))}
+    </div>
+  </SkCard>
+);
+const SkFoodCard = () => (
+  <SkCard p={0}>
+    <div style={{ ...shimmerStyle, height: 44, borderRadius: '20px 20px 0 0' }} />
+    <div style={{ padding: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+        {[1,2].map(i => (
+          <div key={i} style={{ background: '#f8fafc', border: '1px solid #edf2f7', padding: 14, borderRadius: 14, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
+            <SkRow w={60} h={10} />
+            <SkRow w={80} h={16} r={6} />
+            <SkRow w={50} h={22} r={99} />
+          </div>
+        ))}
+      </div>
+      <div style={{ borderTop: '1px dashed #edf2f7', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <SkRow w={80} h={12} mb={4} />
+        {[1,2].map(i => <SkRow key={i} h={38} r={10} />)}
+      </div>
+    </div>
+  </SkCard>
+);
+const SkBehaviorCard = () => (
+  <SkCard p={0}>
+    <div style={{ ...shimmerStyle, height: 44, borderRadius: '20px 20px 0 0' }} />
+    <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {[1,2].map(g => (
+        <div key={g}>
+          <div style={{ marginBottom: 8 }}><SkRow w={100} h={12} /></div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {[80,70,90].map((w,i) => <div key={i} style={{ ...shimmerStyle, width: w, height: 28, borderRadius: 8 }} />)}
+          </div>
+        </div>
+      ))}
+    </div>
+  </SkCard>
+);
+const SkChildSelector = () => (
+  <SkCard p={14}>
+    <div style={{ marginBottom: 10 }}><SkRow w={80} h={10} /></div>
+    <div style={{ display: 'flex', gap: 8 }}>
+      {[100, 90, 110].map((w, i) => <div key={i} style={{ ...shimmerStyle, width: w, height: 36, borderRadius: 99 }} />)}
+    </div>
+  </SkCard>
+);
+const SkChildHeader = () => (
+  <div style={{ background: 'white', borderRadius: 16, padding: '14px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+    <SkCircle size={52} />
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <SkRow w={140} h={18} r={6} />
+      <SkRow w={100} h={12} />
+    </div>
+  </div>
+);
 
   // group behavior scores by category
   const behaviorGroups = scores.reduce<Record<string, { name_th: string; name_en: string; items: BehaviorScore[] }>>((acc, s) => {
@@ -374,6 +470,8 @@ export default function ReportPage() {
     <div style={{ background: '#f0f4f8', minHeight: '100vh', display: 'flex', justifyContent: 'center' }}>
       <style>{`
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+        @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+        @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
         @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
         .fade { animation: fadeIn .25s ease; }
         * { box-sizing: border-box; }
@@ -465,7 +563,7 @@ export default function ReportPage() {
           )}
 
           {/* ── Days loading ── */}
-          {daysLoading && <><Skeleton h={280} /><Skeleton h={72} /></>}
+          {daysLoading && <><SkDateStrip /><SkChildHeader /></>}
 
           {/* ── No days ── */}
           {childId && !daysLoading && dayEntries.length === 0 && (
@@ -496,7 +594,7 @@ export default function ReportPage() {
               </div>
 
               {/* ── Report loading (daily tab) ── */}
-              {activeTab === 'daily' && reportLoading && <><Skeleton h={72} /><Skeleton h={180} /><Skeleton h={120} /><Skeleton h={160} /></>}
+              {activeTab === 'daily' && reportLoading && <><SkAttendance /><SkFoodCard /><SkBehaviorCard /><SkContentCard lines={2} /></>}
 
               {!reportLoading && activeTab === 'daily' && (
                 <div className="fade">
