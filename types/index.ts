@@ -34,15 +34,13 @@ export interface Attendance {
   child?: Child;
 }
 
-export interface FoodAmount {
-  food_amount: MilkStatus;   // reuse enum: all/some/not_must/skip
-  fruit_amount: MilkStatus;
-}
-
-export interface DailyReport extends FoodAmount {
+export interface DailyReport {
   id: string; daily_id: string; child_id: string;
   nap_from: string | null; nap_to: string | null;
-  milk1: MilkStatus; milk2: MilkStatus;
+  milk1: MilkStatus; milk1_note: string | null;
+  milk2: MilkStatus; milk2_note: string | null;
+  food_amount: MilkStatus; food_note: string | null;
+  fruit_amount: MilkStatus; fruit_note: string | null;
   note: string | null;
   created_by: string | null; updated_by: string | null; updated_at: string | null; created_at: string;
   child?: Child;

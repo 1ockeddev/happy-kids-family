@@ -37,22 +37,28 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
     const body = await req.json();
-    const { nap_from, nap_to, milk1, milk2, food_amount, fruit_amount, note, updated_by } = body;
+    const { nap_from, nap_to, milk1, milk1_note, milk2, milk2_note, food_amount, food_note, fruit_amount, fruit_note, note, updated_by } = body;
     const row = await queryOne(
       `UPDATE daily_report SET
         nap_from     = COALESCE($1, nap_from),
         nap_to       = COALESCE($2, nap_to),
         milk1        = COALESCE($3, milk1),
-        milk2        = COALESCE($4, milk2),
-        food_amount  = COALESCE($5, food_amount),
-        fruit_amount = COALESCE($6, fruit_amount),
-        note         = COALESCE($7, note),
-        updated_by   = $8,
+        milk1_note   = COALESCE($4, milk1_note),
+        milk2        = COALESCE($5, milk2),
+        milk2_note   = COALESCE($6, milk2_note),
+        food_amount  = COALESCE($7, food_amount),
+        food_note    = COALESCE($8, food_note),
+        fruit_amount = COALESCE($9, fruit_amount),
+        fruit_note   = COALESCE($10, fruit_note),
+        note         = COALESCE($11, note),
+        updated_by   = $12,
         updated_at   = NOW()
-       WHERE id = $9 RETURNING *`,
+       WHERE id = $13 RETURNING *`,
       [nap_from ?? null, nap_to ?? null,
-       milk1 ?? null, milk2 ?? null,
-       food_amount ?? null, fruit_amount ?? null,
+       milk1 ?? null, milk1_note ?? null,
+       milk2 ?? null, milk2_note ?? null,
+       food_amount ?? null, food_note ?? null,
+       fruit_amount ?? null, fruit_note ?? null,
        note ?? null, updated_by ?? null, id]
     );
     if (!row) return notFound('ไม่พบรายงาน');

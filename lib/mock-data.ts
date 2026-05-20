@@ -55,6 +55,6 @@ export const mockBehaviorItems: BehaviorItem[] = [
 ];
 
 export const mockDailyReports: DailyReport[] = [
-  { id: 'dr1', daily_id: 'd1', child_id: '1', nap_from: '13:00', nap_to: '14:30', milk1: 'all', milk2: 'some', food_amount: 'all', fruit_amount: 'some', note: 'Good mood all day', created_by: '1', updated_by: null, updated_at: null, created_at: '2025-05-09', child: mockChildren[0] },
-  { id: 'dr2', daily_id: 'd1', child_id: '2', nap_from: '13:15', nap_to: '14:00', milk1: 'skip', milk2: 'skip', food_amount: 'some', fruit_amount: 'skip', note: null, created_by: '1', updated_by: null, updated_at: null, created_at: '2025-05-09', child: mockChildren[1] },
+  { id: 'dr1', daily_id: 'd1', child_id: '1', nap_from: '13:00', nap_to: '14:30', milk1: 'all', milk1_note: null, milk2: 'some', milk2_note: null, food_amount: 'all', food_note: null, fruit_amount: 'some', fruit_note: null, note: 'Good mood all day', created_by: '1', updated_by: null, updated_at: null, created_at: '2025-05-09', child: mockChildren[0] },
+  { id: 'dr2', daily_id: 'd1', child_id: '2', nap_from: '13:15', nap_to: '14:00', milk1: 'skip', milk1_note: null, milk2: 'skip', milk2_note: null, food_amount: 'some', food_note: null, fruit_amount: 'skip', fruit_note: null, note: null, created_by: '1', updated_by: null, updated_at: null, created_at: '2025-05-09', child: mockChildren[1] },
 ];
