@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   DailyReport, MilkStatus, ExcretionType, ExcretionAction,
-  ChildExcretion, Daily, Child, Cohort, BehaviorCategory, BehaviorItem,
+  ChildExcretion, Daily, Child, Cohort, BehaviorCategory, BehaviorItem, AppUser,
 } from '@/types';
 import CrudTable from '@/components/admin/CrudTable';
 import Modal from '@/components/ui/Modal';
@@ -22,6 +22,7 @@ const EMPTY_FORM = {
   food_amount: 'skip' as MilkStatus, food_note: '',
   fruit_amount: 'skip' as MilkStatus, fruit_note: '',
   note: '',
+  created_by: '' as string,
 };
 const EMPTY_EX = { time: '', type: 'pee' as ExcretionType, action: 'potty' as ExcretionAction };
 
@@ -138,6 +139,8 @@ function ScoreInput({ item, score, onChange, onNoteChange }: {
 }
 
 /* ─── Page ── */
+const DEFAULT_TEACHER_NAME = 'เบียร์';
+
 export default function ReportsPage() {
   const [data, setData]           = useState<DailyReport[]>([]);
   const [cohorts, setCohorts]     = useState<Cohort[]>([]);
@@ -153,6 +156,7 @@ export default function ReportsPage() {
   const [childrenForCohort, setChildrenForCohort] = useState<Child[]>([]);
   const [selectedDaily, setSelectedDaily]         = useState<Daily | null>(null);
   const [behaviorsForCohort, setBehaviorsForCohort] = useState<BehaviorCategory[]>([]);
+  const [teachers, setTeachers]   = useState<AppUser[]>([]);
   const [scores, setScores]     = useState<BehaviorScore[]>([]);
   const [excretions, setExcretions] = useState<ExLocal[]>([]);
 
@@ -172,6 +176,13 @@ export default function ReportsPage() {
   useEffect(() => { fetchData(); }, [fetchData]);
   useEffect(() => {
     fetch('/api/cohorts').then(r => r.json()).then(j => setCohorts(j.data ?? []));
+    fetch('/api/users?role=teacher').then(r => r.json()).then(j => {
+      const ts: AppUser[] = j.data ?? [];
+      setTeachers(ts);
+      // set default เป็นครูเบียร์
+      const beer = ts.find(t => t.display_name?.includes(DEFAULT_TEACHER_NAME));
+      if (beer) setForm(f => ({ ...f, created_by: beer.id }));
+    });
   }, []);
 
   useEffect(() => {
@@ -187,7 +198,11 @@ export default function ReportsPage() {
     setSelectedDaily(dailiesForCohort.find(d => d.id === form.daily_id) ?? null);
   }, [form.daily_id, dailiesForCohort]);
 
-  const openAdd = () => { setForm(EMPTY_FORM); setScores([]); setExcretions([]); setSelectedDaily(null); setModal('add'); };
+  const openAdd = () => {
+    const beer = teachers.find(t => t.display_name?.includes(DEFAULT_TEACHER_NAME));
+    setForm({ ...EMPTY_FORM, created_by: beer?.id ?? teachers[0]?.id ?? '' });
+    setScores([]); setExcretions([]); setSelectedDaily(null); setModal('add');
+  };
 
   const openEdit = async (r: DailyReport) => {
     setSelected(r);
@@ -204,6 +219,7 @@ export default function ReportsPage() {
       food_amount: r.food_amount, food_note: r.food_note ?? '',
       fruit_amount: r.fruit_amount, fruit_note: r.fruit_note ?? '',
       note: r.note ?? '',
+      created_by: r.created_by ?? '',
     });
     if (cohortId) {
       fetch(`/api/behavior-categories?cohort_id=${cohortId}`).then(res => res.json()).then(j => setBehaviorsForCohort(j.data ?? []));
@@ -225,6 +241,8 @@ export default function ReportsPage() {
         milk1_note: form.milk1_note || null, milk2_note: form.milk2_note || null,
         food_note: form.food_note || null, fruit_note: form.fruit_note || null,
         note: form.note || null,
+        created_by: form.created_by || null,
+        updated_by: form.created_by || null,
       };
       if (modal === 'add') {
         const res = await fetch('/api/daily-reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -378,6 +396,45 @@ export default function ReportsPage() {
           <div style={{ padding: '10px 14px', background: '#F7F5F2', borderRadius: 8, fontSize: 14, color: '#6B7280', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <span>👧 <strong style={{ color: '#1A1A2E' }}>{selected.child?.name_th}</strong></span>
             {selected.daily?.date && <span>📅 <strong style={{ color: '#1A1A2E' }}>{new Date(selected.daily.date).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long' })}</strong></span>}
+          </div>
+        )}
+
+        {/* ── Teacher selector ── */}
+        {teachers.length > 0 && (
+          <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '12px 14px' }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+              👩‍🏫 ครูผู้บันทึก
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {teachers.map(t => {
+                const active = form.created_by === t.id;
+                return (
+                  <button key={t.id} type="button"
+                    onClick={() => setForm(f => ({ ...f, created_by: t.id }))}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 7,
+                      padding: '7px 14px', borderRadius: 99, border: 'none',
+                      cursor: 'pointer', fontSize: 14, fontFamily: 'Sarabun,sans-serif',
+                      background: active ? '#1A1A2E' : '#FFFFFF',
+                      color: active ? 'white' : '#6B7280',
+                      fontWeight: active ? 700 : 400,
+                      boxShadow: active ? 'none' : '0 0 0 1px #E5E7EB',
+                      transition: 'all .15s',
+                    }}>
+                    {t.picture_url
+                      ? <img src={t.picture_url} style={{ width: 22, height: 22, borderRadius: '50%', objectFit: 'cover' }} />
+                      : <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#6C5CE7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'white', fontWeight: 700 }}>
+                          {t.display_name?.slice(0,1) ?? '?'}
+                        </div>
+                    }
+                    {t.display_name ?? t.line_user_id.slice(0, 8)}
+                    {t.display_name?.includes(DEFAULT_TEACHER_NAME) && !active && (
+                      <span style={{ fontSize: 10, color: '#9CA3AF' }}>(default)</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
