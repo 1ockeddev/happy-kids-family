@@ -9,71 +9,134 @@ const TABLES_ORDER = [
   'behavior_category', 'behavior_item', 'child_behavior_score', 'child_excretion',
 ];
 
-// column whitelist per table — prevent SQL injection via column names
 const TABLE_COLUMNS: Record<string, string[]> = {
-  app_user:              ['id','line_user_id','role','status','display_name','created_at'],
-  child:                 ['id','name_en','name_th','photo_url','deleted_at','created_at'],
-  cohort:                ['id','name','level','academic_year','start_date','end_date','created_at'],
-  parent_child:          ['parent_id','child_id'],
-  teacher_permission:    ['user_id','can_manage_daily','can_manage_attendance','can_manage_report'],
-  enrollment:            ['id','child_id','cohort_id','start_date','end_date','graduated','created_at'],
-  daily:                 ['id','cohort_id','date','activity','food','fruit','note','created_by','updated_by','updated_at','created_at'],
-  attendance:            ['id','daily_id','child_id','status','note','created_by','updated_by','updated_at','created_at'],
-  daily_report:          ['id','daily_id','child_id','nap_from','nap_to','milk1','milk2','food_amount','fruit_amount','note','created_by','updated_by','updated_at','created_at'],
-  behavior_category:     ['id','name_en','name_th','sort_order','is_active','cohort_ids','created_at'],
-  behavior_item:         ['id','category_id','name_en','name_th','max_score','sort_order','is_active','created_at'],
-  child_behavior_score:  ['id','daily_id','child_id','item_id','score','note','created_at'],
-  child_excretion:       ['id','daily_id','child_id','time','type','action','created_at'],
+  app_user:             ['id','line_user_id','role','status','display_name','picture_url','created_at'],
+  child:                ['id','name_en','name_th','photo_url','deleted_at','created_at'],
+  cohort:               ['id','name','level','academic_year','start_date','end_date','created_at'],
+  parent_child:         ['parent_id','child_id'],
+  teacher_permission:   ['user_id','can_manage_daily','can_manage_attendance','can_manage_report'],
+  enrollment:           ['id','child_id','cohort_id','start_date','end_date','graduated','created_at'],
+  daily:                ['id','cohort_id','date','activity','food','fruit','note','created_by','updated_by','updated_at','created_at'],
+  attendance:           ['id','daily_id','child_id','status','note','created_by','updated_by','updated_at','created_at'],
+  daily_report:         ['id','daily_id','child_id','nap_from','nap_to','milk1','milk1_note','milk2','milk2_note','food_amount','food_note','fruit_amount','fruit_note','note','created_by','updated_by','updated_at','created_at'],
+  behavior_category:    ['id','name_en','name_th','sort_order','is_active','cohort_ids','created_at'],
+  behavior_item:        ['id','category_id','name_en','name_th','max_score','sort_order','is_active','created_at'],
+  child_behavior_score: ['id','daily_id','child_id','item_id','score','note','created_at'],
+  child_excretion:      ['id','daily_id','child_id','time','type','action','created_at'],
 };
 
+// ── POST /api/db-import ──────────────────────────────────────
+// body: {
+//   version, tables,
+//   overwrite_tables?: string[]   // tables ที่ยอมให้ overwrite
+//   dry_run?: boolean             // ถ้า true → แค่วิเคราะห์ conflict ไม่ write
+// }
 export async function POST(req: NextRequest) {
-  let payload: { version: number; tables: Record<string, unknown[]> };
-  try {
-    payload = await req.json();
-  } catch {
-    return badRequest('JSON ไม่ถูกต้อง');
-  }
-  if (!payload?.tables) return badRequest('ไฟล์ไม่ถูกต้อง — ต้องมี field "tables"');
+  let payload: {
+    version: number;
+    tables: Record<string, unknown[]>;
+    overwrite_tables?: string[];
+    dry_run?: boolean;
+  };
+  try { payload = await req.json(); }
+  catch { return badRequest('JSON ไม่ถูกต้อง'); }
+
+  if (!payload?.tables) return badRequest('ไม่พบ field "tables"');
   if (payload.version !== 1) return badRequest('version ไม่รองรับ');
 
-  const pool = getPool();
+  const overwriteTables = new Set(payload.overwrite_tables ?? []);
+  const isDryRun = payload.dry_run === true;
+
+  const pool   = getPool();
   const client = await pool.connect();
-  const stats: Record<string, { inserted: number; skipped: number }> = {};
+
+  const stats: Record<string, {
+    inserted: number; skipped: number; overwritten: number;
+    conflicts: { id: string; preview: string }[];
+  }> = {};
 
   try {
     await client.query('BEGIN');
-    // disable triggers temporarily to avoid FK ordering issues
     await client.query('SET session_replication_role = replica');
 
     for (const table of TABLES_ORDER) {
       const rows = payload.tables[table];
-      if (!rows?.length) { stats[table] = { inserted: 0, skipped: 0 }; continue; }
-      const allowedCols = TABLE_COLUMNS[table] ?? [];
-      let inserted = 0, skipped = 0;
+      stats[table] = { inserted: 0, skipped: 0, overwritten: 0, conflicts: [] };
+      if (!rows?.length) continue;
+
+      const allowedCols  = TABLE_COLUMNS[table] ?? [];
+      const doOverwrite  = overwriteTables.has(table);
 
       for (const row of rows as Record<string, unknown>[]) {
-        // pick only known columns
         const cols = Object.keys(row).filter(k => allowedCols.includes(k));
-        if (!cols.length) { skipped++; continue; }
-        const vals = cols.map(c => row[c]);
+        if (!cols.length) { stats[table].skipped++; continue; }
+
+        const vals         = cols.map(c => row[c]);
         const placeholders = vals.map((_, i) => `$${i + 1}`).join(', ');
-        const colList = cols.map(c => `"${c}"`).join(', ');
-        try {
-          await client.query(
-            `INSERT INTO ${table} (${colList}) VALUES (${placeholders}) ON CONFLICT DO NOTHING`,
-            vals
+        const colList      = cols.map(c => `"${c}"`).join(', ');
+
+        // check conflict
+        const hasId   = cols.includes('id');
+        const hasPK   = cols.includes('parent_id') && cols.includes('child_id');
+        let conflict  = false;
+
+        if (hasId) {
+          const existing = await client.query(
+            `SELECT id FROM "${table}" WHERE id = $1 LIMIT 1`, [row['id']]
           );
-          inserted++;
-        } catch {
-          skipped++;
+          conflict = existing.rows.length > 0;
+        } else if (hasPK) {
+          const existing = await client.query(
+            `SELECT 1 FROM "${table}" WHERE parent_id = $1 AND child_id = $2 LIMIT 1`,
+            [row['parent_id'], row['child_id']]
+          );
+          conflict = existing.rows.length > 0;
+        }
+
+        if (conflict) {
+          // เก็บ conflict info สำหรับ dry_run
+          const preview = (row['name_th'] ?? row['display_name'] ?? row['id'] ?? '?') as string;
+          stats[table].conflicts.push({ id: String(row['id'] ?? ''), preview });
+
+          if (!doOverwrite || isDryRun) {
+            stats[table].skipped++;
+            continue;
+          }
+          // overwrite mode
+          if (!isDryRun) {
+            const setClauses = cols.map((c, i) => `"${c}" = $${i + 1}`).join(', ');
+            await client.query(
+              `UPDATE "${table}" SET ${setClauses} WHERE ${hasId ? 'id' : 'parent_id'} = $1`,
+              hasId ? [row['id'], ...vals.slice(1)] : [...vals]
+            ).catch(() => {});
+            stats[table].overwritten++;
+          }
+          continue;
+        }
+
+        // no conflict — insert
+        if (!isDryRun) {
+          try {
+            await client.query(
+              `INSERT INTO "${table}" (${colList}) VALUES (${placeholders})`, vals
+            );
+            stats[table].inserted++;
+          } catch { stats[table].skipped++; }
+        } else {
+          stats[table].inserted++; // preview count
         }
       }
-      stats[table] = { inserted, skipped };
     }
 
     await client.query('SET session_replication_role = DEFAULT');
-    await client.query('COMMIT');
-    return ok({ message: 'นำเข้าสำเร็จ', stats });
+
+    if (isDryRun) {
+      await client.query('ROLLBACK');
+    } else {
+      await client.query('COMMIT');
+    }
+
+    return ok({ dry_run: isDryRun, stats });
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     return serverError(err);
