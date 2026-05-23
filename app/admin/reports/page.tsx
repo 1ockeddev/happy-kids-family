@@ -400,11 +400,16 @@ export default function ReportsPage() {
         )}
 
         {/* ── Teacher selector ── */}
-        {teachers.length > 0 && (
-          <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '12px 14px' }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
-              👩‍🏫 ครูผู้บันทึก
+        <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '12px 14px' }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+            👩‍🏫 ครูผู้บันทึก
+          </p>
+          {teachers.length === 0 ? (
+            <p style={{ fontSize: 12, color: '#9CA3AF' }}>
+              ยังไม่มีครูในระบบ — เพิ่มได้ที่{' '}
+              <a href="/admin/users" style={{ color: '#6C5CE7', textDecoration: 'underline' }}>จัดการผู้ใช้</a>
             </p>
+          ) : (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {teachers.map(t => {
                 const active = form.created_by === t.id;
@@ -435,8 +440,8 @@ export default function ReportsPage() {
                 );
               })}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* ── Nap ── */}
         <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '14px 16px' }}>

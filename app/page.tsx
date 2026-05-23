@@ -1,570 +1,564 @@
 'use client';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLiff } from '@/lib/useLiff';
-import { Child, DailyReport, Attendance, MilkStatus, ExcretionType, ExcretionAction } from '@/types';
+import { Child, DailyReport, Attendance, MilkStatus, ExcretionType, ExcretionAction, AppUser } from '@/types';
 
-/* ─── reuse same label maps from report page ───── */
-const amtL: Record<MilkStatus, string> = { all: 'ทานหมด', some: 'ทานครึ่ง', not_must: 'ไม่จำเป็น', skip: 'ไม่ทาน' };
-const amtStyle: Record<MilkStatus, { bg: string; color: string }> = {
-  all:      { bg: '#dcfce7', color: '#166534' },
-  some:     { bg: '#fef9c3', color: '#854d0e' },
-  not_must: { bg: '#dbeafe', color: '#1e40af' },
-  skip:     { bg: '#ffe4e6', color: '#9f1239' },
+/* ── label maps ─────────────────────────────── */
+const amtL: Record<MilkStatus,string> = { all:'ทานหมด', some:'ทานครึ่งเดียว', not_must:'ไม่จำเป็น', skip:'ไม่ทาน' };
+const amtStyle: Record<MilkStatus,{bg:string;color:string}> = {
+  all:      {bg:'#dcfce7',color:'#15803d'},
+  some:     {bg:'#fef3c7',color:'#b45309'},
+  not_must: {bg:'#dbeafe',color:'#1e40af'},
+  skip:     {bg:'#ffe4e6',color:'#9f1239'},
 };
-const attBg: Record<string, string> = { present: '#ecfdf5', absent: '#fef2f2', sick: '#fffbeb', leave: '#eff6ff' };
-const attC:  Record<string, string> = { present: '#10b981', absent: '#ef4444', sick: '#f59e0b', leave: '#3b82f6' };
-const attL:  Record<string, string> = { present: '😊 มาเรียน', absent: '😴 ขาดเรียน', sick: '🤒 ป่วย', leave: '📝 ลา' };
-const exTypeL: Record<ExcretionType,   string> = { pee: '💛 ปัสสาวะ', poo: '💩 อุจจาระ' };
-const exActL:  Record<ExcretionAction, string> = { diaper: 'ผ้าอ้อม', potty: 'กระโถน' };
+const attL:  Record<string,string> = { present:'😊 มาเรียน', absent:'😴 ขาดเรียน', sick:'🤒 ป่วย', leave:'📝 ลา' };
+const attC:  Record<string,string> = { present:'#10b981', absent:'#ef4444', sick:'#f59e0b', leave:'#3b82f6' };
+const attBg: Record<string,string> = { present:'#ecfdf5', absent:'#fef2f2', sick:'#fffbeb', leave:'#eff6ff' };
 
-const parseDate = (d?: string | null) => {
-  if (!d) return null;
-  const s = d.slice(0, 10);
-  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(s + 'T00:00:00') : null;
-};
-const thDate = (d?: string | null) =>
-  parseDate(d)?.toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) ?? '';
-
-interface DayEntry { date: string; daily_id: string; report_id: string | null; }
 interface BehaviorScore {
-  item_id: string; name_th: string; name_en: string;
-  score: number; max_score: number;
-  category_id: string; category_name_th: string; category_name_en: string;
+  item_id:string; name_th:string; name_en:string; score:number; max_score:number;
+  category_id:string; category_name_th:string;
+  note?:string;
 }
+interface DayEntry { date:string; daily_id:string; report_id:string|null }
 
-const Pill = ({ status }: { status: MilkStatus }) => (
-  <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 99, fontSize: '0.7rem', fontWeight: 700, ...amtStyle[status] }}>
+const parseDate = (d?:string|null) => {
+  if (!d) return null;
+  const s = d.slice(0,10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(s+'T00:00:00') : null;
+};
+const thDate = (d?:string|null) =>
+  parseDate(d)?.toLocaleDateString('th-TH',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) ?? '';
+
+/* ── shimmer ──────────────────────────────── */
+const shimmer: React.CSSProperties = {
+  background:'linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%)',
+  backgroundSize:'200% 100%', animation:'shimmer 1.4s infinite', borderRadius:8,
+};
+const SkRow = ({w='100%',h=14,mb=0}:{w?:string|number;h?:number;mb?:number}) =>
+  <div style={{...shimmer,width:w,height:h,marginBottom:mb}} />;
+const SkCircle = ({size=40}:{size?:number}) =>
+  <div style={{...shimmer,width:size,height:size,borderRadius:'50%',flexShrink:0}} />;
+
+/* ── face icons ─────────────────────────────*/
+const FaceHappy = ({size=22,color='#10b981'}:{size?:number;color?:string}) => (
+  <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
+    <circle cx="50" cy="50" r="42" stroke={color} strokeWidth="4"/>
+    <path d="M28 38 Q34 28 40 38" stroke={color} strokeWidth="4" strokeLinecap="round"/>
+    <path d="M60 38 Q66 28 72 38" stroke={color} strokeWidth="4" strokeLinecap="round"/>
+    <path d="M28 58 Q50 82 72 58" stroke={color} strokeWidth="5" strokeLinecap="round"/>
+  </svg>
+);
+const FaceSmile = ({size=22,color='#3b82f6'}:{size?:number;color?:string}) => (
+  <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
+    <circle cx="50" cy="50" r="42" stroke={color} strokeWidth="4"/>
+    <circle cx="35" cy="38" r="4" fill={color}/><circle cx="65" cy="38" r="4" fill={color}/>
+    <path d="M35 58 Q50 72 65 58" stroke={color} strokeWidth="5" strokeLinecap="round"/>
+  </svg>
+);
+const FaceNeutral = ({size=22,color='#f59e0b'}:{size?:number;color?:string}) => (
+  <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
+    <circle cx="50" cy="50" r="42" stroke={color} strokeWidth="4"/>
+    <circle cx="35" cy="38" r="4" fill={color}/><circle cx="65" cy="38" r="4" fill={color}/>
+    <line x1="35" y1="62" x2="65" y2="62" stroke={color} strokeWidth="5" strokeLinecap="round"/>
+  </svg>
+);
+
+/* ── StatusPill ─────────────────────────────*/
+const Pill = ({status}:{status:MilkStatus}) => (
+  <span style={{display:'inline-block',padding:'2px 8px',borderRadius:6,fontSize:'0.65rem',fontWeight:700,alignSelf:'flex-start',...amtStyle[status]}}>
     {amtL[status]}
   </span>
 );
 
+/* ── Avatar ─────────────────────────────────*/
+function Avatar({src,name,size=42,active,accentColor='#6366f1'}:{src?:string|null;name?:string|null;size?:number;active?:boolean;accentColor?:string}) {
+  const initial = (name ?? '?').slice(0,1).toUpperCase();
+  const colors  = ['#E8754A','#6366f1','#4A90B8','#4CAF76','#F5A623','#E85C5C','#ec4899','#34d399'];
+  const bg      = colors[(initial.charCodeAt(0))%colors.length];
+  return src
+    ? <img src={src} style={{width:size,height:size,borderRadius:'50%',objectFit:'cover',border:`2px solid ${active?accentColor:'#e2e8f0'}`,opacity:active?1:0.35,transition:'all .2s',flexShrink:0}} />
+    : <div style={{width:size,height:size,borderRadius:'50%',background:active?bg:'#f1f5f9',display:'flex',alignItems:'center',justifyContent:'center',color:active?'white':'#94a3b8',fontSize:size*0.4,fontWeight:700,border:`2px solid ${active?accentColor:'#e2e8f0'}`,opacity:active?1:0.35,transition:'all .2s',flexShrink:0}}>
+        {initial}
+      </div>;
+}
 
-/* ─── Shimmer Skeleton ─────────────────────────────────────── */
-const shimmerStyle: React.CSSProperties = {
-  background: 'linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%)',
-  backgroundSize: '200% 100%',
-  animation: 'shimmer 1.4s infinite',
-  borderRadius: 8,
-};
-const SkRow  = ({ w = '100%', h = 14, r = 8, mb = 0 }: { w?: string|number; h?: number; r?: number; mb?: number }) => (
-  <div style={{ ...shimmerStyle, width: w, height: h, borderRadius: r, marginBottom: mb }} />
-);
-const SkCircle = ({ size = 40 }: { size?: number }) => (
-  <div style={{ ...shimmerStyle, width: size, height: size, borderRadius: '50%', flexShrink: 0 }} />
-);
-const SkCard = ({ children, p = 18 }: { children: React.ReactNode; p?: number }) => (
-  <div style={{ background: 'white', borderRadius: 20, border: '1px solid #f0f0f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', marginBottom: 14, padding: p, overflow: 'hidden' }}>
-    {children}
-  </div>
-);
-
-/* skeleton สำหรับ date strip */
-const SkDateStrip = () => (
-  <SkCard p={14}>
-    <SkRow w={80} h={10} mb={10} />
-    <div style={{ display: 'flex', gap: 6 }}>
-      {[1,2,3,4,5].map(i => <div key={i} style={{ ...shimmerStyle, width: 52, height: 68, borderRadius: 12, flexShrink: 0 }} />)}
-    </div>
-    <SkRow w={180} h={13} r={6} mb={0} />
-  </SkCard>
-);
-
-/* skeleton สำหรับ attendance card */
-const SkAttendance = () => (
-  <div style={{ borderRadius: 20, padding: '14px 18px', marginBottom: 14, background: '#f8fafc', display: 'flex', alignItems: 'center', gap: 14 }}>
-    <SkCircle size={46} />
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <SkRow w={60} h={10} />
-      <SkRow w={120} h={20} r={6} />
-    </div>
-  </div>
-);
-
-/* skeleton สำหรับ content card */
-const SkContentCard = ({ lines = 3, hasHeader = true }: { lines?: number; hasHeader?: boolean }) => (
-  <SkCard p={0}>
-    {hasHeader && <div style={{ ...shimmerStyle, height: 44, borderRadius: '20px 20px 0 0', marginBottom: 0 }} />}
-    <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {Array.from({ length: lines }, (_, i) => (
-        <SkRow key={i} w={i === lines-1 ? '60%' : '100%'} h={14} />
-      ))}
-    </div>
-  </SkCard>
-);
-
-/* skeleton สำหรับ food grid */
-const SkFoodCard = () => (
-  <SkCard p={0}>
-    <div style={{ ...shimmerStyle, height: 44, borderRadius: '20px 20px 0 0' }} />
-    <div style={{ padding: 18 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-        {[1,2].map(i => (
-          <div key={i} style={{ background: '#f8fafc', border: '1px solid #edf2f7', padding: 14, borderRadius: 14, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
-            <SkRow w={60} h={10} />
-            <SkRow w={80} h={16} r={6} />
-            <SkRow w={50} h={22} r={99} />
-          </div>
-        ))}
-      </div>
-      <div style={{ borderTop: '1px dashed #edf2f7', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <SkRow w={80} h={12} mb={4} />
-        {[1,2].map(i => <SkRow key={i} h={38} r={10} />)}
-      </div>
-    </div>
-  </SkCard>
-);
-
-/* skeleton สำหรับ behavior card */
-const SkBehaviorCard = () => (
-  <SkCard p={0}>
-    <div style={{ ...shimmerStyle, height: 44, borderRadius: '20px 20px 0 0' }} />
-    <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {[1,2].map(g => (
-        <div key={g}>
-          <SkRow w={100} h={12} mb={8} />
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {[80,70,90].map((w,i) => <div key={i} style={{ ...shimmerStyle, width: w, height: 28, borderRadius: 8 }} />)}
-          </div>
-        </div>
-      ))}
-    </div>
-  </SkCard>
-);
-
-/* skeleton สำหรับ child selector */
-const SkChildSelector = () => (
-  <SkCard p={14}>
-    <SkRow w={80} h={10} mb={10} />
-    <div style={{ display: 'flex', gap: 8 }}>
-      {[100, 90, 110].map((w, i) => <div key={i} style={{ ...shimmerStyle, width: w, height: 36, borderRadius: 99 }} />)}
-    </div>
-  </SkCard>
-);
-
-/* skeleton header (child info) */
-const SkChildHeader = () => (
-  <div style={{ background: 'white', borderRadius: 16, padding: '14px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-    <SkCircle size={52} />
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <SkRow w={140} h={18} r={6} />
-      <SkRow w={100} h={12} />
-    </div>
-  </div>
-);
-
-
-const Card = ({ children, style = {} }: { children: React.ReactNode; style?: React.CSSProperties }) => (
-  <div style={{ background: 'white', borderRadius: 20, border: '1px solid #f0f0f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', marginBottom: 14, overflow: 'hidden', ...style }}>
-    {children}
-  </div>
-);
-
-const CardHead = ({ emoji, title, color = '#4338ca' }: { emoji: string; title: string; color?: string }) => (
-  <div style={{ background: '#f8fafc', padding: '12px 18px', borderBottom: `2px solid ${color}`, display: 'flex', alignItems: 'center', gap: 8 }}>
-    <span style={{ fontSize: '1.2rem' }}>{emoji}</span>
-    <h2 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color }}>{title}</h2>
-  </div>
-);
-
+/* ─────────────────────────────────────────── */
 export default function LiffPage() {
   const liff = useLiff();
 
-  const [children, setChildren]     = useState<Child[]>([]);
-  const [childId, setChildId]       = useState<string | null>(null);
-  const [dayEntries, setDayEntries] = useState<DayEntry[]>([]);
-  const [dayIdx, setDayIdx]         = useState(0);
-  const [report, setReport]         = useState<DailyReport | null>(null);
-  const [attendance, setAttendance] = useState<Attendance | null>(null);
-  const [scores, setScores]         = useState<BehaviorScore[]>([]);
-  const [childLoading, setChildLoading] = useState(false);
-  const [daysLoading, setDaysLoading]   = useState(false);
+  const [parents,  setParents]  = useState<AppUser[]>([]);
+  const [children, setChildren] = useState<Child[]>([]);
+  const [parentId, setParentId] = useState<string|null>(null);
+  const [childId,  setChildId]  = useState<string|null>(null);
+
+  const [dayEntries,  setDayEntries]  = useState<DayEntry[]>([]);
+  const [dayIdx,      setDayIdx]      = useState(0);
+  const [report,      setReport]      = useState<DailyReport|null>(null);
+  const [attendance,  setAttendance]  = useState<Attendance|null>(null);
+  const [scores,      setScores]      = useState<BehaviorScore[]>([]);
+  const [teacher,     setTeacher]     = useState<AppUser|null>(null);
+
+  const [childLoading,  setChildLoading]  = useState(false);
+  const [daysLoading,   setDaysLoading]   = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
   const [notRegistered, setNotRegistered] = useState(false);
 
-  // ── เมื่อ LIFF ready → register/upsert user แล้วดึงลูก ───────
+  /* ── LIFF ready ── */
   useEffect(() => {
     if (!liff.ready) return;
     if (!liff.profile?.userId) {
-      // dev mode: fallback → ดึงทุกคนที่มี report
-      fetch('/api/report/children').then(r => r.json()).then(j => setChildren(j.data ?? []));
+      fetch('/api/report/children').then(r=>r.json()).then(j=>{
+        setChildren(j.data??[]);
+        if ((j.data??[]).length>0) setChildId((j.data??[])[0].id);
+      });
+      fetch('/api/users?role=parent').then(r=>r.json()).then(j=>setParents(j.data??[]));
       return;
     }
     setChildLoading(true);
-
-    // step 1: register/upsert LINE user เข้า DB
-    fetch('/api/auth/line-register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        line_user_id: liff.profile.userId,
-        display_name: liff.profile.displayName,
-        picture_url:  liff.profile.pictureUrl ?? null,
-      }),
-    })
-    // step 2: ดึงลูกที่ผูกกับ user นี้
-    .then(() => fetch(`/api/report/line-children?line_user_id=${liff.profile!.userId}`))
-    .then(r => r.json())
-    .then(j => {
-      const kids = j.data ?? [];
+    fetch('/api/auth/line-register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({line_user_id:liff.profile.userId,display_name:liff.profile.displayName,picture_url:liff.profile.pictureUrl??null})})
+    .then(()=>fetch(`/api/report/line-children?line_user_id=${liff.profile!.userId}`))
+    .then(r=>r.json())
+    .then(j=>{
+      const kids:Child[] = j.data??[];
       setChildren(kids);
-      if (kids.length === 0) setNotRegistered(true);
-      if (kids.length === 1) setChildId(kids[0].id);
+      if (kids.length===0) setNotRegistered(true);
+      if (kids.length===1) setChildId(kids[0].id);
+      // load all parents linked to same children (sibling parents)
+      fetch('/api/users?role=parent').then(r=>r.json()).then(j2=>setParents(j2.data??[]));
     })
-    .catch(() => setNotRegistered(true))
-    .finally(() => setChildLoading(false));
-  }, [liff.ready, liff.profile?.userId]);
+    .catch(()=>setNotRegistered(true))
+    .finally(()=>setChildLoading(false));
+  },[liff.ready,liff.profile?.userId]);
 
-  // ── เมื่อเลือกลูก → ดึงวันที่มีรายงาน ────────────────────
-  useEffect(() => {
+  /* ── child → days ── */
+  useEffect(()=>{
     if (!childId) return;
     setDaysLoading(true);
     setDayEntries([]); setDayIdx(0); setReport(null); setAttendance(null); setScores([]);
-    fetch(`/api/report/dates?child_id=${childId}`).then(r => r.json())
-      .then(j => setDayEntries(j.data ?? []))
-      .finally(() => setDaysLoading(false));
-  }, [childId]);
+    fetch(`/api/report/dates?child_id=${childId}`).then(r=>r.json())
+      .then(j=>setDayEntries(j.data??[]))
+      .finally(()=>setDaysLoading(false));
+  },[childId]);
 
-  // ── เมื่อเลือกวัน → ดึง report ────────────────────────────
-  useEffect(() => {
+  /* ── day → report ── */
+  useEffect(()=>{
     const entry = dayEntries[dayIdx];
-    if (!entry || !childId) { setReport(null); setAttendance(null); setScores([]); return; }
+    if (!entry||!childId){setReport(null);setAttendance(null);setScores([]);return;}
     setReportLoading(true);
     Promise.all([
-      entry.report_id ? fetch(`/api/daily-reports/${entry.report_id}`).then(r => r.json()) : Promise.resolve({ data: null }),
-      fetch(`/api/attendance?daily_id=${entry.daily_id}&child_id=${childId}`).then(r => r.json()),
-      fetch(`/api/behavior-scores?daily_id=${entry.daily_id}&child_id=${childId}`).then(r => r.json()),
-    ]).then(([rj, aj, bj]) => {
-      setReport(rj.data ?? null);
-      setAttendance((aj.data ?? [])[0] ?? null);
-      setScores(bj.data ?? []);
-    }).finally(() => setReportLoading(false));
-  }, [dayIdx, dayEntries, childId]);
+      entry.report_id ? fetch(`/api/daily-reports/${entry.report_id}`).then(r=>r.json()) : Promise.resolve({data:null}),
+      fetch(`/api/attendance?daily_id=${entry.daily_id}&child_id=${childId}`).then(r=>r.json()),
+      fetch(`/api/behavior-scores?daily_id=${entry.daily_id}&child_id=${childId}`).then(r=>r.json()),
+    ]).then(([rj,aj,bj])=>{
+      const rep = rj.data??null;
+      setReport(rep); setAttendance((aj.data??[])[0]??null); setScores(bj.data??[]);
+      // load teacher
+      if (rep?.created_by) fetch(`/api/users/${rep.created_by}`).then(r=>r.json()).then(j=>setTeacher(j.data??null)).catch(()=>{});
+      else setTeacher(null);
+    }).finally(()=>setReportLoading(false));
+  },[dayIdx,dayEntries,childId]);
 
-  const selectedChild = children.find(c => c.id === childId);
-  const currentEntry  = dayEntries[dayIdx];
-  const totalDays     = dayEntries.length;
+  const selectedChild  = children.find(c=>c.id===childId);
+  const currentEntry   = dayEntries[dayIdx];
+  const behaviorGroups = scores.reduce<Record<string,{name_th:string;items:BehaviorScore[]}>>((acc,s)=>{
+    if (!acc[s.category_id]) acc[s.category_id]={name_th:s.category_name_th,items:[]};
+    acc[s.category_id].items.push(s); return acc;
+  },{});
+  const exDiaper = report?.excretions?.filter(e=>e.action==='diaper')??[];
+  const exPotty  = report?.excretions?.filter(e=>e.action==='potty')??[];
 
-  const behaviorGroups = scores.reduce<Record<string, { name_th: string; items: BehaviorScore[] }>>((acc, s) => {
-    if (!acc[s.category_id]) acc[s.category_id] = { name_th: s.category_name_th, items: [] };
-    acc[s.category_id].items.push(s);
-    return acc;
-  }, {});
-
-  const exDiaper = report?.excretions?.filter(e => e.action === 'diaper') ?? [];
-  const exPotty  = report?.excretions?.filter(e => e.action === 'potty')  ?? [];
-
-  /* ── LIFF loading ── */
+  /* ── loading ── */
   if (!liff.ready) return (
-    <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, background: '#f0f4f8' }}>
-      <div style={{ width: 48, height: 48, border: '4px solid #6366f1', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-      <p style={{ color: '#64748b', fontSize: 14 }}>กำลังเข้าสู่ระบบ LINE...</p>
+    <div style={{minHeight:'100dvh',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:12,background:'#f8fafc'}}>
+      <div style={{width:40,height:40,border:'3px solid #6366f1',borderTopColor:'transparent',borderRadius:'50%',animation:'spin .8s linear infinite'}} />
       <style>{`@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 
-  if (liff.error) return (
-    <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: '#f0f4f8' }}>
-      <div style={{ background: 'white', borderRadius: 20, padding: 24, textAlign: 'center', maxWidth: 320 }}>
-        <p style={{ fontSize: 40, marginBottom: 12 }}>⚠️</p>
-        <p style={{ fontWeight: 700, color: '#1e293b', marginBottom: 8 }}>เกิดข้อผิดพลาด</p>
-        <p style={{ fontSize: 13, color: '#64748b' }}>{liff.error}</p>
-      </div>
-    </div>
-  );
-
-  /* ── ผู้ปกครองที่ยังไม่ได้ผูกบัญชี ── */
-  if (notRegistered && !childLoading) return (
-    <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: '#f0f4f8' }}>
-      <div style={{ background: 'white', borderRadius: 20, padding: 28, textAlign: 'center', maxWidth: 320 }}>
-        <p style={{ fontSize: 48, marginBottom: 12 }}>🏫</p>
-        <h2 style={{ fontWeight: 800, color: '#1e293b', marginBottom: 8, fontFamily: 'Prompt, sans-serif' }}>ยังไม่มีข้อมูล</h2>
-        <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6 }}>
-          LINE บัญชีนี้ยังไม่ได้ผูกกับนักเรียน<br />
-          กรุณาติดต่อคุณครูเพื่อลงทะเบียน
-        </p>
-        {liff.profile && (
-          <div style={{ marginTop: 16, padding: '10px 14px', background: '#f8fafc', borderRadius: 12, fontSize: 12, color: '#94a3b8' }}>
-            LINE ID: {liff.profile.userId.slice(0, 12)}...
-          </div>
-        )}
+  if (notRegistered&&!childLoading) return (
+    <div style={{minHeight:'100dvh',display:'flex',alignItems:'center',justifyContent:'center',padding:24,background:'#f8fafc'}}>
+      <div style={{background:'white',borderRadius:20,padding:28,textAlign:'center',maxWidth:300,border:'1px solid #e2e8f0'}}>
+        <p style={{fontSize:48,marginBottom:12}}>🏫</p>
+        <h2 style={{fontWeight:800,color:'#0f172a',marginBottom:8}}>ยังไม่มีข้อมูล</h2>
+        <p style={{fontSize:14,color:'#64748b',lineHeight:1.6}}>LINE บัญชีนี้ยังไม่ได้ผูกกับนักเรียน<br/>กรุณาติดต่อคุณครูเพื่อลงทะเบียน</p>
       </div>
     </div>
   );
 
   return (
-    <div style={{ background: '#f0f4f8', minHeight: '100dvh', paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}>
+    <div style={{background:'#f8fafc',minHeight:'100dvh',display:'flex',justifyContent:'center'}}>
       <style>{`
-        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
         @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
         .fade{animation:fadeIn .25s ease}
         *{box-sizing:border-box}
+        .avatar-row{display:flex;gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}
+        .avatar-row::-webkit-scrollbar{display:none}
       `}</style>
 
-      {/* ── Header ── */}
-      <div style={{ background: 'white', padding: '44px 20px 20px', textAlign: 'center', boxShadow: '0 1px 0 #f1f5f9' }}>
-        {liff.profile?.pictureUrl ? (
-          <img src={liff.profile.pictureUrl} alt=""
-            style={{ width: 64, height: 64, borderRadius: '50%', marginBottom: 10, border: '3px solid white', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-        ) : (
-          <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, margin: '0 auto 10px' }}>🌻</div>
-        )}
-        {liff.profile && (
-          <p style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>สวัสดี, {liff.profile.displayName}</p>
-        )}
-        <h1 style={{ fontSize: 20, fontWeight: 800, color: '#1e293b', fontFamily: 'Prompt, sans-serif', margin: 0 }}>Happy Kids</h1>
-        <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>รายงานรายวันบุตรหลาน</p>
-      </div>
+      <div style={{width:'100%',maxWidth:480,background:'white',minHeight:'100dvh',paddingBottom:'calc(24px + env(safe-area-inset-bottom,0px))'}}>
 
-      <div style={{ padding: '16px 16px 0', maxWidth: 520, margin: '0 auto' }}>
+        {/* ─── HEADER ─────────────────────────────── */}
+        <header style={{padding:'30px 24px 20px',background:'white',borderBottom:'1px solid #f1f5f9'}}>
 
-        {/* ── Child selector (ซ่อนถ้ามีลูกคนเดียว) ── */}
-        {children.length > 1 && (
-          <div style={{ background: 'white', borderRadius: 16, padding: '12px 14px', marginBottom: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>เลือกบุตรหลาน</p>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {children.map(c => (
-                <button key={c.id} onClick={() => setChildId(c.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 99, border: 'none', cursor: 'pointer', background: childId === c.id ? '#1e293b' : '#f1f5f9', color: childId === c.id ? 'white' : '#475569', fontWeight: childId === c.id ? 700 : 500, fontSize: 14, fontFamily: 'Sarabun, sans-serif', transition: 'all .15s' }}>
-                  {c.photo_url
-                    ? <img src={c.photo_url} style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} />
-                    : <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'white', fontWeight: 700 }}>{c.name_th?.slice(0, 1)}</div>
-                  }
-                  {c.name_th}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+          {/* two-way selector */}
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:20,gap:12}}>
 
-        {/* ── Child header ── */}
-        {selectedChild && (
-          <div style={{ background: 'white', borderRadius: 16, padding: '14px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-            {selectedChild.photo_url
-              ? <img src={selectedChild.photo_url} style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover', border: '3px solid white', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', flexShrink: 0 }} />
-              : <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, color: 'white', fontWeight: 700, flexShrink: 0 }}>{selectedChild.name_th?.slice(0, 1)}</div>
-            }
-            <div>
-              <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#1e293b', fontFamily: 'Prompt, sans-serif' }}>{selectedChild.name_th}</h2>
-              {selectedChild.name_en && <p style={{ margin: '2px 0 0', fontSize: 12, color: '#94a3b8' }}>{selectedChild.name_en}</p>}
-            </div>
-          </div>
-        )}
-
-        {/* ── Loading states ── */}
-        {childLoading && <><SkChildSelector /><SkChildHeader /></>}
-        {daysLoading  && <><SkDateStrip /></>}
-
-        {/* ── No reports ── */}
-        {childId && !daysLoading && dayEntries.length === 0 && (
-          <div style={{ background: 'white', borderRadius: 20, padding: '40px 20px', textAlign: 'center' }}>
-            <p style={{ fontSize: 40, marginBottom: 8 }}>📋</p>
-            <p style={{ color: '#64748b', fontSize: 14 }}>ยังไม่มีรายงานสำหรับ {selectedChild?.name_th}</p>
-          </div>
-        )}
-
-        {!daysLoading && dayEntries.length > 0 && (
-          <>
-            {/* ── Date strip ── */}
-            <div style={{ background: 'white', borderRadius: 16, padding: '12px 14px', marginBottom: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>เลือกวัน</p>
-              <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
-                {dayEntries.map((e, i) => {
-                  const dt = parseDate(e.date);
-                  const isToday = e.date === new Date().toISOString().slice(0, 10);
-                  return (
-                    <button key={e.daily_id} onClick={() => setDayIdx(i)}
-                      style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '6px 10px', borderRadius: 12, border: 'none', cursor: 'pointer', minWidth: 52, background: dayIdx === i ? '#6366f1' : '#f8fafc', color: dayIdx === i ? 'white' : '#475569', transition: 'all .15s' }}>
-                      <span style={{ fontSize: 10, fontWeight: 600, opacity: 0.7 }}>{dt?.toLocaleDateString('th-TH', { weekday: 'short' })}</span>
-                      <span style={{ fontSize: 18, fontWeight: 800 }}>{dt?.getDate()}</span>
-                      <span style={{ fontSize: 10, opacity: 0.7 }}>{dt?.toLocaleDateString('th-TH', { month: 'short' })}</span>
-                      {isToday && dayIdx !== i && <div style={{ width: 4, height: 4, borderRadius: '50%', background: '#6366f1', marginTop: 2 }} />}
+            {/* ฝั่งผู้ปกครอง */}
+            <div style={{display:'flex',flexDirection:'column',gap:8,flex:1,overflow:'hidden'}}>
+              <span style={{fontSize:'0.65rem',textTransform:'uppercase',letterSpacing:1,color:'#94a3b8',fontWeight:800,whiteSpace:'nowrap'}}>ผู้ปกครอง</span>
+              <div className="avatar-row">
+                {childLoading ? [1,2].map(i=><SkCircle key={i} size={42}/>) :
+                  parents.map(p=>(
+                    <button key={p.id} type="button" onClick={()=>setParentId(parentId===p.id?null:p.id)}
+                      style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,background:'none',border:'none',padding:0,cursor:'pointer',flexShrink:0}}>
+                      <Avatar src={p.picture_url} name={p.display_name} size={42} active={parentId===p.id} accentColor="#f472b6" />
+                      <div style={{width:4,height:4,borderRadius:'50%',background:parentId===p.id?'#f472b6':'transparent',transition:'all .2s'}} />
                     </button>
-                  );
-                })}
+                  ))
+                }
               </div>
-              {currentEntry && (
-                <p style={{ margin: '8px 0 0', fontSize: 13, fontWeight: 600, color: '#1e293b', textAlign: 'center' }}>
-                  📅 {thDate(currentEntry.date)}
-                </p>
-              )}
             </div>
 
-            {/* ── Report loading ── */}
-            {reportLoading && <><SkAttendance /><SkFoodCard /><SkBehaviorCard /><SkContentCard lines={2} /></>}
+            {/* ❤️ connector */}
+            <div style={{display:'flex',alignItems:'center',justifyContent:'center',color:'#ff8787',fontSize:'1.1rem',padding:'0 6px',alignSelf:'center',marginTop:10,flexShrink:0}}>
+              ❤️
+            </div>
 
-            {!reportLoading && (
-              <div className="fade">
+            {/* ฝั่งลูก */}
+            <div style={{display:'flex',flexDirection:'column',gap:8,flex:1,overflow:'hidden',alignItems:'flex-end'}}>
+              <span style={{fontSize:'0.65rem',textTransform:'uppercase',letterSpacing:1,color:'#94a3b8',fontWeight:800,whiteSpace:'nowrap'}}>ลูก / หลาน</span>
+              <div className="avatar-row" style={{justifyContent:'flex-end',direction:'rtl'}}>
+                {childLoading ? [1,2,3].map(i=><SkCircle key={i} size={42}/>) :
+                  children.map(c=>(
+                    <button key={c.id} type="button" onClick={()=>setChildId(c.id)}
+                      style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,background:'none',border:'none',padding:0,cursor:'pointer',flexShrink:0,direction:'ltr'}}>
+                      <Avatar src={c.photo_url} name={c.name_th} size={42} active={childId===c.id} accentColor="#6366f1" />
+                      <div style={{width:4,height:4,borderRadius:'50%',background:childId===c.id?'#6366f1':'transparent',transition:'all .2s'}} />
+                    </button>
+                  ))
+                }
+              </div>
+            </div>
+          </div>
 
-                {/* Attendance */}
-                {attendance && (
-                  <div style={{ background: attBg[attendance.status], borderRadius: 20, padding: '14px 18px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 12, border: `1px solid ${attC[attendance.status]}22` }}>
-                    <div style={{ width: 46, height: 46, borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>
-                      {attendance.status === 'present' ? '😊' : attendance.status === 'sick' ? '🤒' : attendance.status === 'absent' ? '😴' : '📝'}
-                    </div>
-                    <div>
-                      <p style={{ fontSize: 11, color: attC[attendance.status], fontWeight: 700, marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em' }}>สถานะวันนี้</p>
-                      <p style={{ fontSize: 18, fontWeight: 800, color: attC[attendance.status], margin: 0 }}>{attL[attendance.status]}</p>
-                      {attendance.note && <p style={{ fontSize: 12, color: '#475569', marginTop: 3 }}>{attendance.note}</p>}
-                    </div>
+          {/* title zone */}
+          {parentId && (
+            <p style={{margin:'0 0 3px',fontSize:'0.8rem',fontWeight:600,color:'#f472b6',minHeight:18,transition:'all .2s'}}>
+              ผู้ปกครอง: {parents.find(p=>p.id===parentId)?.display_name ?? ''}
+            </p>
+          )}
+          {childLoading ? (
+            <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:4}}>
+              <SkRow w={160} h={22} /><SkRow w={200} h={14} />
+            </div>
+          ) : (
+            <>
+              <h1 style={{margin:0,fontSize:'1.25rem',fontWeight:700,color:'#0f172a',letterSpacing:'-0.3px'}}>
+                {selectedChild?.name_th ?? 'เลือกบุตรหลาน'}
+              </h1>
+              <p style={{margin:'4px 0 0',fontSize:'0.75rem',color:'#64748b',fontWeight:500}}>
+                {currentEntry ? thDate(currentEntry.date) : 'กรุณาเลือกบุตรหลาน'}
+              </p>
+            </>
+          )}
+        </header>
+
+        {/* ─── DATE STRIP ─────────────────────────── */}
+        {!childLoading && dayEntries.length > 0 && (
+          <div style={{padding:'12px 16px',borderBottom:'1px solid #f1f5f9',display:'flex',gap:6,overflowX:'auto',scrollbarWidth:'none'}}>
+            {dayEntries.map((e,i)=>{
+              const dt = parseDate(e.date);
+              const sel = dayIdx===i;
+              return (
+                <button key={e.daily_id} onClick={()=>setDayIdx(i)}
+                  style={{flexShrink:0,display:'flex',flexDirection:'column',alignItems:'center',padding:'6px 10px',borderRadius:12,border:'none',cursor:'pointer',minWidth:50,background:sel?'#6366f1':'#f8fafc',color:sel?'white':'#475569',transition:'all .15s'}}>
+                  <span style={{fontSize:10,fontWeight:600,opacity:0.7}}>{dt?.toLocaleDateString('th-TH',{weekday:'short'})}</span>
+                  <span style={{fontSize:17,fontWeight:800}}>{dt?.getDate()}</span>
+                  <span style={{fontSize:10,opacity:0.7}}>{dt?.toLocaleDateString('th-TH',{month:'short'})}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {daysLoading && <div style={{padding:'12px 16px',display:'flex',gap:6}}>{[1,2,3,4,5].map(i=><div key={i} style={{...shimmer,width:50,height:62,borderRadius:12,flexShrink:0}} />)}</div>}
+
+        {/* ─── CONTENT ────────────────────────────── */}
+        <div style={{padding:'16px 16px 0'}}>
+
+          {reportLoading && (
+            <div style={{display:'flex',flexDirection:'column',gap:12}}>
+              <div style={{...shimmer,height:70,borderRadius:16}} />
+              <div style={{...shimmer,height:180,borderRadius:16}} />
+              <div style={{...shimmer,height:140,borderRadius:16}} />
+            </div>
+          )}
+
+          {!reportLoading && childId && (
+            <div className="fade">
+
+              {/* Attendance */}
+              {attendance && (
+                <div style={{background:attBg[attendance.status],borderRadius:16,padding:'14px 18px',marginBottom:14,display:'flex',alignItems:'center',gap:12,border:`1px solid ${attC[attendance.status]}22`}}>
+                  <div style={{width:44,height:44,borderRadius:'50%',background:'white',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>
+                    {attendance.status==='present'?'😊':attendance.status==='sick'?'🤒':attendance.status==='absent'?'😴':'📝'}
+                  </div>
+                  <div>
+                    <p style={{fontSize:10,color:attC[attendance.status],fontWeight:800,marginBottom:3,textTransform:'uppercase',letterSpacing:'0.06em'}}>สถานะวันนี้</p>
+                    <p style={{fontSize:17,fontWeight:800,color:attC[attendance.status],margin:0}}>{attL[attendance.status]}</p>
+                    {attendance.note&&<p style={{fontSize:12,color:'#475569',marginTop:3}}>{attendance.note}</p>}
+                  </div>
+                </div>
+              )}
+
+              {!report && !attendance && dayEntries.length>0 && (
+                <div style={{background:'white',borderRadius:16,padding:'32px',textAlign:'center',border:'1px solid #e2e8f0',marginBottom:14}}>
+                  <p style={{fontSize:32,marginBottom:8}}>📋</p>
+                  <p style={{color:'#94a3b8',fontSize:14}}>ยังไม่มีรายงานสำหรับวันนี้</p>
+                </div>
+              )}
+
+              {report && (<>
+
+                {/* Activity */}
+                {report.daily?.activity && (
+                  <div style={{background:'white',borderRadius:16,padding:'20px',marginBottom:14,border:'1px solid #e2e8f0',textAlign:'center'}}>
+                    <span style={{fontSize:'0.7rem',fontWeight:800,color:'#6366f1',textTransform:'uppercase',letterSpacing:1.5,display:'block',marginBottom:6}}>TODAY&apos;S ACTIVITY</span>
+                    <h2 style={{fontSize:'1.2rem',fontWeight:700,color:'#0f172a',margin:0,letterSpacing:'-0.2px'}}>{report.daily.activity}</h2>
                   </div>
                 )}
 
-                {!report && !attendance && (
-                  <Card><div style={{ padding: '28px', textAlign: 'center', color: '#94a3b8' }}><p style={{ fontSize: 32, marginBottom: 8 }}>📋</p>ยังไม่มีรายงานวันนี้</div></Card>
-                )}
+                {/* Food & Milk */}
+                <div style={{background:'white',borderRadius:16,padding:'18px',marginBottom:14,border:'1px solid #e2e8f0'}}>
+                  <div style={{display:'flex',alignItems:'center',fontWeight:700,fontSize:'1rem',marginBottom:14,color:'#334155'}}>
+                    <span style={{marginRight:8,fontSize:'1.1rem'}}>🥣</span> อาหารและโภชนาการ
+                  </div>
 
-                {report && (<>
-                  {/* Activity */}
-                  {report.daily?.activity && (
-                    <Card>
-                      <CardHead emoji="🎨" title="กิจกรรมวันนี้" color="#4338ca" />
-                      <div style={{ padding: '14px 18px', fontSize: '1rem', fontWeight: 700, color: '#1e293b', lineHeight: 1.5 }}>{report.daily.activity}</div>
-                    </Card>
-                  )}
-
-                  {/* Food & Milk */}
-                  <Card>
-                    <CardHead emoji="🥣" title="อาหารและโภชนาการ" color="#059669" />
-                    <div style={{ padding: '14px 18px' }}>
-                      {(report.daily?.food || report.daily?.fruit) && (
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-                          {report.daily?.food && (
-                            <div style={{ background: '#fdfdfd', border: '1px solid #edf2f7', padding: 12, borderRadius: 14, textAlign: 'center' }}>
-                              <span style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8', marginBottom: 3 }}>มื้อกลางวัน</span>
-                              <span style={{ fontWeight: 700, fontSize: '0.88rem', color: '#1e293b', display: 'block', marginBottom: 6 }}>{report.daily.food}</span>
-                              {report.food_amount && report.food_amount !== 'skip' && <Pill status={report.food_amount} />}
-                            </div>
-                          )}
-                          {report.daily?.fruit && (
-                            <div style={{ background: '#fdfdfd', border: '1px solid #edf2f7', padding: 12, borderRadius: 14, textAlign: 'center' }}>
-                              <span style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8', marginBottom: 3 }}>ผลไม้</span>
-                              <span style={{ fontWeight: 700, fontSize: '0.88rem', color: '#1e293b', display: 'block', marginBottom: 6 }}>{report.daily.fruit}</span>
-                              {report.fruit_amount && report.fruit_amount !== 'skip' && <Pill status={report.fruit_amount} />}
+                  {(report.daily?.food||report.daily?.fruit)&&(
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:14}}>
+                      {report.daily?.food&&(
+                        <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',padding:12,borderRadius:12,display:'flex',flexDirection:'column',justifyContent:'space-between'}}>
+                          <div>
+                            <span style={{fontSize:'0.7rem',color:'#64748b',display:'block',marginBottom:4,fontWeight:500}}>มื้อกลางวัน</span>
+                            <span style={{fontWeight:700,fontSize:'0.85rem',color:'#0f172a'}}>{report.daily.food}</span>
+                          </div>
+                          {report.food_amount&&report.food_amount!=='skip'&&<Pill status={report.food_amount} />}
+                          {report.food_note&&(
+                            <div style={{marginTop:8,fontSize:'0.7rem',color:'#64748b',lineHeight:1.4,borderTop:'1px solid #e2e8f0',paddingTop:6}}>
+                              💬 {report.food_note}
                             </div>
                           )}
                         </div>
                       )}
-                      {(report.milk1 !== 'skip' || report.milk2 !== 'skip') && (
-                        <div style={{ borderTop: '1px dashed #edf2f7', paddingTop: 12 }}>
-                          <p style={{ fontSize: 12, fontWeight: 700, color: '#4a5568', marginBottom: 8 }}>🥛 การดื่มนม</p>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            {[{ label: 'กล่องที่ 1 (เช้า)', val: report.milk1 }, { label: 'กล่องที่ 2 (บ่าย)', val: report.milk2 }].map(m => (
-                              <div key={m.label} style={{ background: m.val === 'skip' ? '#fff1f2' : '#f0f9ff', borderRadius: 10, border: `1px solid ${m.val === 'skip' ? '#fecdd3' : '#bae6fd'}`, padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: 13, fontWeight: 700, color: m.val === 'skip' ? '#9f1239' : '#0369a1' }}>{m.label}</span>
-                                <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 8, fontWeight: 700, ...amtStyle[m.val] }}>{amtL[m.val]}</span>
+                      {report.daily?.fruit&&(
+                        <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',padding:12,borderRadius:12,display:'flex',flexDirection:'column',justifyContent:'space-between'}}>
+                          <div>
+                            <span style={{fontSize:'0.7rem',color:'#64748b',display:'block',marginBottom:4,fontWeight:500}}>ผลไม้</span>
+                            <span style={{fontWeight:700,fontSize:'0.85rem',color:'#0f172a'}}>{report.daily.fruit}</span>
+                          </div>
+                          {report.fruit_amount&&report.fruit_amount!=='skip'&&<Pill status={report.fruit_amount} />}
+                          {report.fruit_note&&(
+                            <div style={{marginTop:8,fontSize:'0.7rem',color:'#64748b',lineHeight:1.4,borderTop:'1px solid #e2e8f0',paddingTop:6}}>
+                              💬 {report.fruit_note}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {(report.milk1!=='skip'||report.milk2!=='skip')&&(
+                    <div style={{borderTop:'1px dashed #edf2f7',paddingTop:14}}>
+                      <p style={{fontSize:'0.85rem',fontWeight:700,color:'#4a5568',marginBottom:10,display:'flex',alignItems:'center',gap:5}}>🥛 การดื่มนม</p>
+                      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                        {[{label:'กล่องที่ 1 (เช้า)',val:report.milk1,note:report.milk1_note},{label:'กล่องที่ 2 (บ่าย)',val:report.milk2,note:report.milk2_note}].map(m=>{
+                          const isSkip = m.val==='skip';
+                          return (
+                            <div key={m.label} style={{background:isSkip?'#fff1f2':'#f0f9ff',borderRadius:12,border:`1px solid ${isSkip?'#fecdd3':'#bae6fd'}`,padding:'10px 14px'}}>
+                              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                                <span style={{fontSize:'0.85rem',fontWeight:700,color:isSkip?'#9f1239':'#0369a1'}}>{m.label}</span>
+                                <span style={{fontSize:'0.72rem',padding:'2px 10px',borderRadius:10,fontWeight:700,...amtStyle[m.val]}}>{amtL[m.val]}</span>
+                              </div>
+                              {m.note&&(
+                                <div style={{marginTop:8,fontSize:'0.75rem',color:isSkip?'#be123c':'#0369a1',background:'white',padding:'6px 10px',borderRadius:8,border:`1px dashed ${isSkip?'#fb7185':'#7dd3fc'}`}}>
+                                  {m.note}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Behaviors */}
+                {scores.length>0&&(
+                  <div style={{background:'white',borderRadius:16,padding:'18px',marginBottom:14,border:'1px solid #e2e8f0'}}>
+                    <div style={{display:'flex',alignItems:'center',fontWeight:700,fontSize:'1rem',marginBottom:16,color:'#334155'}}>
+                      <span style={{marginRight:8,fontSize:'1.1rem'}}>✨</span> อุปนิสัยวันนี้
+                    </div>
+                    <div style={{display:'flex',flexDirection:'column',gap:20}}>
+                      {Object.values(behaviorGroups).map(g=>{
+                        const excellent = g.items.filter(s=>s.score>=s.max_score);
+                        const good      = g.items.filter(s=>s.score>0&&s.score<s.max_score);
+                        const improve   = g.items.filter(s=>s.score===0);
+                        return (
+                          <div key={g.name_th}>
+                            <p style={{fontSize:'0.78rem',fontWeight:800,color:'#7c3aed',marginBottom:10}}>{g.name_th}</p>
+                            {[
+                              {items:excellent, face:<FaceHappy />, label:'ทำได้ดีเยี่ยม', color:'#10b981', tagBg:'#f0fdf4', tagBorder:'#bbf7d0', tagColor:'#166534'},
+                              {items:good,      face:<FaceSmile />, label:'ทำได้ดี',       color:'#3b82f6', tagBg:'#eff6ff', tagBorder:'#bfdbfe', tagColor:'#1e40af'},
+                              {items:improve,   face:<FaceNeutral />, label:'ควรส่งเสริม', color:'#f59e0b', tagBg:'#fffbeb', tagBorder:'#fde68a', tagColor:'#92400e'},
+                            ].filter(gr=>gr.items.length>0).map(gr=>(
+                              <div key={gr.label} style={{marginBottom:10}}>
+                                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8,color:gr.color}}>
+                                  {gr.face}
+                                  <span style={{fontWeight:700,fontSize:'0.9rem'}}>{gr.label}</span>
+                                </div>
+                                {/* habit-stack: inline tags + full-width tags with notes */}
+                                <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+                                  {gr.items.map(s=>{
+                                    const hasNote = !!s.note;
+                                    return hasNote ? (
+                                      <div key={s.item_id} style={{width:'100%',display:'flex',flexDirection:'column',padding:'10px 12px',borderRadius:12,border:`1px solid ${gr.tagBorder}`,background:gr.tagBg}}>
+                                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',width:'100%',gap:8}}>
+                                          <span style={{fontSize:'0.85rem',fontWeight:700,color:gr.tagColor}}>{s.name_th}</span>
+                                          <span style={{fontSize:'0.72rem',color:gr.tagColor,opacity:0.7}}>✓</span>
+                                        </div>
+                                        <div style={{marginTop:6,fontSize:'0.75rem',color:'#64748b',lineHeight:1.4}}>{s.note}</div>
+                                      </div>
+                                    ) : (
+                                      <div key={s.item_id} style={{display:'flex',alignItems:'center',padding:'6px 12px',borderRadius:20,border:`1px solid ${gr.tagBorder}`,background:gr.tagBg}}>
+                                        <span style={{fontSize:'0.85rem',fontWeight:700,color:gr.tagColor}}>{s.name_th}</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Nap */}
+                <div style={{background:'white',borderRadius:16,padding:'20px',marginBottom:14,border:'1px solid #e2e8f0'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:18}}>
+                    <div style={{display:'flex',alignItems:'center',fontWeight:700,fontSize:'1rem',color:'#4338ca',gap:8}}>
+                      <span>😴</span> การนอนกลางวัน
+                    </div>
+                    {report.nap_from&&report.nap_to&&(
+                      <div style={{textAlign:'right'}}>
+                        <span style={{display:'block',fontSize:'1.05rem',fontWeight:800,color:'#1e1b4b'}}>
+                          {(()=>{const d=(new Date('2000-01-01T'+report.nap_to).getTime()-new Date('2000-01-01T'+report.nap_from).getTime())/60000;return `${Math.floor(d/60)} ชม. ${d%60} นาที`;})()}
+                        </span>
+                        <span style={{fontSize:'0.75rem',color:'#818cf8',fontWeight:700}}>
+                          {report.nap_from.slice(0,5)} - {report.nap_to.slice(0,5)} น.
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  {report.nap_from&&report.nap_to ? (()=>{
+                    const toMin=(t:string)=>{const[h,m]=t.split(':').map(Number);return h*60+m;};
+                    const start=9*60,end=15*60,total=end-start;
+                    const ns=toMin(report.nap_from),ne=toMin(report.nap_to);
+                    const left=((ns-start)/total)*100, width=((ne-ns)/total)*100;
+                    return (
+                      <div style={{position:'relative',paddingTop:16}}>
+                        <div style={{position:'absolute',top:0,width:'100%',fontSize:'0.65rem',color:'#94a3b8',fontWeight:700}}>
+                          <span style={{position:'absolute',left:0}}>09:00</span>
+                          <span style={{position:'absolute',left:'50%',transform:'translateX(-50%)'}}>12:00</span>
+                          <span style={{position:'absolute',right:0}}>15:00</span>
+                        </div>
+                        <div style={{width:'100%',height:10,background:'#f1f5f9',borderRadius:5,overflow:'hidden',margin:'6px 0'}}>
+                          <div style={{position:'relative',height:'100%'}}>
+                            <div style={{position:'absolute',left:`${left}%`,width:`${width}%`,height:'100%',background:'#818cf8',borderRadius:5}} />
+                          </div>
+                        </div>
+                        <div style={{position:'relative',height:14,fontSize:'0.65rem',fontWeight:700,color:'#4338ca'}}>
+                          <span style={{position:'absolute',left:`${left}%`,transform:'translateX(-50%)'}}>{report.nap_from.slice(0,5)}</span>
+                          <span style={{position:'absolute',left:`${left+width}%`,transform:'translateX(-50%)'}}>{report.nap_to.slice(0,5)}</span>
+                        </div>
+                      </div>
+                    );
+                  })() : <p style={{color:'#94a3b8',fontSize:14}}>ไม่ได้นอนกลางวัน</p>}
+                </div>
+
+                {/* Excretions */}
+                {(exDiaper.length>0||exPotty.length>0)&&(
+                  <div style={{background:'white',borderRadius:16,padding:'18px',marginBottom:14,border:'1px solid #e2e8f0'}}>
+                    <div style={{display:'flex',alignItems:'center',fontWeight:700,fontSize:'1rem',marginBottom:14,color:'#334155'}}>
+                      <span style={{marginRight:8}}>🚽</span> การขับถ่าย
+                    </div>
+                    <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                      {exDiaper.length>0&&(
+                        <div style={{background:'#fff7ed',padding:14,borderRadius:14,border:'1px solid #ffedd5'}}>
+                          <p style={{fontSize:'0.85rem',fontWeight:800,color:'#c2410c',marginBottom:10,display:'flex',alignItems:'center',gap:6}}>
+                            👶 ผ้าอ้อม (Diapers)
+                          </p>
+                          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                            {[{label:'ฉี่ (Wet)',items:exDiaper.filter(e=>e.type==='pee')},{label:'อึ (Soiled)',items:exDiaper.filter(e=>e.type==='poo')}].map(g=>(
+                              <div key={g.label} style={{background:'white',padding:8,borderRadius:10,textAlign:'center'}}>
+                                <span style={{display:'block',fontSize:'0.7rem',color:'#9a3412'}}>{g.label}</span>
+                                <span style={{fontWeight:700,color:'#4a5568'}}>{g.items.length} ครั้ง</span>
+                                <small style={{display:'block',fontSize:'0.65rem',color:'#94a3b8'}}>{g.items.map(e=>e.time?.slice(0,5)).filter(Boolean).join(', ')||'-'}</small>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {exPotty.length>0&&(
+                        <div style={{background:'#f0fdf4',padding:14,borderRadius:14,border:'1px solid #dcfce7'}}>
+                          <p style={{fontSize:'0.85rem',fontWeight:800,color:'#15803d',marginBottom:10,display:'flex',alignItems:'center',gap:6}}>
+                            🚽 นั่งกระโถน (Potty)
+                          </p>
+                          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                            {[{label:'ฉี่ (Pee)',items:exPotty.filter(e=>e.type==='pee')},{label:'อึ (Poo)',items:exPotty.filter(e=>e.type==='poo')}].map(g=>(
+                              <div key={g.label} style={{background:'white',padding:8,borderRadius:10,textAlign:'center'}}>
+                                <span style={{display:'block',fontSize:'0.7rem',color:'#166534'}}>{g.label}</span>
+                                <span style={{fontWeight:700,color:'#4a5568'}}>{g.items.length} ครั้ง</span>
+                                <small style={{display:'block',fontSize:'0.65rem',color:'#94a3b8'}}>{g.items.map(e=>e.time?.slice(0,5)).filter(Boolean).join(', ')||'-'}</small>
                               </div>
                             ))}
                           </div>
                         </div>
                       )}
                     </div>
-                  </Card>
+                  </div>
+                )}
 
-                  {/* Behaviors */}
-                  {scores.length > 0 && (
-                    <Card>
-                      <CardHead emoji="✨" title="อุปนิสัยวันนี้" color="#7c3aed" />
-                      <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-                        {Object.values(behaviorGroups).map(g => {
-                          const excellent = g.items.filter(s => s.score >= s.max_score);
-                          const good      = g.items.filter(s => s.score > 0 && s.score < s.max_score);
-                          const improve   = g.items.filter(s => s.score === 0);
-                          return (
-                            <div key={g.name_th}>
-                              <p style={{ fontSize: 12, fontWeight: 800, color: '#7c3aed', marginBottom: 8 }}>{g.name_th}</p>
-                              {[
-                                { items: excellent, label: 'ทำได้ดีเยี่ยม', tagStyle: { bg: '#ecfdf5', color: '#065f46', border: '#d1fae5' } },
-                                { items: good,      label: 'ทำได้ดี',       tagStyle: { bg: '#eff6ff', color: '#1e40af', border: '#dbeafe' } },
-                                { items: improve,   label: 'ควรส่งเสริม',   tagStyle: { bg: '#fffbeb', color: '#92400e', border: '#fef3c7' } },
-                              ].filter(g => g.items.length > 0).map(({ items, label, tagStyle }) => (
-                                <div key={label} style={{ marginBottom: 8 }}>
-                                  <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 5 }}>{label}</p>
-                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                                    {items.map(s => (
-                                      <span key={s.item_id} style={{ background: tagStyle.bg, color: tagStyle.color, border: `1px solid ${tagStyle.border}`, padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600 }}>{s.name_th}</span>
-                                    ))}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </Card>
-                  )}
+                {/* Teacher note */}
+                {report.note&&(
+                  <div style={{background:'#eff6ff',borderRadius:16,padding:'16px 18px',marginBottom:14,border:'1px solid #dbeafe'}}>
+                    <p style={{fontSize:'0.7rem',fontWeight:800,color:'#3b82f6',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:6}}>💬 ข้อความจากครู</p>
+                    <p style={{fontSize:'0.95rem',color:'#1e293b',lineHeight:1.7,margin:0}}>{report.note}</p>
+                  </div>
+                )}
 
-                  {/* Nap */}
-                  <Card>
-                    <CardHead emoji="😴" title="การนอนกลางวัน" color="#4338ca" />
-                    <div style={{ padding: '14px 18px' }}>
-                      {report.nap_from && report.nap_to ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <div style={{ fontSize: 36 }}>💤</div>
-                          <div>
-                            <p style={{ fontWeight: 800, fontSize: 18, color: '#1e1b4b', margin: 0 }}>
-                              {report.nap_from.slice(0, 5)} – {report.nap_to.slice(0, 5)} น.
-                            </p>
-                            <p style={{ fontSize: 12, color: '#818cf8', margin: '2px 0 0' }}>
-                              {(() => { const d = (new Date(`2000-01-01T${report.nap_to}`) .getTime() - new Date(`2000-01-01T${report.nap_from}`).getTime()) / 60000; return `${Math.floor(d/60)} ชม. ${d%60} นาที`; })()}
-                            </p>
-                          </div>
-                        </div>
-                      ) : <p style={{ color: '#94a3b8', fontSize: 14 }}>ไม่ได้นอนกลางวัน</p>}
-                    </div>
-                  </Card>
+                {/* Footer */}
+                <div style={{textAlign:'center',marginTop:24,paddingTop:16,borderTop:'1px solid #f1f5f9'}}>
+                  <p style={{margin:'2px 0',color:'#94a3b8',fontSize:'0.8rem'}}>บันทึกโดยคุณครู</p>
+                  <p style={{margin:'2px 0',color:'#475569',fontWeight:600,fontSize:'0.88rem'}}>
+                    {teacher?.display_name ?? 'KinderCare'}
+                  </p>
+                  {currentEntry&&<p style={{marginTop:8,fontSize:'0.72rem',color:'#94a3b8'}}>{thDate(currentEntry.date)}</p>}
+                </div>
+              </>)}
 
-                  {/* Excretions */}
-                  {(exDiaper.length > 0 || exPotty.length > 0) && (
-                    <Card>
-                      <CardHead emoji="🚽" title="การขับถ่าย" color="#059669" />
-                      <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {exDiaper.length > 0 && (
-                          <div style={{ background: '#fff7ed', padding: 12, borderRadius: 14, border: '1px solid #ffedd5' }}>
-                            <p style={{ fontSize: 12, fontWeight: 800, color: '#c2410c', marginBottom: 8 }}>👶 ผ้าอ้อม</p>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                              {[{ label: 'ฉี่', items: exDiaper.filter(e => e.type === 'pee') }, { label: 'อึ', items: exDiaper.filter(e => e.type === 'poo') }].map(g => (
-                                <div key={g.label} style={{ background: 'white', padding: 8, borderRadius: 10, textAlign: 'center' }}>
-                                  <span style={{ display: 'block', fontSize: 11, color: '#9a3412' }}>{g.label}</span>
-                                  <span style={{ fontWeight: 700 }}>{g.items.length} ครั้ง</span>
-                                  <small style={{ display: 'block', fontSize: 10, color: '#94a3b8' }}>{g.items.map(e => e.time?.slice(0,5)).filter(Boolean).join(', ') || '-'}</small>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {exPotty.length > 0 && (
-                          <div style={{ background: '#f0fdf4', padding: 12, borderRadius: 14, border: '1px solid #dcfce7' }}>
-                            <p style={{ fontSize: 12, fontWeight: 800, color: '#15803d', marginBottom: 8 }}>🚽 กระโถน</p>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                              {[{ label: 'ฉี่', items: exPotty.filter(e => e.type === 'pee') }, { label: 'อึ', items: exPotty.filter(e => e.type === 'poo') }].map(g => (
-                                <div key={g.label} style={{ background: 'white', padding: 8, borderRadius: 10, textAlign: 'center' }}>
-                                  <span style={{ display: 'block', fontSize: 11, color: '#166534' }}>{g.label}</span>
-                                  <span style={{ fontWeight: 700 }}>{g.items.length} ครั้ง</span>
-                                  <small style={{ display: 'block', fontSize: 10, color: '#94a3b8' }}>{g.items.map(e => e.time?.slice(0,5)).filter(Boolean).join(', ') || '-'}</small>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {[...exDiaper, ...exPotty].filter(Boolean).length === 0 && (
-                          <p style={{ color: '#94a3b8', fontSize: 14 }}>-</p>
-                        )}
-                      </div>
-                    </Card>
-                  )}
+            </div>
+          )}
 
-                  {/* Note */}
-                  {report.note && (
-                    <div style={{ background: '#eff6ff', borderRadius: 20, padding: '14px 18px', marginBottom: 14, border: '1px solid #dbeafe' }}>
-                      <p style={{ fontSize: 11, fontWeight: 800, color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>💬 ข้อความจากครู</p>
-                      <p style={{ fontSize: 14, color: '#1e293b', lineHeight: 1.7, margin: 0 }}>{report.note}</p>
-                    </div>
-                  )}
-                </>)}
-              </div>
-            )}
-          </>
-        )}
+          {!childId&&!childLoading&&(
+            <div style={{textAlign:'center',padding:'48px 20px',color:'#94a3b8'}}>
+              <p style={{fontSize:44,marginBottom:10}}>👆</p>
+              <p style={{fontSize:'0.95rem'}}>เลือกบุตรหลานเพื่อดูรายงาน</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

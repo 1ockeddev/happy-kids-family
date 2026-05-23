@@ -33,10 +33,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { line_user_id, role, status, display_name } = body;
     if (!line_user_id || !role) return badRequest('line_user_id และ role จำเป็น');
+    const { picture_url } = body;
     const row = await queryOne(
-      `INSERT INTO app_user (id, line_user_id, role, status, display_name)
-       VALUES (gen_random_uuid(), $1, $2, $3, $4) RETURNING *`,
-      [line_user_id, role, status ?? 'active', display_name ?? null]
+      `INSERT INTO app_user (id, line_user_id, role, status, display_name, picture_url)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5) RETURNING *`,
+      [line_user_id, role, status ?? 'active', display_name ?? null, picture_url ?? null]
     );
     return created(row);
   } catch (err) {
