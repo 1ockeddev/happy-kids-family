@@ -432,7 +432,7 @@ export default function ReportsPage() {
                           {t.display_name?.slice(0,1) ?? '?'}
                         </div>
                     }
-                    {t.display_name ?? t.line_user_id.slice(0, 8)}
+                    {t.display_name ?? t.line_user_id?.slice(0, 8) ?? "(ไม่มีชื่อ)"}
                     {t.display_name?.includes(DEFAULT_TEACHER_NAME) && !active && (
                       <span style={{ fontSize: 10, color: '#9CA3AF' }}>(default)</span>
                     )}

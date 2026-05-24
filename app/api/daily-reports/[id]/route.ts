@@ -37,7 +37,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
     const body = await req.json();
-    const { nap_from, nap_to, milk1, milk1_note, milk2, milk2_note, food_amount, food_note, fruit_amount, fruit_note, note, updated_by } = body;
+    const { nap_from, nap_to, milk1, milk1_note, milk2, milk2_note, food_amount, food_note, fruit_amount, fruit_note, note, updated_by, created_by } = body;
     const row = await queryOne(
       `UPDATE daily_report SET
         nap_from     = COALESCE($1, nap_from),
@@ -52,14 +52,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         fruit_note   = $10,
         note         = $11,
         updated_by   = $12,
+        created_by   = COALESCE($13, created_by),
         updated_at   = NOW()
-       WHERE id = $13 RETURNING *`,
+       WHERE id = $14 RETURNING *`,
       [nap_from ?? null, nap_to ?? null,
        milk1 ?? null, milk1_note ?? null,
        milk2 ?? null, milk2_note ?? null,
        food_amount ?? null, food_note ?? null,
        fruit_amount ?? null, fruit_note ?? null,
-       note ?? null, updated_by ?? null, id]
+       note ?? null, updated_by ?? null,
+       created_by ?? null, id]
     );
     if (!row) return notFound('ไม่พบรายงาน');
     return ok(row);

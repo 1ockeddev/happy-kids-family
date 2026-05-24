@@ -25,7 +25,7 @@ EXCEPTION WHEN duplicate_object THEN null; END $$;
 -- 2) app_user
 CREATE TABLE IF NOT EXISTS app_user (
   id            UUID PRIMARY KEY,
-  line_user_id  TEXT UNIQUE NOT NULL,
+  line_user_id  TEXT UNIQUE,          -- NULL ได้ถ้าเพิ่มโดย admin
   role          user_role NOT NULL,
   status        user_status DEFAULT 'active',
   display_name  TEXT,

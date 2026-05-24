@@ -243,26 +243,28 @@ export default function LiffPage() {
             </div>
           </div>
 
-          {/* title zone */}
-          {parentId && (
-            <p style={{margin:'0 0 3px',fontSize:'0.8rem',fontWeight:600,color:'#f472b6',minHeight:18,transition:'all .2s'}}>
-              ผู้ปกครอง: {parents.find(p=>p.id===parentId)?.display_name ?? ''}
-            </p>
-          )}
-          {childLoading ? (
-            <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:4}}>
-              <SkRow w={160} h={22} /><SkRow w={200} h={14} />
-            </div>
-          ) : (
-            <>
-              <h1 style={{margin:0,fontSize:'1.25rem',fontWeight:700,color:'#0f172a',letterSpacing:'-0.3px'}}>
-                {selectedChild?.name_th ?? 'เลือกบุตรหลาน'}
-              </h1>
-              <p style={{margin:'4px 0 0',fontSize:'0.75rem',color:'#64748b',fontWeight:500}}>
-                {currentEntry ? thDate(currentEntry.date) : 'กรุณาเลือกบุตรหลาน'}
+          {/* title zone — center */}
+          <div style={{textAlign:'center',marginTop:4}}>
+            {parentId && (
+              <p style={{margin:'0 0 4px',fontSize:'0.78rem',fontWeight:600,color:'#f472b6',transition:'all .2s'}}>
+                {parents.find(p=>p.id===parentId)?.display_name ?? ''}
               </p>
-            </>
-          )}
+            )}
+            {childLoading ? (
+              <div style={{display:'flex',flexDirection:'column',gap:8,alignItems:'center',marginTop:4}}>
+                <SkRow w={160} h={22} /><SkRow w={200} h={14} />
+              </div>
+            ) : (
+              <>
+                <h1 style={{margin:0,fontSize:'1.3rem',fontWeight:800,color:'#0f172a',letterSpacing:'-0.3px'}}>
+                  {selectedChild?.name_th ?? 'เลือกบุตรหลาน'}
+                </h1>
+                <p style={{margin:'4px 0 0',fontSize:'0.75rem',color:'#64748b',fontWeight:500}}>
+                  {currentEntry ? thDate(currentEntry.date) : 'กรุณาเลือกบุตรหลาน'}
+                </p>
+              </>
+            )}
+          </div>
         </header>
 
         {/* ─── DATE STRIP ─────────────────────────── */}
@@ -336,58 +338,49 @@ export default function LiffPage() {
                   </div>
 
                   {(report.daily?.food||report.daily?.fruit)&&(
-                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:14}}>
+                    <div className="food-grid">
                       {report.daily?.food&&(
-                        <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',padding:12,borderRadius:12,display:'flex',flexDirection:'column',justifyContent:'space-between'}}>
+                        <div className={`food-item`}>
                           <div>
-                            <span style={{fontSize:'0.7rem',color:'#64748b',display:'block',marginBottom:4,fontWeight:500}}>มื้อกลางวัน</span>
-                            <span style={{fontWeight:700,fontSize:'0.85rem',color:'#0f172a'}}>{report.daily.food}</span>
+                            <span className="food-label">มื้อกลางวัน</span>
+                            <span className="food-name">{report.daily.food}</span>
                           </div>
-                          {report.food_amount&&report.food_amount!=='skip'&&<Pill status={report.food_amount} />}
-                          {report.food_note&&(
-                            <div style={{marginTop:8,fontSize:'0.7rem',color:'#64748b',lineHeight:1.4,borderTop:'1px solid #e2e8f0',paddingTop:6}}>
-                              💬 {report.food_note}
-                            </div>
+                          {report.food_amount&&(
+                            <span className={`status-pill status-${report.food_amount.replace('_','-')}`}>{amtL[report.food_amount]}</span>
                           )}
+                          {report.food_note&&<div className="food-note">💬 {report.food_note}</div>}
                         </div>
                       )}
                       {report.daily?.fruit&&(
-                        <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',padding:12,borderRadius:12,display:'flex',flexDirection:'column',justifyContent:'space-between'}}>
+                        <div className={`food-item`}>
                           <div>
-                            <span style={{fontSize:'0.7rem',color:'#64748b',display:'block',marginBottom:4,fontWeight:500}}>ผลไม้</span>
-                            <span style={{fontWeight:700,fontSize:'0.85rem',color:'#0f172a'}}>{report.daily.fruit}</span>
+                            <span className="food-label">ผลไม้</span>
+                            <span className="food-name">{report.daily.fruit}</span>
                           </div>
-                          {report.fruit_amount&&report.fruit_amount!=='skip'&&<Pill status={report.fruit_amount} />}
-                          {report.fruit_note&&(
-                            <div style={{marginTop:8,fontSize:'0.7rem',color:'#64748b',lineHeight:1.4,borderTop:'1px solid #e2e8f0',paddingTop:6}}>
-                              💬 {report.fruit_note}
-                            </div>
+                          {report.fruit_amount&&(
+                            <span className={`status-pill status-${report.fruit_amount.replace('_','-')}`}>{amtL[report.fruit_amount]}</span>
                           )}
+                          {report.fruit_note&&<div className="food-note">💬 {report.fruit_note}</div>}
                         </div>
                       )}
                     </div>
                   )}
 
                   {(report.milk1!=='skip'||report.milk2!=='skip')&&(
-                    <div style={{borderTop:'1px dashed #edf2f7',paddingTop:14}}>
-                      <p style={{fontSize:'0.85rem',fontWeight:700,color:'#4a5568',marginBottom:10,display:'flex',alignItems:'center',gap:5}}>🥛 การดื่มนม</p>
+                    <div className="milk-section">
+                      <h3 className="milk-section-title">🥛 การดื่มนมประจำวัน</h3>
                       <div style={{display:'flex',flexDirection:'column',gap:8}}>
-                        {[{label:'กล่องที่ 1 (เช้า)',val:report.milk1,note:report.milk1_note},{label:'กล่องที่ 2 (บ่าย)',val:report.milk2,note:report.milk2_note}].map(m=>{
-                          const isSkip = m.val==='skip';
-                          return (
-                            <div key={m.label} style={{background:isSkip?'#fff1f2':'#f0f9ff',borderRadius:12,border:`1px solid ${isSkip?'#fecdd3':'#bae6fd'}`,padding:'10px 14px'}}>
-                              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                                <span style={{fontSize:'0.85rem',fontWeight:700,color:isSkip?'#9f1239':'#0369a1'}}>{m.label}</span>
-                                <span style={{fontSize:'0.72rem',padding:'2px 10px',borderRadius:10,fontWeight:700,...amtStyle[m.val]}}>{amtL[m.val]}</span>
+                        {[{label:'กล่องที่ 1 (เช้า)',val:report.milk1,note:report.milk1_note},{label:'กล่องที่ 2 (บ่าย)',val:report.milk2,note:report.milk2_note}]
+                          .filter(m=>m.val!=='skip')
+                          .map(m=>(
+                            <div key={m.label} className={`milk-box amt-${m.val.replace('_','-')}`}>
+                              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,width:'100%'}}>
+                                <span className="milk-box-label">{m.label}</span>
+                                <span className="milk-tag">{amtL[m.val]}</span>
                               </div>
-                              {m.note&&(
-                                <div style={{marginTop:8,fontSize:'0.75rem',color:isSkip?'#be123c':'#0369a1',background:'white',padding:'6px 10px',borderRadius:8,border:`1px dashed ${isSkip?'#fb7185':'#7dd3fc'}`}}>
-                                  {m.note}
-                                </div>
-                              )}
+                              {m.note&&<div className="milk-note">{m.note}</div>}
                             </div>
-                          );
-                        })}
+                        ))}
                       </div>
                     </div>
                   )}
@@ -501,12 +494,14 @@ export default function LiffPage() {
                             👶 ผ้าอ้อม (Diapers)
                           </p>
                           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-                            {[{label:'ฉี่ (Wet)',items:exDiaper.filter(e=>e.type==='pee')},{label:'อึ (Soiled)',items:exDiaper.filter(e=>e.type==='poo')}].map(g=>(
-                              <div key={g.label} style={{background:'white',padding:8,borderRadius:10,textAlign:'center'}}>
-                                <span style={{display:'block',fontSize:'0.7rem',color:'#9a3412'}}>{g.label}</span>
-                                <span style={{fontWeight:700,color:'#4a5568'}}>{g.items.length} ครั้ง</span>
-                                <small style={{display:'block',fontSize:'0.65rem',color:'#94a3b8'}}>{g.items.map(e=>e.time?.slice(0,5)).filter(Boolean).join(', ')||'-'}</small>
-                              </div>
+                            {[{label:'ฉี่ (Wet)',items:exDiaper.filter(e=>e.type==='pee')},{label:'อึ (Soiled)',items:exDiaper.filter(e=>e.type==='poo')}]
+                              .filter(g=>g.items.length>0)
+                              .map(g=>(
+                                <div key={g.label} style={{background:'white',padding:8,borderRadius:10,textAlign:'center'}}>
+                                  <span style={{display:'block',fontSize:'0.7rem',color:'#9a3412'}}>{g.label}</span>
+                                  <span style={{fontWeight:700,color:'#4a5568'}}>{g.items.length} ครั้ง</span>
+                                  <small style={{display:'block',fontSize:'0.65rem',color:'#94a3b8'}}>{g.items.map(e=>e.time?.slice(0,5)).filter(Boolean).join(', ')||'-'}</small>
+                                </div>
                             ))}
                           </div>
                         </div>
@@ -517,12 +512,14 @@ export default function LiffPage() {
                             🚽 นั่งกระโถน (Potty)
                           </p>
                           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-                            {[{label:'ฉี่ (Pee)',items:exPotty.filter(e=>e.type==='pee')},{label:'อึ (Poo)',items:exPotty.filter(e=>e.type==='poo')}].map(g=>(
-                              <div key={g.label} style={{background:'white',padding:8,borderRadius:10,textAlign:'center'}}>
-                                <span style={{display:'block',fontSize:'0.7rem',color:'#166534'}}>{g.label}</span>
-                                <span style={{fontWeight:700,color:'#4a5568'}}>{g.items.length} ครั้ง</span>
-                                <small style={{display:'block',fontSize:'0.65rem',color:'#94a3b8'}}>{g.items.map(e=>e.time?.slice(0,5)).filter(Boolean).join(', ')||'-'}</small>
-                              </div>
+                            {[{label:'ฉี่ (Pee)',items:exPotty.filter(e=>e.type==='pee')},{label:'อึ (Poo)',items:exPotty.filter(e=>e.type==='poo')}]
+                              .filter(g=>g.items.length>0)
+                              .map(g=>(
+                                <div key={g.label} style={{background:'white',padding:8,borderRadius:10,textAlign:'center'}}>
+                                  <span style={{display:'block',fontSize:'0.7rem',color:'#166534'}}>{g.label}</span>
+                                  <span style={{fontWeight:700,color:'#4a5568'}}>{g.items.length} ครั้ง</span>
+                                  <small style={{display:'block',fontSize:'0.65rem',color:'#94a3b8'}}>{g.items.map(e=>e.time?.slice(0,5)).filter(Boolean).join(', ')||'-'}</small>
+                                </div>
                             ))}
                           </div>
                         </div>

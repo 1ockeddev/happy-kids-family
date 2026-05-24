@@ -77,7 +77,14 @@ export default function UsersPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      modal === 'add' ? await usersApi.create(form) : await usersApi.update(selected!.id, form);
+      const payload = {
+        display_name: form.display_name || null,
+        role: form.role, status: form.status,
+        line_user_id: form.line_user_id || null,
+      };
+      modal === 'add'
+        ? await usersApi.create(payload)
+        : await usersApi.update(selected!.id, payload);
       setModal(null); load();
     } catch (e) { alert(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ'); }
     finally { setSaving(false); }
@@ -115,7 +122,12 @@ export default function UsersPage() {
               )}
               <div>
                 <div style={{ fontWeight: 600, fontSize: 14 }}>{r.display_name ?? '(ยังไม่มีชื่อ)'}</div>
-                <div style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'monospace' }}>{r.line_user_id.slice(0, 16)}...</div>
+                <div style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'monospace' }}>
+                {r.line_user_id
+                  ? <span>{r.line_user_id.slice(0, 16)}...</span>
+                  : <span style={{ color: '#F5A623', fontSize: 11 }}>⚠️ ยังไม่ผูก LINE</span>
+                }
+              </div>
               </div>
             </div>
           )},
@@ -152,7 +164,7 @@ export default function UsersPage() {
                 <Link2 size={13} /> ผูกลูก
               </button>
             )}
-            <button className="btn btn-ghost btn-sm" onClick={() => { setSelected(row); setForm({ line_user_id: row.line_user_id, display_name: row.display_name ?? '', role: row.role, status: row.status }); setModal('edit'); }}>
+            <button className="btn btn-ghost btn-sm" onClick={() => { setSelected(row); setForm({ line_user_id: row.line_user_id ?? '', display_name: row.display_name ?? '', role: row.role, status: row.status }); setModal('edit'); }}>
               <Pencil size={13} />
             </button>
             <button className="btn btn-danger btn-sm" onClick={() => { setSelected(row); setModal('delete'); }}>
@@ -166,12 +178,24 @@ export default function UsersPage() {
       <Modal open={modal === 'add' || modal === 'edit'} title={modal === 'add' ? 'เพิ่มผู้ใช้' : 'แก้ไขผู้ใช้'}
         onClose={() => setModal(null)} onConfirm={handleSave} confirmLabel={saving ? 'กำลังบันทึก...' : 'บันทึก'}>
         <div className="form-group">
-          <label className="form-label">LINE User ID <span style={{ color: '#E85C5C' }}>*</span></label>
-          <input className="form-input" value={form.line_user_id} onChange={e => setForm(f => ({ ...f, line_user_id: e.target.value }))} placeholder="Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" />
+          <label className="form-label">ชื่อที่แสดง <span style={{ color: '#E85C5C' }}>*</span></label>
+          <input className="form-input" value={form.display_name} onChange={e => setForm(f => ({ ...f, display_name: e.target.value }))} placeholder="เช่น ครูเบียร์ / คุณแม่สมศรี" />
         </div>
         <div className="form-group">
-          <label className="form-label">ชื่อที่แสดง</label>
-          <input className="form-input" value={form.display_name} onChange={e => setForm(f => ({ ...f, display_name: e.target.value }))} placeholder="ชื่อ-นามสกุล" />
+          <label className="form-label">
+            LINE User ID
+            <span style={{ fontSize: 11, color: '#9CA3AF', marginLeft: 6, fontWeight: 400 }}>
+              (ไม่จำเป็น — ผูกภายหลังได้)
+            </span>
+          </label>
+          <input className="form-input" value={form.line_user_id}
+            onChange={e => setForm(f => ({ ...f, line_user_id: e.target.value }))}
+            placeholder="Uxxxxxxx... (กรอกเมื่อผู้ใช้เคย login ผ่าน LINE แล้ว)" />
+          {!form.line_user_id && (
+            <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
+              💡 ผู้ใช้จะได้รับ LINE ID อัตโนมัติเมื่อเปิด Mini App ครั้งแรก
+            </p>
+          )}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="form-group">
@@ -193,7 +217,7 @@ export default function UsersPage() {
 
       {/* ── Link Children Modal ── */}
       <Modal open={modal === 'link'}
-        title={`ผูกนักเรียน — ${selected?.display_name ?? selected?.line_user_id.slice(0,12)}`}
+        title={`ผูกนักเรียน — ${selected?.display_name ?? selected?.line_user_id ?? '(ไม่มีชื่อ)'?.slice(0,12) ?? '(ไม่มี LINE ID)'}`}
         onClose={() => setModal(null)} onConfirm={handleSaveLink}
         confirmLabel={saving ? 'กำลังบันทึก...' : `บันทึก (${linkedIds.length} คน)`}>
 
@@ -205,7 +229,7 @@ export default function UsersPage() {
           }
           <div>
             <p style={{ fontWeight: 600, fontSize: 14, margin: 0 }}>{selected?.display_name ?? '(ยังไม่มีชื่อ)'}</p>
-            <p style={{ fontSize: 11, color: '#9CA3AF', margin: 0, fontFamily: 'monospace' }}>{selected?.line_user_id}</p>
+            <p style={{ fontSize: 11, color: '#9CA3AF', margin: 0, fontFamily: 'monospace' }}>{selected?.line_user_id ?? '(ยังไม่ผูก LINE)'}</p>
           </div>
         </div>
 
@@ -258,7 +282,7 @@ export default function UsersPage() {
       <Modal open={modal === 'delete'} title="ยืนยันการลบ"
         onClose={() => setModal(null)} onConfirm={handleDelete}
         confirmLabel={saving ? 'กำลังลบ...' : 'ลบ'} confirmDanger>
-        <p style={{ color: '#6B7280' }}>ลบผู้ใช้ <strong>{selected?.display_name ?? selected?.line_user_id}</strong>?</p>
+        <p style={{ color: '#6B7280' }}>ลบผู้ใช้ <strong>{selected?.display_name ?? selected?.line_user_id ?? '(ไม่มีชื่อ)'}</strong>?</p>
       </Modal>
     </>
   );
