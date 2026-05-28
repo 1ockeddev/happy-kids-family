@@ -1,6 +1,6 @@
 import { queryOne } from '@/lib/db';
 import { ok, badRequest, serverError } from '@/lib/api-helpers';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 // POST /api/auth/line-register
 // เรียกตอน LIFF โหลด — upsert user แล้ว return ข้อมูล
@@ -20,6 +20,15 @@ export async function POST(req: NextRequest) {
        RETURNING id, line_user_id, role, status, display_name, picture_url`,
       [line_user_id, display_name ?? null, picture_url ?? null]
     );
+
+    const user = await queryOne(
+      `SELECT id, status FROM app_user WHERE line_user_id = $1`,
+      [line_user_id]
+    );
+    if (user?.status === 'inactive') {
+      return NextResponse.json({ data: null, error: 'account_inactive' }, { status: 403 });
+    }
+
     return ok(row);
   } catch (err) {
     return serverError(err);

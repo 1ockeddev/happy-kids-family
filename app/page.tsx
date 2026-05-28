@@ -121,6 +121,10 @@ export default function LiffPage() {
     fetch('/api/auth/line-register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({line_user_id:liff.profile.userId,display_name:liff.profile.displayName,picture_url:liff.profile.pictureUrl??null})})
     .then(r=>r.json())
     .then(async regJson => {
+      if (regJson.status === 403) {
+        setNotRegistered(true);  // แสดงหน้า "ติดต่อครู"
+        return;
+      }
       const user = regJson.data;
       // ถ้าเป็น teacher → redirect ไป admin/users
       if (user?.role === 'teacher') {
