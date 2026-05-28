@@ -65,13 +65,9 @@ export function useLiff() {
         .then(async () => {
           const isInClient = liff.isInClient();
           const isLoggedIn = liff.isLoggedIn();
-          const pathname = window.location.pathname;
 
           if (!isLoggedIn) {
-            if (pathname === '/liff') {
-              liff.login({
-                redirectUri: `${window.location.origin}/`
-              });
+            liff.login();
             return;
           }
 
@@ -87,10 +83,6 @@ export function useLiff() {
             },
             error: null,
           });
-          
-          if (pathname === '/liff') {
-            window.location.replace('/');
-          }
         })
         .catch(err => {
           setState(s => ({ ...s, ready: true, error: err.message ?? 'LIFF init ล้มเหลว' }));
