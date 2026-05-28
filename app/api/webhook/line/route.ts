@@ -51,7 +51,8 @@ async function upsertUser(userId: string, displayName: string, pictureUrl?: stri
      VALUES (gen_random_uuid(), $1, 'parent', 'active', $2, $3)
      ON CONFLICT (line_user_id) DO UPDATE SET
        display_name = COALESCE(EXCLUDED.display_name, app_user.display_name),
-       picture_url  = COALESCE(EXCLUDED.picture_url,  app_user.picture_url)
+       picture_url  = COALESCE(EXCLUDED.picture_url,  app_user.picture_url),
+       status       = 'active'
      RETURNING id, display_name`,
     [userId, displayName, pictureUrl ?? null]
   );

@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "KinderCare System",
-  description: "Kindergarten Management System",
+  title: "Happy Kids with Kru Beer System",
+  description: "Happy Kids with Kru Beer Management System",
 };
 
 export const viewport: Viewport = {
