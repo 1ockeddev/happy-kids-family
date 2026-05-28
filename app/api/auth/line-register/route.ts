@@ -20,7 +20,6 @@ export async function POST(req: NextRequest) {
        RETURNING id, line_user_id, role, status, display_name, picture_url`,
       [line_user_id, display_name ?? null, picture_url ?? null]
     );
-
     const user = await queryOne(
       `SELECT id, status FROM app_user WHERE line_user_id = $1`,
       [line_user_id]
@@ -28,7 +27,6 @@ export async function POST(req: NextRequest) {
     if (user?.status === 'inactive') {
       return NextResponse.json({ data: null, error: 'account_inactive' }, { status: 403 });
     }
-
     return ok(row);
   } catch (err) {
     return serverError(err);

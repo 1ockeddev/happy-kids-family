@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
        JOIN parent_child pc ON pc.parent_id = u.id
        JOIN child c         ON c.id = pc.child_id
        WHERE u.line_user_id = $1
+         AND u.status = 'active' 
          AND c.deleted_at IS NULL
        ORDER BY c.name_th`,
       [line_user_id]

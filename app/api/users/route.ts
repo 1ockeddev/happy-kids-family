@@ -6,6 +6,7 @@ export async function GET(req: NextRequest) {
   try {
     const search = req.nextUrl.searchParams.get('search') ?? '';
     const role   = req.nextUrl.searchParams.get('role')   ?? '';
+    const status = req.nextUrl.searchParams.get('status') ?? '';
     const rows = await query(
       `SELECT u.*,
         CASE WHEN tp.user_id IS NOT NULL THEN
@@ -15,8 +16,9 @@ export async function GET(req: NextRequest) {
        LEFT JOIN teacher_permission tp ON tp.user_id = u.id
        WHERE ($1 = '' OR u.display_name ILIKE $2 OR u.line_user_id ILIKE $2)
          AND ($3 = '' OR u.role::text = $3)
+         AND ($4 = '' OR u.status::text = $4)
        ORDER BY u.created_at DESC`,
-      [search, `%${search}%`, role]
+      [search, `%${search}%`, role, status]
     );
     return ok(rows);
   } catch (err) {

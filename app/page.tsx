@@ -112,9 +112,8 @@ export default function LiffPage() {
     if (!liff.profile?.userId) {
       fetch('/api/report/children').then(r=>r.json()).then(j=>{
         setChildren(j.data??[]);
-        if ((j.data??[]).length>0) setChildId((j.data??[])[0].id);
       });
-      fetch('/api/users?role=parent').then(r=>r.json()).then(j=>setParents(j.data??[]));
+      fetch('/api/users?role=parent&status=active').then(r=>r.json()).then(j=>setParents(j.data??[]));
       return;
     }
     setChildLoading(true);
@@ -137,22 +136,31 @@ export default function LiffPage() {
       const kids:Child[] = childJson.data??[];
       setChildren(kids);
       if (kids.length===0) setNotRegistered(true);
-      if (kids.length===1) setChildId(kids[0].id);
-      fetch('/api/users?role=parent').then(r=>r.json()).then(j2=>setParents(j2.data??[]));
+      fetch('/api/users?role=parent&status=active').then(r=>r.json()).then(j2=>setParents(j2.data??[]));
     })
     .catch(()=>setNotRegistered(true))
     .finally(()=>setChildLoading(false));
   },[liff.ready,liff.profile?.userId]);
 
+  useEffect(()=>{
+  if (children.length > 0 && !childId) {
+    setChildId(children[0].id);
+  }
+  },[children]);
+
   /* ── child → days ── */
   useEffect(()=>{
-    if (!childId) return;
+    // auto-select เด็กคนแรกถ้ายังไม่ได้เลือก
+    if (!childId && children.length > 0) {
+      setChildId(children[0].id);
+      return;
+    }
     setDaysLoading(true);
     setDayEntries([]); setDayIdx(0); setReport(null); setAttendance(null); setScores([]);
     fetch(`/api/report/dates?child_id=${childId}`).then(r=>r.json())
       .then(j=>setDayEntries(j.data??[]))
       .finally(()=>setDaysLoading(false));
-  },[childId]);
+  },[childId, children]);
 
   /* ── day → report ── */
   useEffect(()=>{
