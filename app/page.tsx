@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useLiff } from '@/lib/useLiff';
 import { Child, DailyReport, Attendance, MilkStatus, ExcretionType, ExcretionAction, AppUser } from '@/types';
 
@@ -86,6 +87,7 @@ function Avatar({src,name,size=42,active,accentColor='#6366f1'}:{src?:string|nul
 /* ─────────────────────────────────────────── */
 export default function LiffPage() {
   const liff = useLiff();
+  const router = useRouter();
 
   const [parents,  setParents]  = useState<AppUser[]>([]);
   const [children, setChildren] = useState<Child[]>([]);
@@ -117,14 +119,21 @@ export default function LiffPage() {
     }
     setChildLoading(true);
     fetch('/api/auth/line-register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({line_user_id:liff.profile.userId,display_name:liff.profile.displayName,picture_url:liff.profile.pictureUrl??null})})
-    .then(()=>fetch(`/api/report/line-children?line_user_id=${liff.profile!.userId}`))
     .then(r=>r.json())
-    .then(j=>{
-      const kids:Child[] = j.data??[];
+    .then(async regJson => {
+      const user = regJson.data;
+      // ถ้าเป็น teacher → redirect ไป admin/users
+      if (user?.role === 'teacher') {
+        router.replace('/admin/users');
+        return;
+      }
+      // parent → โหลดลูก
+      const childRes = await fetch(`/api/report/line-children?line_user_id=${liff.profile!.userId}`);
+      const childJson = await childRes.json();
+      const kids:Child[] = childJson.data??[];
       setChildren(kids);
       if (kids.length===0) setNotRegistered(true);
       if (kids.length===1) setChildId(kids[0].id);
-      // load all parents linked to same children (sibling parents)
       fetch('/api/users?role=parent').then(r=>r.json()).then(j2=>setParents(j2.data??[]));
     })
     .catch(()=>setNotRegistered(true))
@@ -245,11 +254,9 @@ export default function LiffPage() {
 
           {/* title zone — center */}
           <div style={{textAlign:'center',marginTop:4}}>
-            {parentId && (
               <p style={{margin:'0 0 4px',fontSize:'0.78rem',fontWeight:600,color:'#f472b6',transition:'all .2s'}}>
-                {parents.find(p=>p.id===parentId)?.display_name ?? ''}
+                {parents.find(p=>p.id===parentId)?.display_name ?? '\u00A0'}
               </p>
-            )}
             {childLoading ? (
               <div style={{display:'flex',flexDirection:'column',gap:8,alignItems:'center',marginTop:4}}>
                 <SkRow w={160} h={22} /><SkRow w={200} h={14} />

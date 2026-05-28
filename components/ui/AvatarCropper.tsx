@@ -11,7 +11,7 @@ interface AvatarCropperProps {
 }
 
 const DISPLAY = 160;
-const OUTPUT  = 160;
+const OUTPUT  = 80;
 
 export default function AvatarCropper({
   childId, value, onChange, onPendingBlob, defaultInitials = '?',
