@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
             await replyMessage(replyToken, [
               {
                 type: 'text',
-                text: `📅 ตารางกิจกรรมประจำสัปดาห์ล่าสุด\n📎 ${file.name}`,
+                text: `📅 ตารางกิจกรรมประจำสัปดาห์ล่าสุด`,
               },
               buildDriveImageMessage(file.id),
             ]);
