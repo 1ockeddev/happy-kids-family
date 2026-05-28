@@ -59,17 +59,25 @@ async function upsertUser(userId: string, displayName: string, pictureUrl?: stri
 
 // ── Google Drive: ดึงไฟล์ล่าสุดใน folder ─────────────────────
 async function getLatestFileFromDrive(): Promise<{ id: string; name: string; mimeType: string } | null> {
-  if (!GDRIVE_FOLDER_ID || !GDRIVE_API_KEY) return null;
+  if (!GDRIVE_FOLDER_ID || !GDRIVE_API_KEY) {
+    console.error('[Drive] Missing env: GDRIVE_FOLDER_ID or GDRIVE_API_KEY');
+    return null;
+  }
   try {
     const q = encodeURIComponent(
       `'${GDRIVE_FOLDER_ID}' in parents and trashed = false and mimeType contains 'image/'`
     );
     const url = `https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=createdTime desc&pageSize=1&fields=files(id,name,mimeType)&key=${GDRIVE_API_KEY}`;
+    console.log('[Drive] fetching:', url.replace(GDRIVE_API_KEY, '***'));
     const r = await fetch(url);
-    if (!r.ok) return null;
     const data = await r.json();
+    console.log('[Drive] response status:', r.status, JSON.stringify(data).slice(0, 300));
+    if (!r.ok) return null;
     return data.files?.[0] ?? null;
-  } catch { return null; }
+  } catch (e) {
+    console.error('[Drive] error:', e);
+    return null;
+  }
 }
 
 // ── Build LINE image message from Drive file ──────────────────
