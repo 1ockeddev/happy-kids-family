@@ -66,10 +66,13 @@ export function useLiff() {
           const isInClient = liff.isInClient();
           const isLoggedIn = liff.isLoggedIn();
 
+          const pathname = window.location.pathname;
+
           if (!isLoggedIn) {
-            liff.login({
-              redirectUri: `${window.location.origin}/`
-            });
+            if (pathname === '/liff') {
+              liff.login({
+                redirectUri: `${window.location.origin}/`
+              });
             return;
           }
 
