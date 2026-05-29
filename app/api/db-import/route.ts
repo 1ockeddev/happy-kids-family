@@ -58,6 +58,8 @@ export async function POST(req: NextRequest) {
   try {
     await client.query('BEGIN');
     await client.query('SET session_replication_role = replica');
+    // Disable foreign key checks during import
+    await client.query('SET CONSTRAINTS ALL DEFERRED');
 
     for (const table of TABLES_ORDER) {
       const rows = payload.tables[table];
@@ -80,17 +82,23 @@ export async function POST(req: NextRequest) {
         const hasPK   = cols.includes('parent_id') && cols.includes('child_id');
         let conflict  = false;
 
-        if (hasId) {
-          const existing = await client.query(
-            `SELECT id FROM "${table}" WHERE id = $1 LIMIT 1`, [row['id']]
-          );
-          conflict = existing.rows.length > 0;
-        } else if (hasPK) {
-          const existing = await client.query(
-            `SELECT 1 FROM "${table}" WHERE parent_id = $1 AND child_id = $2 LIMIT 1`,
-            [row['parent_id'], row['child_id']]
-          );
-          conflict = existing.rows.length > 0;
+        try {
+          if (hasId) {
+            const existing = await client.query(
+              `SELECT id FROM "${table}" WHERE id = $1 LIMIT 1`, [row['id']]
+            );
+            conflict = existing.rows.length > 0;
+          } else if (hasPK) {
+            const existing = await client.query(
+              `SELECT 1 FROM "${table}" WHERE parent_id = $1 AND child_id = $2 LIMIT 1`,
+              [row['parent_id'], row['child_id']]
+            );
+            conflict = existing.rows.length > 0;
+          }
+        } catch (e) {
+          // If conflict check fails, treat as skipped
+          stats[table].skipped++;
+          continue;
         }
 
         if (conflict) {
@@ -104,12 +112,18 @@ export async function POST(req: NextRequest) {
           }
           // overwrite mode
           if (!isDryRun) {
-            const setClauses = cols.map((c, i) => `"${c}" = $${i + 1}`).join(', ');
-            await client.query(
-              `UPDATE "${table}" SET ${setClauses} WHERE ${hasId ? 'id' : 'parent_id'} = $1`,
-              hasId ? [row['id'], ...vals.slice(1)] : [...vals]
-            ).catch(() => {});
-            stats[table].overwritten++;
+            try {
+              const setClauses = cols.map((c, i) => `"${c}" = $${i + 1}`).join(', ');
+              const whereClause = hasId ? `id = $${cols.length + 1}` : `parent_id = $${cols.length + 1} AND child_id = $${cols.length + 2}`;
+              const updateVals = hasId ? [...vals, row['id']] : [...vals, row['parent_id'], row['child_id']];
+              await client.query(
+                `UPDATE "${table}" SET ${setClauses} WHERE ${whereClause}`,
+                updateVals
+              );
+              stats[table].overwritten++;
+            } catch (e) {
+              stats[table].skipped++;
+            }
           }
           continue;
         }
@@ -121,7 +135,10 @@ export async function POST(req: NextRequest) {
               `INSERT INTO "${table}" (${colList}) VALUES (${placeholders})`, vals
             );
             stats[table].inserted++;
-          } catch { stats[table].skipped++; }
+          } catch (e) {
+            // Log error but continue with next row
+            stats[table].skipped++;
+          }
         } else {
           stats[table].inserted++; // preview count
         }
@@ -138,7 +155,11 @@ export async function POST(req: NextRequest) {
 
     return ok({ dry_run: isDryRun, stats });
   } catch (err) {
-    await client.query('ROLLBACK').catch(() => {});
+    try {
+      await client.query('ROLLBACK');
+    } catch (rollbackErr) {
+      // Ignore rollback errors
+    }
     return serverError(err);
   } finally {
     client.release();

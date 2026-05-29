@@ -20,7 +20,6 @@ export async function GET(req: NextRequest) {
        LEFT JOIN daily_report dr
          ON dr.daily_id = d.id AND dr.child_id = e.child_id
        WHERE e.child_id = $1
-         AND e.graduated = false
          AND dr.id IS NOT NULL          -- only days that have a report
        ORDER BY d.date DESC`,
       [child_id]

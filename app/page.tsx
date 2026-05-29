@@ -113,7 +113,6 @@ export default function LiffPage() {
       fetch('/api/report/children').then(r=>r.json()).then(j=>{
         setChildren(j.data??[]);
       });
-      fetch('/api/users?role=parent&status=active').then(r=>r.json()).then(j=>setParents(j.data??[]));
       return;
     }
     setChildLoading(true);
@@ -136,48 +135,68 @@ export default function LiffPage() {
       const kids:Child[] = childJson.data??[];
       setChildren(kids);
       if (kids.length===0) setNotRegistered(true);
-      fetch('/api/users?role=parent&status=active').then(r=>r.json()).then(j2=>setParents(j2.data??[]));
     })
     .catch(()=>setNotRegistered(true))
     .finally(()=>setChildLoading(false));
   },[liff.ready,liff.profile?.userId]);
 
   useEffect(()=>{
-  if (children.length > 0 && !childId) {
-    setChildId(children[0].id);
-  }
-  },[children]);
+    if (children.length > 0 && !childId) {
+      setChildId(children[0].id);
+    }
+  },[children, childId]);
+
+  /* ── child → parents ── */
+  useEffect(()=>{
+    if (!childId) { setParents([]); setParentId(null); return; }
+    setParentId(null); // reset parent selection when child changes
+    let cancelled = false;
+    fetch(`/api/report/child-parents?child_id=${childId}`).then(r=>r.json())
+      .then(j=>{
+        if (!cancelled) setParents(j.data??[]);
+      });
+    return () => { cancelled = true; };
+  },[childId]);
 
   /* ── child → days ── */
   useEffect(()=>{
-    // auto-select เด็กคนแรกถ้ายังไม่ได้เลือก
-    if (!childId && children.length > 0) {
-      setChildId(children[0].id);
-      return;
-    }
+    if (!childId) return;
     setDaysLoading(true);
     setDayEntries([]); setDayIdx(0); setReport(null); setAttendance(null); setScores([]);
+    let cancelled = false;
     fetch(`/api/report/dates?child_id=${childId}`).then(r=>r.json())
-      .then(j=>setDayEntries(j.data??[]))
-      .finally(()=>setDaysLoading(false));
-  },[childId, children]);
+      .then(j=>{
+        if (!cancelled) setDayEntries(j.data??[]);
+      })
+      .finally(()=>{
+        if (!cancelled) setDaysLoading(false);
+      });
+    return () => { cancelled = true; };
+  },[childId]);
 
   /* ── day → report ── */
   useEffect(()=>{
     const entry = dayEntries[dayIdx];
     if (!entry||!childId){setReport(null);setAttendance(null);setScores([]);return;}
     setReportLoading(true);
+    let cancelled = false;
     Promise.all([
       entry.report_id ? fetch(`/api/daily-reports/${entry.report_id}`).then(r=>r.json()) : Promise.resolve({data:null}),
       fetch(`/api/attendance?daily_id=${entry.daily_id}&child_id=${childId}`).then(r=>r.json()),
       fetch(`/api/behavior-scores?daily_id=${entry.daily_id}&child_id=${childId}`).then(r=>r.json()),
     ]).then(([rj,aj,bj])=>{
+      if (cancelled) return;
       const rep = rj.data??null;
       setReport(rep); setAttendance((aj.data??[])[0]??null); setScores(bj.data??[]);
       // load teacher
-      if (rep?.created_by) fetch(`/api/users/${rep.created_by}`).then(r=>r.json()).then(j=>setTeacher(j.data??null)).catch(()=>{});
+      if (rep?.created_by) fetch(`/api/users/${rep.created_by}`).then(r=>r.json()).then(j=>{
+        if (!cancelled) setTeacher(j.data??null);
+      }).catch(()=>{});
       else setTeacher(null);
-    }).finally(()=>setReportLoading(false));
+    }).finally(()=>{
+      if (!cancelled) setReportLoading(false);
+    });
+    return () => { cancelled = true; };
   },[dayIdx,dayEntries,childId]);
 
   const selectedChild  = children.find(c=>c.id===childId);
@@ -367,7 +386,14 @@ export default function LiffPage() {
                           {report.food_amount&&(
                             <span className={`status-pill status-${report.food_amount.replace('_','-')}`}>{amtL[report.food_amount]}</span>
                           )}
-                          {report.food_note&&<div className="food-note">💬 {report.food_note}</div>}
+                          <div className="food-note" style={{
+                            borderTop: report.food_note
+                                ? '1px solid #e2e8f0'
+                                : '1px solid #f8fafc'
+                            }}
+                            >
+                            {report.food_note ? (<>💬 {report.food_note}</>) : ('\u00A0')}
+                          </div>
                         </div>
                       )}
                       {report.daily?.fruit&&(
@@ -379,7 +405,14 @@ export default function LiffPage() {
                           {report.fruit_amount&&(
                             <span className={`status-pill status-${report.fruit_amount.replace('_','-')}`}>{amtL[report.fruit_amount]}</span>
                           )}
-                          {report.fruit_note&&<div className="food-note">💬 {report.fruit_note}</div>}
+                          <div className="food-note" style={{
+                            borderTop: report.fruit_note
+                                ? '1px solid #e2e8f0'
+                                : '1px solid #f8fafc'
+                            }}
+                            >
+                            {report.fruit_note ? (<>💬 {report.fruit_note}</>) : ('\u00A0')}
+                          </div>
                         </div>
                       )}
                     </div>

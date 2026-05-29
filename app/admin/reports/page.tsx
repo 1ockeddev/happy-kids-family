@@ -12,15 +12,15 @@ import { Pencil, Trash2, Plus, X, MessageSquare } from 'lucide-react';
 const AL: Record<MilkStatus, string> = { all: 'หมด', some: 'บางส่วน', not_must: 'ไม่จำเป็น', skip: 'ข้าม' };
 const AC: Record<MilkStatus, string> = { all: 'badge-active', some: 'badge-leave', not_must: 'badge-inactive', skip: 'badge-inactive' };
 const ET: Record<ExcretionType,   string> = { pee: '💛 ปัสสาวะ', poo: '💩 อุจจาระ' };
-const EA: Record<ExcretionAction, string> = { diaper: '🩱 ผ้าอ้อม', potty: '🚽 กระโถน' };
+const EA: Record<ExcretionAction, string> = { diaper: '🩲 ผ้าอ้อม', potty: '🚽 กระโถน' };
 
 const EMPTY_FORM = {
   cohort_id: '', daily_id: '', child_id: '',
   nap_from: '', nap_to: '',
-  milk1: 'skip' as MilkStatus, milk1_note: '',
-  milk2: 'skip' as MilkStatus, milk2_note: '',
-  food_amount: 'skip' as MilkStatus, food_note: '',
-  fruit_amount: 'skip' as MilkStatus, fruit_note: '',
+  milk1: 'all' as MilkStatus, milk1_note: '',
+  milk2: 'all' as MilkStatus, milk2_note: '',
+  food_amount: 'all' as MilkStatus, food_note: '',
+  fruit_amount: 'all' as MilkStatus, fruit_note: '',
   note: '',
   created_by: '' as string,
 };
@@ -94,7 +94,7 @@ function ScoreInput({ item, score, onChange, onNoteChange }: {
         </div>
         {/* Face buttons */}
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          {FACES.slice(0, max).map(f => {
+          {FACES.slice(0, max).reverse().map(f => {
             const active = val === f.score;
             return (
               <button key={f.score} type="button"
@@ -191,8 +191,21 @@ export default function ReportsPage() {
     fetch(`/api/enrollments?cohort_id=${form.cohort_id}`).then(r => r.json()).then(j => {
       setChildrenForCohort((j.data ?? []).map((e: { child?: Child }) => e.child).filter(Boolean) as Child[]);
     });
-    fetch(`/api/behavior-categories?cohort_id=${form.cohort_id}`).then(r => r.json()).then(j => setBehaviorsForCohort(j.data ?? []));
-  }, [form.cohort_id]);
+    fetch(`/api/behavior-categories?cohort_id=${form.cohort_id}`).then(r => r.json()).then(j => {
+      const cats: BehaviorCategory[] = j.data ?? [];
+      setBehaviorsForCohort(cats);
+      // Set default scores to max (3) for all items when adding new report
+      if (modal === 'add') {
+        const defaultScores: BehaviorScore[] = [];
+        cats.forEach(cat => {
+          (cat as BehaviorCategory & { items?: BehaviorItem[] }).items?.forEach(item => {
+            defaultScores.push({ item_id: item.id, score: Math.min(item.max_score, 3), note: '' });
+          });
+        });
+        setScores(defaultScores);
+      }
+    });
+  }, [form.cohort_id, modal]);
 
   useEffect(() => {
     setSelectedDaily(dailiesForCohort.find(d => d.id === form.daily_id) ?? null);
@@ -201,7 +214,9 @@ export default function ReportsPage() {
   const openAdd = () => {
     const beer = teachers.find(t => t.display_name?.includes(DEFAULT_TEACHER_NAME));
     setForm({ ...EMPTY_FORM, created_by: beer?.id ?? teachers[0]?.id ?? '' });
-    setScores([]); setExcretions([]); setSelectedDaily(null); setModal('add');
+    setScores([]); setExcretions([]); setSelectedDaily(null); 
+    setBehaviorsForCohort([]); // Reset behaviors when opening add modal
+    setModal('add');
   };
 
   const openEdit = async (r: DailyReport) => {
@@ -257,8 +272,31 @@ export default function ReportsPage() {
       }
       const daily_id = form.daily_id || selected!.daily_id;
       const child_id = form.child_id || selected!.child_id;
-      await Promise.all(excretions.filter(ex => ex._del && !ex._new).map(ex => fetch(`/api/excretions/${ex.id}`, { method: 'DELETE' })));
-      await Promise.all(excretions.filter(ex => ex._new && !ex._del).map(ex => fetch('/api/excretions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ daily_id, child_id, time: ex.time || null, type: ex.type, action: ex.action }) })));
+      
+      // Delete all existing excretions (for edit mode)
+      if (modal === 'edit' && selected) {
+        const existingExcretions = selected.excretions ?? [];
+        await Promise.all(existingExcretions.map(ex => 
+          fetch(`/api/excretions/${ex.id}`, { method: 'DELETE' })
+        ));
+      }
+      
+      // Create all visible excretions
+      const visibleExcretions = excretions.filter(ex => !ex._del);
+      await Promise.all(visibleExcretions.map(ex => 
+        fetch('/api/excretions', { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' }, 
+          body: JSON.stringify({ 
+            daily_id, 
+            child_id, 
+            time: ex.time || null, 
+            type: ex.type, 
+            action: ex.action 
+          }) 
+        })
+      ));
+      
       if (scores.length > 0) {
         await Promise.all(scores.filter(s => s.score !== null).map(s => fetch('/api/behavior-scores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ daily_id, child_id, item_id: s.item_id, score: s.score, note: s.note || null }) })));
       }
@@ -288,6 +326,20 @@ export default function ReportsPage() {
     setScores(p => p.map(s => s.item_id === item_id ? { ...s, note } : s));
 
   const visibleEx = excretions.filter(ex => !ex._del);
+
+  // Sort behavior categories: Conduct and Work Habits first
+  const sortedBehaviors = [...behaviorsForCohort].sort((a, b) => {
+    const aIsConduct = a.name_en?.toLowerCase().includes('conduct');
+    const bIsConduct = b.name_en?.toLowerCase().includes('conduct');
+    const aIsWork = a.name_en?.toLowerCase().includes('work');
+    const bIsWork = b.name_en?.toLowerCase().includes('work');
+    
+    if (aIsConduct && !bIsConduct) return -1;
+    if (!aIsConduct && bIsConduct) return 1;
+    if (aIsWork && !bIsWork) return -1;
+    if (!aIsWork && bIsWork) return 1;
+    return 0;
+  });
 
   /* ─── section header ─ */
   const Sec = ({ emoji, label, color }: { emoji: string; label: string; color: string }) => (
@@ -399,6 +451,93 @@ export default function ReportsPage() {
           </div>
         )}
 
+        {/* ── Behaviors ── */}
+        {sortedBehaviors.map(cat => (
+          <div key={cat.id} style={{ background: '#FAFAFA', border: '1px solid #F3F4F6', borderRadius: 8, padding: '14px 16px' }}>
+            <Sec emoji="🧠" label={`${cat.name_th}  ${cat.name_en}`} color="#6C5CE7" />
+            {(cat as BehaviorCategory & { items?: BehaviorItem[] }).items?.map(item => (
+              <ScoreInput key={item.id} item={item}
+                score={scores.find(s => s.item_id === item.id)}
+                onChange={setScore}
+                onNoteChange={setScoreNote} />
+            ))}
+          </div>
+        ))}
+
+        {/* ── Nap ── */}
+        <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '14px 16px' }}>
+          <Sec emoji="😴" label="การนอน" color="#9CA3AF" />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-group"><label className="form-label">เริ่มนอน</label><input className="form-input" type="time" value={form.nap_from} onChange={e => setForm(f => ({ ...f, nap_from: e.target.value }))} /></div>
+            <div className="form-group"><label className="form-label">ตื่นนอน</label><input className="form-input" type="time" value={form.nap_to} onChange={e => setForm(f => ({ ...f, nap_to: e.target.value }))} /></div>
+          </div>
+        </div>
+
+        {/* ── Excretions ── */}
+        <div style={{ background: '#F0EEFF', borderRadius: 8, padding: '14px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <Sec emoji="🚽" label="การขับถ่าย" color="#6C5CE7" />
+            <button type="button" className="btn btn-sm" style={{ background: '#6C5CE7', color: 'white', fontSize: 12 }} onClick={addEx}><Plus size={12} /> เพิ่ม</button>
+          </div>
+          {visibleEx.length === 0 && <p style={{ color: '#9CA3AF', fontSize: 13 }}>ยังไม่มีบันทึก</p>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {visibleEx.map(ex => (
+              <div key={ex.id} style={{ background: 'white', borderRadius: 8, padding: '8px 12px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <input type="time" className="form-input" value={ex.time ?? ''} onChange={e => updEx(ex.id, { time: e.target.value || null })} style={{ width: 100, padding: '5px 8px', fontSize: 13 }} />
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {(['pee', 'poo'] as ExcretionType[]).map(t => (
+                    <button key={t} type="button" onClick={() => updEx(ex.id, { type: t })}
+                      style={{ padding: '3px 10px', borderRadius: 99, border: 'none', cursor: 'pointer', fontSize: 12, background: ex.type === t ? (t === 'pee' ? '#EBF4FA' : '#FEF6E6') : '#F3F4F6', color: ex.type === t ? (t === 'pee' ? '#4A90B8' : '#F5A623') : '#9CA3AF', fontWeight: ex.type === t ? 600 : 400 }}>
+                      {ET[t]}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {(['diaper', 'potty'] as ExcretionAction[]).map(a => (
+                    <button key={a} type="button" onClick={() => updEx(ex.id, { action: a })}
+                      style={{ padding: '3px 10px', borderRadius: 99, border: 'none', cursor: 'pointer', fontSize: 12, background: ex.action === a ? '#F0EEFF' : '#F3F4F6', color: ex.action === a ? '#6C5CE7' : '#9CA3AF', fontWeight: ex.action === a ? 600 : 400 }}>
+                      {EA[a]}
+                    </button>
+                  ))}
+                </div>
+                <button type="button" onClick={() => delEx(ex.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF' }}><X size={14} /></button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Food & Fruit ── */}
+        <div style={{ background: '#EBF7F0', borderRadius: 8, padding: '14px 16px' }}>
+          <Sec emoji="🍱" label="ปริมาณที่รับประทาน" color="#4CAF76" />
+          <AmountSelect 
+            label={selectedDaily?.food ? `🍱 ${selectedDaily.food}` : "ปริมาณอาหาร"} 
+            value={form.food_amount} 
+            noteValue={form.food_note}
+            onAmountChange={v => setForm(f => ({ ...f, food_amount: v }))}
+            onNoteChange={v => setForm(f => ({ ...f, food_note: v }))} />
+          <div style={{ marginTop: 10 }}>
+            <AmountSelect 
+              label={selectedDaily?.fruit ? `🍎 ${selectedDaily.fruit}` : "ปริมาณผลไม้"} 
+              value={form.fruit_amount} 
+              noteValue={form.fruit_note}
+              onAmountChange={v => setForm(f => ({ ...f, fruit_amount: v }))}
+              onNoteChange={v => setForm(f => ({ ...f, fruit_note: v }))} />
+          </div>
+        </div>
+
+        {/* ── Milk ── */}
+        <div style={{ background: '#FEF0EB', borderRadius: 8, padding: '14px 16px' }}>
+          <Sec emoji="🍼" label="นม" color="#E8754A" />
+          <AmountSelect label="นม มื้อ 1" value={form.milk1} noteValue={form.milk1_note}
+            onAmountChange={v => setForm(f => ({ ...f, milk1: v }))}
+            onNoteChange={v => setForm(f => ({ ...f, milk1_note: v }))} />
+          <div style={{ marginTop: 10 }}>
+            <AmountSelect label="นม มื้อ 2" value={form.milk2} noteValue={form.milk2_note}
+              onAmountChange={v => setForm(f => ({ ...f, milk2: v }))}
+              onNoteChange={v => setForm(f => ({ ...f, milk2_note: v }))} />
+          </div>
+        </div>
+
         {/* ── Teacher selector ── */}
         <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '12px 14px' }}>
           <p style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
@@ -442,87 +581,6 @@ export default function ReportsPage() {
             </div>
           )}
         </div>
-
-        {/* ── Nap ── */}
-        <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '14px 16px' }}>
-          <Sec emoji="😴" label="การนอน" color="#9CA3AF" />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div className="form-group"><label className="form-label">เริ่มนอน</label><input className="form-input" type="time" value={form.nap_from} onChange={e => setForm(f => ({ ...f, nap_from: e.target.value }))} /></div>
-            <div className="form-group"><label className="form-label">ตื่นนอน</label><input className="form-input" type="time" value={form.nap_to} onChange={e => setForm(f => ({ ...f, nap_to: e.target.value }))} /></div>
-          </div>
-        </div>
-
-        {/* ── Milk ── */}
-        <div style={{ background: '#FEF0EB', borderRadius: 8, padding: '14px 16px' }}>
-          <Sec emoji="🍼" label="นม" color="#E8754A" />
-          <AmountSelect label="นม มื้อ 1" value={form.milk1} noteValue={form.milk1_note}
-            onAmountChange={v => setForm(f => ({ ...f, milk1: v }))}
-            onNoteChange={v => setForm(f => ({ ...f, milk1_note: v }))} />
-          <div style={{ marginTop: 10 }}>
-            <AmountSelect label="นม มื้อ 2" value={form.milk2} noteValue={form.milk2_note}
-              onAmountChange={v => setForm(f => ({ ...f, milk2: v }))}
-              onNoteChange={v => setForm(f => ({ ...f, milk2_note: v }))} />
-          </div>
-        </div>
-
-        {/* ── Food & Fruit ── */}
-        <div style={{ background: '#EBF7F0', borderRadius: 8, padding: '14px 16px' }}>
-          <Sec emoji="🍱" label="ปริมาณที่รับประทาน" color="#4CAF76" />
-          <AmountSelect label="ปริมาณอาหาร" value={form.food_amount} noteValue={form.food_note}
-            onAmountChange={v => setForm(f => ({ ...f, food_amount: v }))}
-            onNoteChange={v => setForm(f => ({ ...f, food_note: v }))} />
-          <div style={{ marginTop: 10 }}>
-            <AmountSelect label="ปริมาณผลไม้" value={form.fruit_amount} noteValue={form.fruit_note}
-              onAmountChange={v => setForm(f => ({ ...f, fruit_amount: v }))}
-              onNoteChange={v => setForm(f => ({ ...f, fruit_note: v }))} />
-          </div>
-        </div>
-
-        {/* ── Excretions ── */}
-        <div style={{ background: '#F0EEFF', borderRadius: 8, padding: '14px 16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <Sec emoji="🚽" label="การขับถ่าย" color="#6C5CE7" />
-            <button type="button" className="btn btn-sm" style={{ background: '#6C5CE7', color: 'white', fontSize: 12 }} onClick={addEx}><Plus size={12} /> เพิ่ม</button>
-          </div>
-          {visibleEx.length === 0 && <p style={{ color: '#9CA3AF', fontSize: 13 }}>ยังไม่มีบันทึก</p>}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {visibleEx.map(ex => (
-              <div key={ex.id} style={{ background: 'white', borderRadius: 8, padding: '8px 12px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <input type="time" className="form-input" value={ex.time ?? ''} onChange={e => updEx(ex.id, { time: e.target.value || null })} style={{ width: 100, padding: '5px 8px', fontSize: 13 }} />
-                <div style={{ display: 'flex', gap: 4 }}>
-                  {(['pee', 'poo'] as ExcretionType[]).map(t => (
-                    <button key={t} type="button" onClick={() => updEx(ex.id, { type: t })}
-                      style={{ padding: '3px 10px', borderRadius: 99, border: 'none', cursor: 'pointer', fontSize: 12, background: ex.type === t ? (t === 'pee' ? '#EBF4FA' : '#FEF6E6') : '#F3F4F6', color: ex.type === t ? (t === 'pee' ? '#4A90B8' : '#F5A623') : '#9CA3AF', fontWeight: ex.type === t ? 600 : 400 }}>
-                      {ET[t]}
-                    </button>
-                  ))}
-                </div>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  {(['diaper', 'potty'] as ExcretionAction[]).map(a => (
-                    <button key={a} type="button" onClick={() => updEx(ex.id, { action: a })}
-                      style={{ padding: '3px 10px', borderRadius: 99, border: 'none', cursor: 'pointer', fontSize: 12, background: ex.action === a ? '#F0EEFF' : '#F3F4F6', color: ex.action === a ? '#6C5CE7' : '#9CA3AF', fontWeight: ex.action === a ? 600 : 400 }}>
-                      {EA[a]}
-                    </button>
-                  ))}
-                </div>
-                <button type="button" onClick={() => delEx(ex.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF' }}><X size={14} /></button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Behaviors ── */}
-        {behaviorsForCohort.map(cat => (
-          <div key={cat.id} style={{ background: '#FAFAFA', border: '1px solid #F3F4F6', borderRadius: 8, padding: '14px 16px' }}>
-            <Sec emoji="🧠" label={`${cat.name_th}  ${cat.name_en}`} color="#6C5CE7" />
-            {(cat as BehaviorCategory & { items?: BehaviorItem[] }).items?.map(item => (
-              <ScoreInput key={item.id} item={item}
-                score={scores.find(s => s.item_id === item.id)}
-                onChange={setScore}
-                onNoteChange={setScoreNote} />
-            ))}
-          </div>
-        ))}
 
         {/* ── Note ── */}
         <div className="form-group">
