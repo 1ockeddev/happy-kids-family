@@ -10,6 +10,19 @@ import Modal from '@/components/ui/Modal';
 import { Pencil, Trash2, Plus, X, MessageSquare, FileText } from 'lucide-react';
 import ReportModalContent from '@/components/admin/ReportModalContent';
 
+/* ─── Helper: Parse date as local ── */
+const parseLocalDate = (dateStr: string): Date => {
+  if (!dateStr) return new Date();
+  // Extract YYYY-MM-DD from various formats (YYYY-MM-DD, YYYY-MM-DDTHH:mm:ss, etc.)
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    const [, y, m, d] = match;
+    return new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+  }
+  // Fallback to regular Date parsing
+  return new Date(dateStr);
+};
+
 /* ─── constants ── */
 const AL: Record<MilkStatus, string> = { all: 'หมด', some: 'บางส่วน', not_must: 'ไม่จำเป็น', skip: 'ข้าม' };
 const AC: Record<MilkStatus, string> = { all: 'badge-active', some: 'badge-leave', not_must: 'badge-inactive', skip: 'badge-inactive' };
@@ -506,7 +519,7 @@ export default function DailyPage() {
       <CrudTable<Daily>
         title="บันทึกรายวัน" description="จัดการกิจกรรม อาหาร และข้อมูลประจำวัน"
         columns={[
-          { key: 'date', label: 'วันที่', render: (r) => new Date(r.date).toLocaleDateString('th-TH', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) },
+          { key: 'date', label: 'วันที่', render: (r) => parseLocalDate(r.date).toLocaleDateString('th-TH', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) },
           { key: 'cohort', label: 'ห้องเรียน', render: (r) => <span className="badge badge-teacher">{(r.cohort as Cohort)?.name ?? '-'}</span> },
           { key: 'activity', label: 'กิจกรรม' },
           { key: 'food', label: 'อาหาร' },
@@ -527,7 +540,9 @@ export default function DailyPage() {
         ]}
         data={data} loading={loading} error={error} onRefresh={load}
         onAdd={() => {
-          setForm({ cohort_id: '', date: new Date().toISOString().split('T')[0], activity: '', food: '', fruit: '', note: '' });
+          const now = new Date();
+          const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+          setForm({ cohort_id: '', date: todayStr, activity: '', food: '', fruit: '', note: '' });
           setShowReportInModal(false);
           const beer = teachers.find(t => t.display_name?.includes(DEFAULT_TEACHER_NAME));
           setReportForm({ ...EMPTY_REPORT_FORM, created_by: beer?.id ?? teachers[0]?.id ?? '' });

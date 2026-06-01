@@ -14,23 +14,41 @@ export async function GET() {
   try {
     // ดึง column list จริงจาก DB — ไม่ต้อง hardcode
     const colRows = await query(
-      `SELECT table_name, column_name
+      `SELECT table_name, column_name, data_type
        FROM information_schema.columns
        WHERE table_schema = 'public'
          AND table_name = ANY($1)`,
       [TABLES]
     );
     const tableColumns: Record<string, Set<string>> = {};
-    for (const { table_name, column_name } of colRows as { table_name: string; column_name: string }[]) {
+    const dateColumns: Record<string, Set<string>> = {};
+    
+    for (const { table_name, column_name, data_type } of colRows as { table_name: string; column_name: string; data_type: string }[]) {
       if (!tableColumns[table_name]) tableColumns[table_name] = new Set();
       tableColumns[table_name].add(column_name);
+      
+      // Track date/timestamp columns
+      if (data_type === 'date' || data_type === 'timestamp without time zone' || data_type === 'timestamp with time zone') {
+        if (!dateColumns[table_name]) dateColumns[table_name] = new Set();
+        dateColumns[table_name].add(column_name);
+      }
     }
 
     const exported: Record<string, unknown[]> = {};
     for (const table of TABLES) {
       const cols = tableColumns[table] ?? new Set();
+      const dateCols = dateColumns[table] ?? new Set();
       const order = cols.has('created_at') ? 'ORDER BY created_at NULLS LAST' : '';
-      const rows  = await query(`SELECT * FROM "${table}" ${order}`, []);
+      
+      // Convert date columns to YYYY-MM-DD format in the query
+      const selectCols = Array.from(cols).map(col => {
+        if (dateCols.has(col)) {
+          return `to_char("${col}", 'YYYY-MM-DD') AS "${col}"`;
+        }
+        return `"${col}"`;
+      }).join(', ');
+      
+      const rows = await query(`SELECT ${selectCols} FROM "${table}" ${order}`, []);
       exported[table] = rows;
     }
 

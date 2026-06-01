@@ -12,7 +12,16 @@ export async function GET(req: NextRequest) {
         json_build_object('id', co.id, 'name', co.name, 'level', co.level) AS cohort
        FROM daily d
        JOIN cohort co ON co.id = d.cohort_id
-       WHERE ($1 = '' OR co.name ILIKE $2 OR d.activity ILIKE $2)
+       WHERE ($1 = '' OR 
+              co.name ILIKE $2 OR 
+              d.activity ILIKE $2 OR 
+              d.food ILIKE $2 OR 
+              d.fruit ILIKE $2 OR 
+              to_char(d.date, 'YYYY-MM-DD') ILIKE $2 OR 
+              to_char(d.date, 'DD/MM/YYYY') ILIKE $2 OR
+              to_char(d.date, 'YYYY') ILIKE $2 OR
+              to_char(d.date + INTERVAL '543 years', 'YYYY') ILIKE $2 OR
+              to_char(d.date + INTERVAL '543 years', 'DD/MM/YYYY') ILIKE $2)
          AND ($3 = '' OR d.date::text = $3)
          AND ($4 = '' OR d.cohort_id::text = $4)
        ORDER BY d.date DESC, co.name`,
