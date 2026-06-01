@@ -1,13 +1,51 @@
 import Link from 'next/link';
-import { mockChildren, mockCohorts, mockDailies, mockAttendances } from '@/lib/mock-data';
+import { query } from '@/lib/db';
 
-export default function AdminDashboard() {
-  const presentToday = mockAttendances.filter(a => a.status === 'present').length;
-  const absentToday = mockAttendances.filter(a => a.status === 'absent').length;
+// Fetch data directly from database
+async function fetchDashboardData() {
+  const today = new Date().toISOString().split('T')[0];
+
+  try {
+    const [children, cohorts, dailies, attendances] = await Promise.all([
+      query(`SELECT * FROM child WHERE deleted_at IS NULL ORDER BY name_th`),
+      query(`SELECT * FROM cohort ORDER BY academic_year DESC, name`),
+      query(
+        `SELECT d.*,
+          json_build_object('id', co.id, 'name', co.name, 'level', co.level) AS cohort
+         FROM daily d
+         JOIN cohort co ON co.id = d.cohort_id
+         WHERE d.date = $1
+         ORDER BY co.name`,
+        [today]
+      ),
+      query(
+        `SELECT a.*,
+          json_build_object('id', c.id, 'name_th', c.name_th, 'name_en', c.name_en) AS child
+         FROM attendance a
+         JOIN child c ON c.id = a.child_id
+         JOIN daily d ON d.id = a.daily_id
+         WHERE d.date = $1
+         ORDER BY c.name_th`,
+        [today]
+      ),
+    ]);
+
+    return { children, cohorts, dailies, attendances };
+  } catch (error) {
+    console.error('Error fetching dashboard data:', error);
+    return { children: [], cohorts: [], dailies: [], attendances: [] };
+  }
+}
+
+export default async function AdminDashboard() {
+  const { children, cohorts, dailies, attendances } = await fetchDashboardData();
+  
+  const presentToday = attendances.filter((a: any) => a.status === 'present').length;
+  const absentToday = attendances.filter((a: any) => a.status === 'absent').length;
 
   const stats = [
-    { label: 'นักเรียนทั้งหมด', value: mockChildren.length, icon: '👧', color: '#E8754A', bg: '#FEF0EB' },
-    { label: 'ห้องเรียน', value: mockCohorts.length, icon: '🏫', color: '#4A90B8', bg: '#EBF4FA' },
+    { label: 'นักเรียนทั้งหมด', value: children.length, icon: '👧', color: '#E8754A', bg: '#FEF0EB' },
+    { label: 'ห้องเรียน', value: cohorts.length, icon: '🏫', color: '#4A90B8', bg: '#EBF4FA' },
     { label: 'มาเรียนวันนี้', value: presentToday, icon: '✅', color: '#4CAF76', bg: '#EBF7F0' },
     { label: 'ขาดเรียนวันนี้', value: absentToday, icon: '❌', color: '#E85C5C', bg: '#FDECEC' },
   ];
@@ -64,13 +102,13 @@ export default function AdminDashboard() {
               <h3 style={{ fontSize: '15px', fontWeight: '600' }}>📅 บันทึกวันนี้</h3>
             </div>
             <div style={{ padding: '0' }}>
-              {mockDailies.length === 0 ? (
+              {dailies.length === 0 ? (
                 <p style={{ padding: '20px', color: '#9CA3AF', fontSize: '14px' }}>ยังไม่มีบันทึกวันนี้</p>
-              ) : mockDailies.map((d) => (
+              ) : dailies.map((d: any) => (
                 <div key={d.id} style={{ padding: '14px 20px', borderBottom: '1px solid #F3F4F6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <p style={{ fontWeight: '500', fontSize: '14px' }}>{d.cohort?.name}</p>
-                    <p style={{ color: '#9CA3AF', fontSize: '12px' }}>{d.activity}</p>
+                    <p style={{ fontWeight: '500', fontSize: '14px' }}>{d.cohort?.name || 'ไม่ระบุห้อง'}</p>
+                    <p style={{ color: '#9CA3AF', fontSize: '12px' }}>{d.activity || 'ไม่มีกิจกรรม'}</p>
                   </div>
                   <span style={{ fontSize: '12px', color: '#4CAF76', background: '#EBF7F0', padding: '2px 10px', borderRadius: '99px' }}>บันทึกแล้ว</span>
                 </div>
@@ -83,9 +121,11 @@ export default function AdminDashboard() {
               <h3 style={{ fontSize: '15px', fontWeight: '600' }}>📋 สถานะการเข้าเรียนวันนี้</h3>
             </div>
             <div style={{ padding: '0' }}>
-              {mockAttendances.map((a) => (
+              {attendances.length === 0 ? (
+                <p style={{ padding: '20px', color: '#9CA3AF', fontSize: '14px' }}>ยังไม่มีข้อมูลการเข้าเรียนวันนี้</p>
+              ) : attendances.slice(0, 10).map((a: any) => (
                 <div key={a.id} style={{ padding: '12px 20px', borderBottom: '1px solid #F3F4F6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <p style={{ fontSize: '14px' }}>{a.child?.name_th}</p>
+                  <p style={{ fontSize: '14px' }}>{a.child?.name_th || a.child?.name_en || 'ไม่ระบุชื่อ'}</p>
                   <span className={`badge badge-${a.status}`}>
                     {a.status === 'present' ? 'มาเรียน' : a.status === 'absent' ? 'ขาด' : a.status === 'sick' ? 'ป่วย' : 'ลา'}
                   </span>

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Users, BookOpen, GraduationCap, CalendarDays,
-  ClipboardList, FileText, Brain, UserCog, Home, X, Database,
+  ClipboardList, FileText, Brain, UserCog, Home, X, Database, CalendarOff,
 } from 'lucide-react';
 
 const menuGroups: {
@@ -16,6 +16,7 @@ const menuGroups: {
     { href: '/admin/children',    label: 'นักเรียน',       icon: Users },
     { href: '/admin/cohorts',     label: 'ห้องเรียน',      icon: BookOpen },
     { href: '/admin/enrollments', label: 'ลงทะเบียน',      icon: GraduationCap },
+    { href: '/admin/holidays',    label: 'วันหยุด',        icon: CalendarOff },
   ]},
   { label: 'รายวัน', items: [
     { href: '/admin/daily',      label: 'บันทึกรายวัน',   icon: CalendarDays },

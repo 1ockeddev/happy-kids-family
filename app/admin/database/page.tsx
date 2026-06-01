@@ -23,6 +23,7 @@ const TABLE_LABELS: Record<string, string> = {
   behavior_item:        '📌 รายการพฤติกรรม',
   child_behavior_score: '⭐ คะแนนพฤติกรรม',
   child_excretion:      '🚽 การขับถ่าย',
+  holidays:             '🏖️ วันหยุด',
 };
 
 export default function DatabasePage() {

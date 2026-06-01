@@ -22,6 +22,170 @@ interface BehaviorScore {
   note?:string;
 }
 interface DayEntry { date:string; daily_id:string; report_id:string|null }
+interface DateSquare {
+  date: Date;
+  dateStr: string;     // YYYY-MM-DD format
+  status: string | null;
+  hasReport: boolean;
+  dayIdx: number | null;  // Index in dayEntries array, null if no report
+  isHoliday: boolean;  // Is this date a holiday?
+  holidayName?: string; // Holiday name if isHoliday is true
+  activity?: string;    // Activity name if available
+}
+interface WeekColumn {
+  days: DateSquare[];
+  monthLabel: string;  // Empty string if not first week of month
+}
+interface MonthSpan {
+  label: string;       // e.g., "ม.ค.", "ก.พ."
+  startWeekIdx: number;
+  weekCount: number;
+}
+
+/* ── Helper Functions ─────────────────────────────── */
+// Parse YYYY-MM-DD string as local date (not UTC to avoid timezone shift)
+const parseLocalDate = (dateStr: string): Date => {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
+
+// Map attendance status to color
+const getStatusColor = (status: string | null): string => {
+  if (!status) return '#e2e8f0';
+  switch (status) {
+    case 'present': return '#10b981';
+    case 'leave': return '#f59e0b';
+    case 'sick': return '#fbbf24';
+    case 'absent': return '#ef4444';
+    default: return '#e2e8f0';
+  }
+};
+
+// Format month label in Thai abbreviation
+const formatMonthLabel = (date: Date): string => {
+  return date.toLocaleDateString('th-TH', { month: 'short' });
+};
+
+/* ── Core Algorithm Functions ─────────────────────────────── */
+// Find dayIdx for a given date string in dayEntries array
+const findDayIdxForDate = (dateStr: string, dayEntries: DayEntry[]): number | null => {
+  const idx = dayEntries.findIndex(entry => entry.date === dateStr);
+  return idx >= 0 ? idx : null;
+};
+
+// Generate weeks with report mapping
+const generateWeeksWithReportMapping = (
+  attendanceSummary: { date: string; status: string }[],
+  dayEntries: DayEntry[],
+  enrollmentPeriod: { start: string; end: string | null } | null,
+  holidays: { date: string; name_th: string }[],
+  activities: { date: string; activity: string }[]
+): WeekColumn[] => {
+  // Use enrollment period if available, otherwise fall back to attendance summary
+  let firstDate: Date;
+  let lastDate: Date;
+
+  if (enrollmentPeriod) {
+    firstDate = parseLocalDate(enrollmentPeriod.start);
+    // Use end_date if exists, otherwise use today
+    lastDate = enrollmentPeriod.end ? parseLocalDate(enrollmentPeriod.end) : new Date();
+  } else if (attendanceSummary.length > 0) {
+    firstDate = parseLocalDate(attendanceSummary[0].date);
+    lastDate = parseLocalDate(attendanceSummary[attendanceSummary.length - 1].date);
+  } else {
+    return [];
+  }
+
+  // Start from Sunday of first week
+  const startDate = new Date(firstDate);
+  startDate.setDate(startDate.getDate() - startDate.getDay());
+
+  // End at Saturday of last week
+  const endDate = new Date(lastDate);
+  endDate.setDate(endDate.getDate() + (6 - endDate.getDay()));
+
+  // Create date maps for O(1) lookup
+  const dateMap = new Map(attendanceSummary.map(d => [d.date, d.status]));
+  const dayEntriesMap = new Map(dayEntries.map((entry, idx) => [entry.date, idx]));
+  const holidaysMap = new Map(holidays.map(h => [h.date, h.name_th]));
+  const activitiesMap = new Map(activities.map(a => [a.date, a.activity]));
+
+  // Generate weeks
+  const weeks: WeekColumn[] = [];
+  let currentDate = new Date(startDate);
+
+  while (currentDate <= endDate) {
+    const week: DateSquare[] = [];
+    for (let i = 0; i < 7; i++) {
+      const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+      const status = dateMap.get(dateStr) ?? null;
+      const dayIdx = dayEntriesMap.get(dateStr) ?? null;
+      const hasReport = dayIdx !== null; // Has report if date exists in dayEntries
+      const isHoliday = holidaysMap.has(dateStr);
+      const holidayName = holidaysMap.get(dateStr);
+      const activity = activitiesMap.get(dateStr);
+
+      week.push({
+        date: new Date(currentDate),
+        dateStr,
+        status,
+        hasReport,
+        dayIdx,
+        isHoliday,
+        holidayName,
+        activity
+      });
+
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    weeks.push({ days: week, monthLabel: '' });
+  }
+
+  return weeks;
+};
+
+// Calculate month spans for header row
+const calculateMonthSpans = (weeks: WeekColumn[]): MonthSpan[] => {
+  if (!weeks.length) return [];
+
+  const monthSpans: MonthSpan[] = [];
+  let currentMonth = -1;
+  let currentYear = -1;
+  let currentSpan: MonthSpan | null = null;
+
+  weeks.forEach((week, weekIdx) => {
+    const firstDayOfWeek = week.days[0].date;
+    const month = firstDayOfWeek.getMonth();
+    const year = firstDayOfWeek.getFullYear();
+
+    if (month !== currentMonth || year !== currentYear) {
+      // New month started
+      if (currentSpan !== null) {
+        monthSpans.push(currentSpan);
+      }
+
+      currentMonth = month;
+      currentYear = year;
+      currentSpan = {
+        label: formatMonthLabel(firstDayOfWeek),
+        startWeekIdx: weekIdx,
+        weekCount: 1
+      };
+    } else {
+      // Same month continues
+      if (currentSpan) {
+        currentSpan.weekCount++;
+      }
+    }
+  });
+
+  // Add final month span
+  if (currentSpan !== null) {
+    monthSpans.push(currentSpan);
+  }
+
+  return monthSpans;
+};
 
 const parseDate = (d?:string|null) => {
   if (!d) return null;
@@ -84,6 +248,64 @@ function Avatar({src,name,size=42,active,accentColor='#6366f1'}:{src?:string|nul
       </div>;
 }
 
+/* ── Custom Tooltip ─────────────────────────────────*/
+function CustomTooltip({children,text}:{children:React.ReactNode;text:string}) {
+  const [show, setShow] = useState(false);
+  const [pos, setPos] = useState({x:0,y:0});
+  
+  const handleMouseEnter = (e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setPos({x:rect.left + rect.width/2, y:rect.top - 8});
+    setShow(true);
+  };
+  
+  const handleMouseLeave = () => {
+    setShow(false);
+  };
+  
+  return (
+    <>
+      <div onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} style={{position:'relative'}}>
+        {children}
+      </div>
+      {show && (
+        <div style={{
+          position:'fixed',
+          left:pos.x,
+          top:pos.y,
+          transform:'translate(-50%, -100%)',
+          background:'rgba(15, 23, 42, 0.95)',
+          color:'white',
+          padding:'6px 10px',
+          borderRadius:6,
+          fontSize:'0.7rem',
+          fontWeight:500,
+          whiteSpace:'pre-line',
+          pointerEvents:'none',
+          zIndex:9999,
+          boxShadow:'0 4px 12px rgba(0,0,0,0.15)',
+          maxWidth:200,
+          textAlign:'center',
+          lineHeight:1.4
+        }}>
+          {text}
+          <div style={{
+            position:'absolute',
+            bottom:-4,
+            left:'50%',
+            transform:'translateX(-50%)',
+            width:0,
+            height:0,
+            borderLeft:'4px solid transparent',
+            borderRight:'4px solid transparent',
+            borderTop:'4px solid rgba(15, 23, 42, 0.95)'
+          }} />
+        </div>
+      )}
+    </>
+  );
+}
+
 /* ─────────────────────────────────────────── */
 export default function LiffPage() {
   const liff = useLiff();
@@ -105,6 +327,22 @@ export default function LiffPage() {
   const [daysLoading,   setDaysLoading]   = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
   const [notRegistered, setNotRegistered] = useState(false);
+  const [attendanceSummary, setAttendanceSummary] = useState<{date:string;status:string}[]>([]);
+  const [enrollmentPeriod, setEnrollmentPeriod] = useState<{start:string;end:string|null}|null>(null);
+  const [holidays, setHolidays] = useState<{date:string;name_th:string}[]>([]);
+  const [activities, setActivities] = useState<{date:string;activity:string}[]>([]);
+  const [behaviorSummary, setBehaviorSummary] = useState<{
+    item_id:string;
+    name_th:string;
+    category_name_th:string;
+    avg_score:number;
+    max_score:number;
+    daily_scores:{date:string;score:number}[];
+    days_recorded:number;
+  }[]>([]);
+  const [behaviorPeriod, setBehaviorPeriod] = useState<'7'|'14'|'30'|'all'>('30'); // Default 30 days
+  const [activeTab, setActiveTab] = useState<'daily'|'summary'>('daily'); // Tab state
+  const [cohortId, setCohortId] = useState<string|null>(null); // Store cohort_id from enrollment
 
   /* ── LIFF ready ── */
   useEffect(() => {
@@ -164,6 +402,8 @@ export default function LiffPage() {
     setDaysLoading(true);
     setDayEntries([]); setDayIdx(0); setReport(null); setAttendance(null); setScores([]);
     let cancelled = false;
+    
+    // Load days
     fetch(`/api/report/dates?child_id=${childId}`).then(r=>r.json())
       .then(j=>{
         if (!cancelled) setDayEntries(j.data??[]);
@@ -171,8 +411,92 @@ export default function LiffPage() {
       .finally(()=>{
         if (!cancelled) setDaysLoading(false);
       });
+    
+    // Load attendance summary for contribution graph
+    fetch(`/api/report/attendance-summary?child_id=${childId}`).then(r=>r.json())
+      .then(j=>{
+        if (!cancelled) setAttendanceSummary(j.data??[]);
+      });
+    
+    // Load enrollment period
+    fetch(`/api/report/enrollment-period?child_id=${childId}`).then(r=>r.json())
+      .then(j=>{
+        if (!cancelled && j.data?.start_date) {
+          const period = {
+            start: j.data.start_date,
+            end: j.data.end_date
+          };
+          setEnrollmentPeriod(period);
+          
+          // Store cohort_id for holidays API
+          const enrollmentCohortId = j.data.cohort_id || null;
+          setCohortId(enrollmentCohortId);
+          
+          // Load holidays for this period
+          let holidaysUrl = `/api/holidays?start_date=${period.start}&end_date=${period.end || new Date().toISOString().split('T')[0]}`;
+          if (enrollmentCohortId) {
+            holidaysUrl += `&cohort_id=${enrollmentCohortId}`;
+          }
+          fetch(holidaysUrl).then(r=>r.json())
+            .then(j=>{
+              if (!cancelled) setHolidays(j.data??[]);
+            });
+          
+          // Load activities for this period
+          fetch(`/api/report/activities?child_id=${childId}&start_date=${period.start}&end_date=${period.end || new Date().toISOString().split('T')[0]}`)
+            .then(r=>r.json())
+            .then(j=>{
+              if (!cancelled) setActivities(j.data??[]);
+            });
+        }
+      });
+    
     return () => { cancelled = true; };
   },[childId]);
+
+  /* ── Load behavior summary based on selected period ── */
+  useEffect(() => {
+    if (!childId || !enrollmentPeriod) return;
+    
+    let cancelled = false;
+    
+    // Calculate date range based on selected period
+    const today = new Date();
+    let dateFrom = enrollmentPeriod.start;
+    const dateTo = enrollmentPeriod.end || today.toISOString().split('T')[0];
+    
+    if (behaviorPeriod !== 'all') {
+      const daysAgo = parseInt(behaviorPeriod);
+      const fromDate = new Date(today);
+      fromDate.setDate(fromDate.getDate() - daysAgo);
+      dateFrom = fromDate.toISOString().split('T')[0];
+      
+      // Don't go before enrollment start
+      if (dateFrom < enrollmentPeriod.start) {
+        dateFrom = enrollmentPeriod.start;
+      }
+    }
+    
+    fetch(`/api/report/behavior-summary?child_id=${childId}&date_from=${dateFrom}&date_to=${dateTo}`)
+      .then(r=>r.json())
+      .then(j=>{
+        if (!cancelled) {
+          // Map items with daily_scores and days_recorded
+          const items = (j.data ?? []).map((item: any) => ({
+            item_id: item.item_id,
+            name_th: item.name_th,
+            category_name_th: item.category_name_th,
+            avg_score: parseFloat(item.avg_score),
+            max_score: item.max_score,
+            daily_scores: item.daily_scores || [],
+            days_recorded: item.days_recorded || 0
+          }));
+          setBehaviorSummary(items);
+        }
+      });
+    
+    return () => { cancelled = true; };
+  }, [childId, enrollmentPeriod, behaviorPeriod]);
 
   /* ── day → report ── */
   useEffect(()=>{
@@ -305,26 +629,323 @@ export default function LiffPage() {
           </div>
         </header>
 
-        {/* ─── DATE STRIP ─────────────────────────── */}
-        {!childLoading && dayEntries.length > 0 && (
-          <div style={{padding:'12px 16px',borderBottom:'1px solid #f1f5f9',display:'flex',gap:6,overflowX:'auto',scrollbarWidth:'none'}}>
-            {dayEntries.map((e,i)=>{
-              const dt = parseDate(e.date);
-              const sel = dayIdx===i;
-              return (
-                <button key={e.daily_id} onClick={()=>setDayIdx(i)}
-                  style={{flexShrink:0,display:'flex',flexDirection:'column',alignItems:'center',padding:'6px 10px',borderRadius:12,border:'none',cursor:'pointer',minWidth:50,background:sel?'#6366f1':'#f8fafc',color:sel?'white':'#475569',transition:'all .15s'}}>
-                  <span style={{fontSize:10,fontWeight:600,opacity:0.7}}>{dt?.toLocaleDateString('th-TH',{weekday:'short'})}</span>
-                  <span style={{fontSize:17,fontWeight:800}}>{dt?.getDate()}</span>
-                  <span style={{fontSize:10,opacity:0.7}}>{dt?.toLocaleDateString('th-TH',{month:'short'})}</span>
-                </button>
-              );
-            })}
+        {/* ─── TAB BUTTONS ─────────────────────────────── */}
+        {!childLoading && childId && (
+          <div style={{padding:'12px 16px',background:'white',borderBottom:'1px solid #f1f5f9',display:'flex',gap:8}}>
+            <button
+              onClick={() => setActiveTab('daily')}
+              style={{
+                flex: 1,
+                padding: '10px 16px',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                borderRadius: 10,
+                border: 'none',
+                cursor: 'pointer',
+                background: activeTab === 'daily' ? '#6366f1' : '#f1f5f9',
+                color: activeTab === 'daily' ? 'white' : '#64748b',
+                transition: 'all 0.2s',
+                boxShadow: activeTab === 'daily' ? '0 2px 8px rgba(99, 102, 241, 0.3)' : 'none'
+              }}
+            >
+              📅 รายวัน
+            </button>
+            <button
+              onClick={() => setActiveTab('summary')}
+              style={{
+                flex: 1,
+                padding: '10px 16px',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                borderRadius: 10,
+                border: 'none',
+                cursor: 'pointer',
+                background: activeTab === 'summary' ? '#6366f1' : '#f1f5f9',
+                color: activeTab === 'summary' ? 'white' : '#64748b',
+                transition: 'all 0.2s',
+                boxShadow: activeTab === 'summary' ? '0 2px 8px rgba(99, 102, 241, 0.3)' : 'none'
+              }}
+            >
+              🌟 สรุปอุปนิสัย
+            </button>
           </div>
         )}
-        {daysLoading && <div style={{padding:'12px 16px',display:'flex',gap:6}}>{[1,2,3,4,5].map(i=><div key={i} style={{...shimmer,width:50,height:62,borderRadius:12,flexShrink:0}} />)}</div>}
+
+        {/* ─── CONTRIBUTION GRAPH (แทน DATE STRIP) ─────────────────── */}
+        {!childLoading && childId && activeTab === 'daily' && (attendanceSummary.length > 0 || enrollmentPeriod) && (
+          <div style={{padding:'16px',background:'white',borderBottom:'1px solid #f1f5f9'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+              <div style={{display:'flex',flexDirection:'column',gap:2}}>
+                <span style={{fontSize:'0.7rem',fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:'0.06em'}}>การเข้าเรียน</span>
+                {enrollmentPeriod && (
+                  <span style={{fontSize:'0.6rem',color:'#94a3b8'}}>
+                    {new Date(enrollmentPeriod.start).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'})}
+                    {' - '}
+                    {enrollmentPeriod.end ? new Date(enrollmentPeriod.end).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'}) : 'ปัจจุบัน'}
+                  </span>
+                )}
+              </div>
+              <div style={{display:'flex',gap:8,fontSize:'0.65rem'}}>
+                <div style={{display:'flex',alignItems:'center',gap:3}}><div style={{width:8,height:8,borderRadius:2,background:'#10b981'}} /><span style={{color:'#64748b'}}>มา</span></div>
+                <div style={{display:'flex',alignItems:'center',gap:3}}><div style={{width:8,height:8,borderRadius:2,background:'#f59e0b'}} /><span style={{color:'#64748b'}}>ลา</span></div>
+                <div style={{display:'flex',alignItems:'center',gap:3}}><div style={{width:8,height:8,borderRadius:2,background:'#ef4444'}} /><span style={{color:'#64748b'}}>ขาด</span></div>
+                <div style={{display:'flex',alignItems:'center',gap:3}}><div style={{width:8,height:8,borderRadius:2,background:'#c084fc'}} /><span style={{color:'#64748b'}}>หยุด</span></div>
+              </div>
+            </div>
+            <div style={{overflowX:'auto',scrollbarWidth:'none',WebkitOverflowScrolling:'touch'}}>
+              {(() => {
+                // Generate weeks with report mapping
+                const weeks = generateWeeksWithReportMapping(attendanceSummary, dayEntries, enrollmentPeriod, holidays, activities);
+                
+                const monthSpans = calculateMonthSpans(weeks);
+
+                if (weeks.length === 0) {
+                  return <div style={{padding:'20px',textAlign:'center',color:'#94a3b8',fontSize:'0.75rem'}}>ไม่มีข้อมูลการเข้าเรียน</div>;
+                }
+
+                return (
+                  <div style={{display:'flex',gap:3,minWidth:'fit-content'}}>
+                    {/* Day labels column */}
+                    <div style={{display:'flex',flexDirection:'column',gap:2}}>
+                      {/* Empty space for month labels row */}
+                      <div style={{height:14,marginBottom:2}} />
+                      {/* Day labels */}
+                      {['อา','จ','อ','พ','พฤ','ศ','ส'].map((day,i)=>(
+                        <div key={i} style={{height:10,fontSize:'0.6rem',color:'#94a3b8',display:'flex',alignItems:'center',fontWeight:600}}>{day}</div>
+                      ))}
+                    </div>
+
+                    {/* Month labels row + weeks grid */}
+                    <div style={{display:'flex',flexDirection:'column',gap:2}}>
+                      {/* Month labels row */}
+                      <div style={{display:'flex',gap:3,height:14,marginBottom:2}}>
+                        {monthSpans.map((span, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              width: `calc(${span.weekCount} * 13px - ${span.weekCount > 1 ? '3px' : '0px'})`,
+                              fontSize: '0.6rem',
+                              color: '#64748b',
+                              fontWeight: 600,
+                              textAlign: 'center'
+                            }}
+                          >
+                            {span.label}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Weeks grid */}
+                      <div style={{display:'flex',gap:3}}>
+                        {weeks.map((week, weekIdx) => (
+                          <div key={weekIdx} style={{display:'flex',flexDirection:'column',gap:2}}>
+                            {week.days.map((day, dayIdxInWeek) => {
+                              const isSelected = day.dayIdx === dayIdx;
+                              // If holiday, use purple color, otherwise use status color
+                              const color = day.isHoliday ? '#c084fc' : getStatusColor(day.status);
+                              
+                              // Build tooltip text
+                              let tooltipText = day.date.toLocaleDateString('th-TH',{weekday:'short',day:'numeric',month:'short',year:'2-digit'});
+                              if (day.isHoliday && day.holidayName) {
+                                tooltipText += ` - 🏖️ ${day.holidayName}`;
+                              } else {
+                                const statusLabel = day.status === 'present' ? 'มาเรียน' :
+                                                  day.status === 'leave' ? 'ลา' :
+                                                  day.status === 'sick' ? 'ป่วย' :
+                                                  day.status === 'absent' ? 'ขาดเรียน' : 'ไม่มีข้อมูล';
+                                tooltipText += ` - ${statusLabel}`;
+                                if (day.activity) {
+                                  tooltipText += `\n📚 ${day.activity}`;
+                                }
+                              }
+
+                              return (
+                                <CustomTooltip key={dayIdxInWeek} text={tooltipText}>
+                                  <div
+                                    onClick={() => {
+                                      // Don't allow clicking on holidays
+                                      if (!day.isHoliday && day.hasReport && day.dayIdx !== null) {
+                                        setDayIdx(day.dayIdx);
+                                      }
+                                    }}
+                                    style={{
+                                      width: 10,
+                                      height: 10,
+                                      borderRadius: 2,
+                                      background: color,
+                                      opacity: day.isHoliday ? 0.8 : (day.hasReport ? 1.0 : 0.5),
+                                      border: isSelected ? '2px solid #6366f1' : 'none',
+                                      cursor: day.isHoliday ? 'default' : (day.hasReport ? 'pointer' : 'default'),
+                                      flexShrink: 0,
+                                      transition: 'all .15s',
+                                      boxSizing: 'border-box'
+                                    }}
+                                    onMouseEnter={e => {
+                                      if (!day.isHoliday && day.hasReport) {
+                                        e.currentTarget.style.transform = 'scale(1.3)';
+                                      }
+                                    }}
+                                    onMouseLeave={e => {
+                                      e.currentTarget.style.transform = 'scale(1)';
+                                    }}
+                                  />
+                                </CustomTooltip>
+                              );
+                            })}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+
+        {/* ─── BEHAVIOR SUMMARY ─────────────────────────────── */}
+        {!childLoading && childId && activeTab === 'summary' && behaviorSummary.length > 0 && (
+          <div style={{padding:'16px',background:'white',borderBottom:'1px solid #f1f5f9'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+              <div style={{display:'flex',flexDirection:'column',gap:2}}>
+                <span style={{fontSize:'0.7rem',fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:'0.06em'}}>🌟 สรุปอุปนิสัย</span>
+                <span style={{fontSize:'0.6rem',color:'#94a3b8'}}>
+                  คะแนนเฉลี่ย {behaviorPeriod === 'all' ? 'ตลอดช่วงเรียน' : `${behaviorPeriod} วันที่ผ่านมา`}
+                </span>
+              </div>
+              {/* Period selector */}
+              <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+                {[
+                  {value: '7' as const, label: '7 วัน'},
+                  {value: '14' as const, label: '14 วัน'},
+                  {value: '30' as const, label: '30 วัน'},
+                  {value: 'all' as const, label: 'ทั้งหมด'}
+                ].map(period => (
+                  <button
+                    key={period.value}
+                    onClick={() => setBehaviorPeriod(period.value)}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: '0.65rem',
+                      fontWeight: 600,
+                      borderRadius: 6,
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: behaviorPeriod === period.value ? '#6366f1' : '#f1f5f9',
+                      color: behaviorPeriod === period.value ? 'white' : '#64748b',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {period.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:12}}>
+              {(() => {
+                // Group by category
+                const grouped = behaviorSummary.reduce<Record<string, typeof behaviorSummary>>((acc, item) => {
+                  if (!acc[item.category_name_th]) acc[item.category_name_th] = [];
+                  acc[item.category_name_th].push(item);
+                  return acc;
+                }, {});
+
+                return Object.entries(grouped).map(([categoryName, items]) => (
+                  <div key={categoryName} style={{display:'flex',flexDirection:'column',gap:6}}>
+                    {/* Category header */}
+                    <div style={{fontSize:'0.7rem',fontWeight:700,color:'#6366f1',textTransform:'uppercase',letterSpacing:'0.05em'}}>
+                      {categoryName}
+                    </div>
+                    {/* Items in category */}
+                    {items.map((item) => {
+                      const percentage = (item.avg_score / item.max_score) * 100;
+                      const color = percentage >= 80 ? '#10b981' : percentage >= 60 ? '#f59e0b' : '#ef4444';
+                      
+                      // Get today's score (last item in daily_scores)
+                      const todayScore = item.daily_scores.length > 0 
+                        ? item.daily_scores[item.daily_scores.length - 1].score 
+                        : null;
+                      
+                      // Calculate trend (compare last 3 days avg vs previous 3 days avg)
+                      let trendIndicator = '→';
+                      if (item.daily_scores.length >= 6) {
+                        const recent3 = item.daily_scores.slice(-3).reduce((sum, d) => sum + d.score, 0) / 3;
+                        const previous3 = item.daily_scores.slice(-6, -3).reduce((sum, d) => sum + d.score, 0) / 3;
+                        if (recent3 > previous3 + 0.5) trendIndicator = '↗';
+                        else if (recent3 < previous3 - 0.5) trendIndicator = '↘';
+                      }
+                      
+                      // Generate star rating for today's score
+                      const starRating = todayScore !== null 
+                        ? '⭐'.repeat(Math.round((todayScore / item.max_score) * 3))
+                        : '';
+                      const emptyStars = todayScore !== null 
+                        ? '☆'.repeat(3 - Math.round((todayScore / item.max_score) * 3))
+                        : '';
+                      
+                      return (
+                        <div key={item.item_id} style={{display:'flex',flexDirection:'column',gap:6,paddingLeft:8,background:'#fafafa',padding:12,borderRadius:10}}>
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                            <span style={{fontSize:'0.75rem',fontWeight:600,color:'#475569'}}>{item.name_th}</span>
+                            <div style={{display:'flex',alignItems:'center',gap:6}}>
+                              <span style={{fontSize:'0.7rem',fontWeight:700,color}}>{item.avg_score.toFixed(1)}/{item.max_score}</span>
+                              <span style={{fontSize:'0.9rem'}}>{trendIndicator}</span>
+                            </div>
+                          </div>
+                          
+                          {/* Progress bar */}
+                          <div style={{width:'100%',height:4,background:'#e2e8f0',borderRadius:2,overflow:'hidden'}}>
+                            <div style={{width:`${percentage}%`,height:'100%',background:color,borderRadius:2,transition:'width 0.3s ease'}} />
+                          </div>
+                          
+                          {/* Sparkline + Today's score */}
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',gap:8,marginTop:4}}>
+                            {/* Sparkline bar chart */}
+                            <div style={{display:'flex',alignItems:'flex-end',gap:1,height:24,flex:1}}>
+                              {item.daily_scores.slice(-14).map((day, idx) => {
+                                const barHeight = (day.score / item.max_score) * 100;
+                                const barColor = (day.score / item.max_score) >= 0.8 ? '#10b981' : 
+                                               (day.score / item.max_score) >= 0.6 ? '#f59e0b' : '#ef4444';
+                                return (
+                                  <div
+                                    key={idx}
+                                    title={`${day.date}: ${day.score}/${item.max_score}`}
+                                    style={{
+                                      flex: 1,
+                                      height: `${barHeight}%`,
+                                      minHeight: 2,
+                                      background: barColor,
+                                      borderRadius: 1,
+                                      opacity: 0.7,
+                                      transition: 'opacity 0.2s'
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                                    onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}
+                                  />
+                                );
+                              })}
+                            </div>
+                            
+                            {/* Today's score with stars */}
+                            {todayScore !== null && (
+                              <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:1}}>
+                                <span style={{fontSize:'0.6rem',color:'#94a3b8',fontWeight:600}}>วันนี้</span>
+                                <span style={{fontSize:'0.75rem',letterSpacing:'-1px'}}>{starRating}{emptyStars}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ));
+              })()}
+            </div>
+          </div>
+        )}
 
         {/* ─── CONTENT ────────────────────────────── */}
+        {activeTab === 'daily' && (
         <div style={{padding:'16px 16px 0'}}>
 
           {reportLoading && (
@@ -608,6 +1229,7 @@ export default function LiffPage() {
             </div>
           )}
         </div>
+        )}
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ const TABLES = [
   'parent_child', 'teacher_permission', 'enrollment',
   'daily', 'attendance', 'daily_report',
   'behavior_category', 'behavior_item', 'child_behavior_score', 'child_excretion',
+  'holidays',
 ];
 
 export async function GET() {

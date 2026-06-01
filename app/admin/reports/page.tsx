@@ -6,7 +6,7 @@ import {
 } from '@/types';
 import CrudTable from '@/components/admin/CrudTable';
 import Modal from '@/components/ui/Modal';
-import { Pencil, Trash2, Plus, X, MessageSquare } from 'lucide-react';
+import { Pencil, Trash2, Plus, X, MessageSquare, Printer } from 'lucide-react';
 
 /* ─── constants ── */
 const AL: Record<MilkStatus, string> = { all: 'หมด', some: 'บางส่วน', not_must: 'ไม่จำเป็น', skip: 'ข้าม' };
@@ -245,6 +245,520 @@ export default function ReportsPage() {
     setModal('edit');
   };
 
+  const handlePrint = async (r: DailyReport) => {
+    // Load full data for printing
+    const cohortId = (r.daily as Daily & { cohort?: { id: string } })?.cohort?.id ?? '';
+    let behaviorData: BehaviorCategory[] = [];
+    let scoreData: BehaviorScore[] = [];
+    
+    if (cohortId) {
+      const catRes = await fetch(`/api/behavior-categories?cohort_id=${cohortId}`);
+      const catJson = await catRes.json();
+      behaviorData = catJson.data ?? [];
+    }
+    
+    const scoreRes = await fetch(`/api/behavior-scores?daily_id=${r.daily_id}&child_id=${r.child_id}`);
+    const scoreJson = await scoreRes.json();
+    scoreData = (scoreJson.data ?? []).map((s: { item_id: string; score: number | null; note: string }) => ({ 
+      item_id: s.item_id, 
+      score: s.score, 
+      note: s.note ?? '' 
+    }));
+    
+    // Create print window
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('กรุณาอนุญาตให้เปิด popup เพื่อปริ้น');
+      return;
+    }
+    
+    // Generate print HTML
+    const printHTML = generatePrintHTML(r, behaviorData, scoreData);
+    printWindow.document.write(printHTML);
+    printWindow.document.close();
+    
+    // Wait for images to load then print
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
+    };
+  };
+
+  const generatePrintHTML = (report: DailyReport, behaviors: BehaviorCategory[], scores: BehaviorScore[]) => {
+    const child = report.child;
+    const daily = report.daily as Daily;
+    const date = daily?.date ? new Date(daily.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'numeric', year: '2-digit' }) : '';
+    
+    // Get conduct and work habits categories
+    const conductCat = behaviors.find(b => b.name_en?.toLowerCase().includes('conduct'));
+    const workCat = behaviors.find(b => b.name_en?.toLowerCase().includes('work'));
+    
+    const conductItems = (conductCat as BehaviorCategory & { items?: BehaviorItem[] })?.items ?? [];
+    const workItems = (workCat as BehaviorCategory & { items?: BehaviorItem[] })?.items ?? [];
+    
+    // Get excretions
+    const excretions = report.excretions ?? [];
+    const excretionTimes = excretions.map(ex => ex.time?.slice(0, 5) ?? '').filter(Boolean);
+    
+    // SVG Face Icons
+    const faceNeutralSVG = (selected: boolean) => `
+      <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="50" r="42" stroke="${selected ? '#F59E0B' : '#D0D0D0'}" stroke-width="${selected ? '5' : '3'}"/>
+        <circle cx="35" cy="38" r="4" fill="${selected ? '#F59E0B' : '#D0D0D0'}"/>
+        <circle cx="65" cy="38" r="4" fill="${selected ? '#F59E0B' : '#D0D0D0'}"/>
+        <line x1="35" y1="62" x2="65" y2="62" stroke="${selected ? '#F59E0B' : '#D0D0D0'}" stroke-width="5" stroke-linecap="round"/>
+      </svg>
+    `;
+    
+    const faceSmileSVG = (selected: boolean) => `
+      <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="50" r="42" stroke="${selected ? '#3B82F6' : '#D0D0D0'}" stroke-width="${selected ? '5' : '3'}"/>
+        <circle cx="35" cy="38" r="4" fill="${selected ? '#3B82F6' : '#D0D0D0'}"/>
+        <circle cx="65" cy="38" r="4" fill="${selected ? '#3B82F6' : '#D0D0D0'}"/>
+        <path d="M35 58 Q50 72 65 58" stroke="${selected ? '#3B82F6' : '#D0D0D0'}" stroke-width="5" stroke-linecap="round"/>
+      </svg>
+    `;
+    
+    const faceHappySVG = (selected: boolean) => `
+      <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="50" r="42" stroke="${selected ? '#10B981' : '#D0D0D0'}" stroke-width="${selected ? '5' : '3'}"/>
+        <path d="M28 38 Q34 28 40 38" stroke="${selected ? '#10B981' : '#D0D0D0'}" stroke-width="4" stroke-linecap="round"/>
+        <path d="M60 38 Q66 28 72 38" stroke="${selected ? '#10B981' : '#D0D0D0'}" stroke-width="4" stroke-linecap="round"/>
+        <path d="M28 58 Q50 82 72 58" stroke="${selected ? '#10B981' : '#D0D0D0'}" stroke-width="5" stroke-linecap="round"/>
+      </svg>
+    `;
+    
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Daily Report - ${child?.name_th}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 15mm;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Sarabun', 'Arial', sans-serif;
+      width: 210mm;
+      height: 297mm;
+      padding: 20px;
+      background: white;
+    }
+    
+    .container {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+    
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 3px solid #E8E8E8;
+    }
+    
+    .logo {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    
+    .logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .title-section {
+      flex: 1;
+      text-align: center;
+    }
+    
+    .title {
+      font-size: 48px;
+      font-weight: bold;
+      color: #7B8FA1;
+      margin-bottom: 10px;
+    }
+    
+    .info-row {
+      display: flex;
+      gap: 30px;
+      justify-content: center;
+      font-size: 18px;
+    }
+    
+    .info-item {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .info-label {
+      font-weight: bold;
+    }
+    
+    .heart {
+      font-size: 36px;
+      color: #87CEEB;
+    }
+    
+    .content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-top: 20px;
+    }
+    
+    .section {
+      padding: 15px;
+      border-radius: 12px;
+      page-break-inside: avoid;
+    }
+    
+    .section-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .conduct-section {
+      background: #F5F5F5;
+      grid-column: 1;
+    }
+    
+    .work-section {
+      background: #E8E8F5;
+      grid-column: 2;
+    }
+    
+    .behavior-item {
+      margin-bottom: 10px;
+    }
+    
+    .behavior-label {
+      font-size: 14px;
+      margin-bottom: 5px;
+    }
+    
+    .faces {
+      display: flex;
+      gap: 15px;
+      margin-left: 10px;
+    }
+    
+    .face {
+      width: 32px;
+      height: 32px;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    
+    .face.selected {
+      background: #FFFACD;
+      border-radius: 50%;
+      padding: 2px;
+    }
+    
+    .nap-section {
+      background: #D4E8F5;
+      grid-column: 1;
+    }
+    
+    .nap-time {
+      display: flex;
+      gap: 20px;
+      font-size: 16px;
+      margin-top: 10px;
+    }
+    
+    .nap-time-item {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .diaper-section {
+      background: #FFE4D0;
+      grid-column: 1;
+    }
+    
+    .time-slots {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    
+    .time-slot {
+      display: flex;
+      gap: 8px;
+      font-size: 14px;
+    }
+    
+    .food-section {
+      background: #E8F5E8;
+      grid-column: 2;
+    }
+    
+    .food-item {
+      margin-bottom: 12px;
+    }
+    
+    .food-label {
+      font-size: 14px;
+      margin-bottom: 5px;
+    }
+    
+    .options {
+      display: flex;
+      gap: 15px;
+      margin-left: 10px;
+    }
+    
+    .option {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 14px;
+    }
+    
+    .radio {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid #666;
+      display: inline-block;
+    }
+    
+    .radio.selected {
+      background: radial-gradient(circle, #333 0%, #333 40%, transparent 40%);
+    }
+    
+    .milk-section {
+      background: #FFE8E8;
+      grid-column: 2;
+    }
+    
+    .teacher-note {
+      grid-column: 1 / -1;
+      background: #FFF9E6;
+      padding: 15px;
+      border-radius: 12px;
+      margin-top: 10px;
+    }
+    
+    .note-content {
+      font-size: 14px;
+      line-height: 1.6;
+      margin-top: 8px;
+    }
+    
+    @media print {
+      body {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">
+        <img src="/logo.jpeg" alt="Happy Kids Family Logo" />
+      </div>
+      <div class="title-section">
+        <div class="title">Daily Report</div>
+        <div class="info-row">
+          <div class="info-item">
+            <span class="info-label">Name:</span>
+            <span>${child?.name_th ?? ''}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Date:</span>
+            <span>${date}</span>
+          </div>
+        </div>
+        ${daily?.activity ? `<div style="margin-top: 10px; font-size: 16px;"><span class="info-label">Activity:</span> ${daily.activity}</div>` : ''}
+      </div>
+      <div class="heart">♡</div>
+    </div>
+    
+    <div class="content">
+      <!-- Conduct -->
+      <div class="section conduct-section">
+        <div class="section-title">Conduct:</div>
+        ${conductItems.slice(0, 4).map(item => {
+          const score = scores.find(s => s.item_id === item.id);
+          return `
+            <div class="behavior-item">
+              <div class="behavior-label">• ${item.name_en}</div>
+              <div class="faces">
+                <div class="face ${score?.score === 3 ? 'selected' : ''}">${faceHappySVG(score?.score === 3)}</div>
+                <div class="face ${score?.score === 2 ? 'selected' : ''}">${faceSmileSVG(score?.score === 2)}</div>
+                <div class="face ${score?.score === 1 ? 'selected' : ''}">${faceNeutralSVG(score?.score === 1)}</div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      
+      <!-- Work Habits -->
+      <div class="section work-section">
+        <div class="section-title">Work Habits:</div>
+        ${workItems.slice(0, 3).map(item => {
+          const score = scores.find(s => s.item_id === item.id);
+          return `
+            <div class="behavior-item">
+              <div class="behavior-label">• ${item.name_en}</div>
+              <div class="faces">
+                <div class="face ${score?.score === 3 ? 'selected' : ''}">${faceHappySVG(score?.score === 3)}</div>
+                <div class="face ${score?.score === 2 ? 'selected' : ''}">${faceSmileSVG(score?.score === 2)}</div>
+                <div class="face ${score?.score === 1 ? 'selected' : ''}">${faceNeutralSVG(score?.score === 1)}</div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      
+      <!-- Nap Time -->
+      <div class="section nap-section">
+        <div class="section-title">💤 Nap Time</div>
+        <div class="nap-time">
+          <div class="nap-time-item">
+            <span style="font-weight: bold;">From</span>
+            <span>${report.nap_from?.slice(0, 5) ?? '__:__'}</span>
+          </div>
+          <div class="nap-time-item">
+            <span style="font-weight: bold;">To</span>
+            <span>${report.nap_to?.slice(0, 5) ?? '__:__'}</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Food -->
+      <div class="section food-section">
+        <div class="section-title">🍱 Food (Lunch)</div>
+        <div class="food-item">
+          <div class="food-label">${daily?.food ?? 'อาหาร'}</div>
+          <div class="options">
+            <div class="option">
+              <span class="radio ${report.food_amount === 'all' ? 'selected' : ''}"></span>
+              <span>all</span>
+            </div>
+            <div class="option">
+              <span class="radio ${report.food_amount === 'some' ? 'selected' : ''}"></span>
+              <span>some</span>
+            </div>
+            <div class="option">
+              <span class="radio ${report.food_amount === 'not_must' ? 'selected' : ''}"></span>
+              <span>not much</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="food-item" style="margin-top: 15px;">
+          <div class="food-label">Fruit / Dessert: ${daily?.fruit ?? 'ผลไม้'}</div>
+          <div class="options">
+            <div class="option">
+              <span class="radio ${report.fruit_amount === 'all' ? 'selected' : ''}"></span>
+              <span>all</span>
+            </div>
+            <div class="option">
+              <span class="radio ${report.fruit_amount === 'some' ? 'selected' : ''}"></span>
+              <span>some</span>
+            </div>
+            <div class="option">
+              <span class="radio ${report.fruit_amount === 'not_must' ? 'selected' : ''}"></span>
+              <span>not much</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Diapers/Potty -->
+      <div class="section diaper-section">
+        <div class="section-title">🚽 Diapers / Potty</div>
+        <div class="time-slots">
+          ${[0, 1, 2, 3].map(i => `
+            <div class="time-slot">
+              <span style="font-weight: bold;">Time #${i + 1}</span>
+              <span>${excretionTimes[i] ?? ''}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      
+      <!-- Milk -->
+      <div class="section milk-section">
+        <div class="section-title">🥛 Milk</div>
+        <div class="food-item">
+          <div class="food-label">milk #1</div>
+          <div class="options">
+            <div class="option">
+              <span class="radio ${report.milk1 === 'all' ? 'selected' : ''}"></span>
+              <span>all</span>
+            </div>
+            <div class="option">
+              <span class="radio ${report.milk1 === 'some' ? 'selected' : ''}"></span>
+              <span>some</span>
+            </div>
+            <div class="option">
+              <span class="radio ${report.milk1 === 'not_must' ? 'selected' : ''}"></span>
+              <span>not much</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="food-item" style="margin-top: 12px;">
+          <div class="food-label">milk #2</div>
+          <div class="options">
+            <div class="option">
+              <span class="radio ${report.milk2 === 'all' ? 'selected' : ''}"></span>
+              <span>all</span>
+            </div>
+            <div class="option">
+              <span class="radio ${report.milk2 === 'some' ? 'selected' : ''}"></span>
+              <span>some</span>
+            </div>
+            <div class="option">
+              <span class="radio ${report.milk2 === 'not_must' ? 'selected' : ''}"></span>
+              <span>not much</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      ${report.note ? `
+      <div class="teacher-note">
+        <div style="font-weight: bold; font-size: 16px;">💬 Teacher's Note:</div>
+        <div class="note-content">${report.note}</div>
+      </div>
+      ` : ''}
+    </div>
+  </div>
+</body>
+</html>
+    `;
+  };
+
   const handleSave = async () => {
     if (modal === 'add' && (!form.daily_id || !form.child_id)) { alert('กรุณาเลือกวันและนักเรียน'); return; }
     setSaving(true);
@@ -375,6 +889,7 @@ export default function ReportsPage() {
         searchValue={search} onSearchChange={setSearch} searchPlaceholder="ค้นหาชื่อนักเรียน..."
         actions={row => (
           <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+            <button className="btn btn-ghost btn-sm" onClick={() => handlePrint(row)} title="ปริ้น A4"><Printer size={13} /></button>
             <button className="btn btn-ghost btn-sm" onClick={() => openEdit(row)}><Pencil size={13} /></button>
             <button className="btn btn-danger btn-sm" onClick={() => { setSelected(row); setModal('delete'); }}><Trash2 size={13} /></button>
           </div>

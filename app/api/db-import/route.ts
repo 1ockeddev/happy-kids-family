@@ -7,6 +7,7 @@ const TABLES_ORDER = [
   'parent_child', 'teacher_permission', 'enrollment',
   'daily', 'attendance', 'daily_report',
   'behavior_category', 'behavior_item', 'child_behavior_score', 'child_excretion',
+  'holidays',
 ];
 
 const TABLE_COLUMNS: Record<string, string[]> = {
@@ -23,6 +24,7 @@ const TABLE_COLUMNS: Record<string, string[]> = {
   behavior_item:        ['id','category_id','name_en','name_th','max_score','sort_order','is_active','created_at'],
   child_behavior_score: ['id','daily_id','child_id','item_id','score','note','created_at'],
   child_excretion:      ['id','daily_id','child_id','time','type','action','created_at'],
+  holidays:             ['id','date','name_th','name_en','type','cohort_id','created_at','updated_at'],
 };
 
 // ── POST /api/db-import ──────────────────────────────────────

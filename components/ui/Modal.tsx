@@ -6,9 +6,10 @@ interface ModalProps {
   open: boolean; title: string; onClose: () => void;
   onConfirm?: () => void; confirmLabel?: string; confirmDanger?: boolean;
   children: ReactNode;
+  size?: 'default' | 'large';
 }
 
-export default function Modal({ open, title, onClose, onConfirm, confirmLabel = 'บันทึก', confirmDanger, children }: ModalProps) {
+export default function Modal({ open, title, onClose, onConfirm, confirmLabel = 'บันทึก', confirmDanger, children, size = 'default' }: ModalProps) {
   // lock body scroll when open
   useEffect(() => {
     if (open) document.body.style.overflow = 'hidden';
@@ -19,7 +20,15 @@ export default function Modal({ open, title, onClose, onConfirm, confirmLabel = 
   if (!open) return null;
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()} style={{ animation: 'slideUp .2s ease' }}>
+      <div 
+        className="modal" 
+        onClick={e => e.stopPropagation()} 
+        style={{ 
+          animation: 'slideUp .2s ease',
+          maxWidth: size === 'large' ? '900px' : '500px',
+          width: size === 'large' ? '90%' : 'auto',
+        }}
+      >
         {/* drag handle — visual only */}
         <div style={{ width: 40, height: 4, background: '#E5E7EB', borderRadius: 99, margin: '10px auto 0', display: 'block' }} />
 

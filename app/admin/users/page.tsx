@@ -108,7 +108,7 @@ export default function UsersPage() {
     <>
       <CrudTable<UserWithChildren>
         title="จัดการผู้ใช้"
-        description="ผู้ปกครองที่ login ผ่าน LINE จะปรากฏอัตโนมัติ"
+        description="เพิ่มผู้ใช้ใหม่ได้ทันที — ผูก LINE ID ภายหลังเมื่อผู้ใช้เปิด Mini App"
         columns={[
           { key: 'display_name', label: 'ผู้ใช้', render: r => (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -124,8 +124,8 @@ export default function UsersPage() {
                 <div style={{ fontWeight: 600, fontSize: 14 }}>{r.display_name ?? '(ยังไม่มีชื่อ)'}</div>
                 <div style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'monospace' }}>
                 {r.line_user_id
-                  ? <span>{r.line_user_id.slice(0, 16)}...</span>
-                  : <span style={{ color: '#F5A623', fontSize: 11 }}>⚠️ ยังไม่ผูก LINE</span>
+                  ? <span style={{ color: '#10B981' }}>✓ {r.line_user_id.slice(0, 16)}...</span>
+                  : <span style={{ color: '#F59E0B', fontSize: 11 }}>⏳ รอผูก LINE</span>
                 }
               </div>
               </div>
@@ -151,11 +151,11 @@ export default function UsersPage() {
           { key: 'status', label: 'สถานะ', hideOnMobile: true, render: r => (
             <span className={`badge badge-${r.status}`}>{r.status === 'active' ? 'ใช้งาน' : 'ปิด'}</span>
           )},
-          { key: 'created_at', label: 'สมัคร', hideOnMobile: true, render: r => new Date(r.created_at).toLocaleDateString('th-TH') },
+          { key: 'created_at', label: 'สร้างเมื่อ', hideOnMobile: true, render: r => new Date(r.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) },
         ]}
         data={data} loading={loading} error={error} onRefresh={load}
         onAdd={() => { setForm(EMPTY_FORM); setModal('add'); }}
-        addLabel="เพิ่มผู้ใช้"
+        addLabel="+ เพิ่มผู้ใช้"
         searchValue={search} onSearchChange={setSearch} searchPlaceholder="ค้นหาชื่อ / LINE ID..."
         actions={row => (
           <div style={{ display: 'flex', gap: 5, justifyContent: 'flex-end' }}>
@@ -175,44 +175,108 @@ export default function UsersPage() {
       />
 
       {/* ── Add / Edit Modal ── */}
-      <Modal open={modal === 'add' || modal === 'edit'} title={modal === 'add' ? 'เพิ่มผู้ใช้' : 'แก้ไขผู้ใช้'}
+      <Modal open={modal === 'add' || modal === 'edit'} title={modal === 'add' ? '➕ เพิ่มผู้ใช้ใหม่' : '✏️ แก้ไขผู้ใช้'}
         onClose={() => setModal(null)} onConfirm={handleSave} confirmLabel={saving ? 'กำลังบันทึก...' : 'บันทึก'}>
+        
+        {/* คำอธิบายสำหรับโหมด Add */}
+        {modal === 'add' && (
+          <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+            <p style={{ fontSize: 13, color: '#1E40AF', margin: 0, lineHeight: 1.6 }}>
+              💡 <strong>วิธีใช้:</strong> เพิ่มผู้ใช้ได้ทันทีโดยไม่ต้องมี LINE ID<br/>
+              เมื่อผู้ใช้เปิด Mini App ครั้งแรก ระบบจะผูก LINE ID อัตโนมัติ
+            </p>
+          </div>
+        )}
+
         <div className="form-group">
-          <label className="form-label">ชื่อที่แสดง <span style={{ color: '#E85C5C' }}>*</span></label>
-          <input className="form-input" value={form.display_name} onChange={e => setForm(f => ({ ...f, display_name: e.target.value }))} placeholder="เช่น ครูเบียร์ / คุณแม่สมศรี" />
+          <label className="form-label">
+            ชื่อที่แสดง <span style={{ color: '#E85C5C' }}>*</span>
+          </label>
+          <input 
+            className="form-input" 
+            value={form.display_name} 
+            onChange={e => setForm(f => ({ ...f, display_name: e.target.value }))} 
+            placeholder="เช่น ครูเบียร์ / คุณแม่สมศรี / คุณพ่อสมชาย" 
+            autoFocus
+          />
+          <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
+            ชื่อนี้จะแสดงในระบบและรายงาน
+          </p>
         </div>
+
         <div className="form-group">
           <label className="form-label">
             LINE User ID
             <span style={{ fontSize: 11, color: '#9CA3AF', marginLeft: 6, fontWeight: 400 }}>
-              (ไม่จำเป็น — ผูกภายหลังได้)
+              (ไม่บังคับ)
             </span>
           </label>
-          <input className="form-input" value={form.line_user_id}
+          <input 
+            className="form-input" 
+            value={form.line_user_id}
             onChange={e => setForm(f => ({ ...f, line_user_id: e.target.value }))}
-            placeholder="Uxxxxxxx... (กรอกเมื่อผู้ใช้เคย login ผ่าน LINE แล้ว)" />
-          {!form.line_user_id && (
-            <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
-              💡 ผู้ใช้จะได้รับ LINE ID อัตโนมัติเมื่อเปิด Mini App ครั้งแรก
-            </p>
+            placeholder="Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" 
+            style={{ fontFamily: 'monospace', fontSize: 13 }}
+          />
+          
+          {/* แสดงคำแนะนำตามสถานะ */}
+          {modal === 'add' && !form.line_user_id && (
+            <div style={{ marginTop: 8, padding: '8px 12px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8 }}>
+              <p style={{ fontSize: 11, color: '#92400E', margin: 0, lineHeight: 1.5 }}>
+                <strong>⏳ ผูกภายหลัง:</strong> ปล่อยว่างไว้ได้<br/>
+                ระบบจะผูก LINE ID อัตโนมัติเมื่อผู้ใช้เปิด Mini App
+              </p>
+            </div>
+          )}
+          
+          {modal === 'edit' && !form.line_user_id && (
+            <div style={{ marginTop: 8, padding: '8px 12px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8 }}>
+              <p style={{ fontSize: 11, color: '#991B1B', margin: 0, lineHeight: 1.5 }}>
+                <strong>⚠️ ยังไม่ผูก LINE:</strong><br/>
+                • ผู้ใช้ยังไม่สามารถเข้า Mini App ได้<br/>
+                • จะผูกอัตโนมัติเมื่อเปิด Mini App ครั้งแรก<br/>
+                • หรือคุณสามารถใส่ LINE ID ด้วยตนเองได้
+              </p>
+            </div>
+          )}
+          
+          {form.line_user_id && (
+            <div style={{ marginTop: 8, padding: '8px 12px', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 8 }}>
+              <p style={{ fontSize: 11, color: '#065F46', margin: 0 }}>
+                ✓ ผูก LINE แล้ว — ผู้ใช้สามารถเข้า Mini App ได้
+              </p>
+            </div>
           )}
         </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="form-group">
-            <label className="form-label">บทบาท</label>
+            <label className="form-label">บทบาท <span style={{ color: '#E85C5C' }}>*</span></label>
             <select className="form-input" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as UserRole }))}>
-              <option value="parent">ผู้ปกครอง</option>
-              <option value="teacher">ครู</option>
+              <option value="parent">👨‍👩‍👧 ผู้ปกครอง</option>
+              <option value="teacher">👩‍🏫 ครู</option>
             </select>
           </div>
           <div className="form-group">
             <label className="form-label">สถานะ</label>
             <select className="form-input" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as UserStatus }))}>
-              <option value="active">ใช้งาน</option>
-              <option value="inactive">ปิดใช้งาน</option>
+              <option value="active">✓ ใช้งาน</option>
+              <option value="inactive">✕ ปิดใช้งาน</option>
             </select>
           </div>
         </div>
+
+        {/* คำแนะนำเพิ่มเติมสำหรับผู้ปกครอง */}
+        {form.role === 'parent' && modal === 'add' && (
+          <div style={{ marginTop: 12, padding: '10px 12px', background: '#F0EEFF', border: '1px solid #DDD6FE', borderRadius: 8 }}>
+            <p style={{ fontSize: 12, color: '#5B21B6', margin: 0, lineHeight: 1.5 }}>
+              <strong>📝 ขั้นตอนถัดไป:</strong><br/>
+              1. บันทึกผู้ใช้นี้<br/>
+              2. คลิก "ผูกลูก" เพื่อเชื่อมโยงกับนักเรียน<br/>
+              3. แจ้งผู้ปกครองให้เปิด Mini App เพื่อผูก LINE ID
+            </p>
+          </div>
+        )}
       </Modal>
 
       {/* ── Link Children Modal ── */}
