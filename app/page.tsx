@@ -87,8 +87,15 @@ const generateWeeksWithReportMapping = (
 
   if (enrollmentPeriod) {
     firstDate = parseLocalDate(enrollmentPeriod.start);
-    // Use end_date if exists, otherwise use today
-    lastDate = enrollmentPeriod.end ? parseLocalDate(enrollmentPeriod.end) : new Date();
+    // Use end_date if exists, otherwise use today (in local timezone)
+    if (enrollmentPeriod.end) {
+      lastDate = parseLocalDate(enrollmentPeriod.end);
+    } else {
+      // Get today's date in YYYY-MM-DD format (local timezone)
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      lastDate = parseLocalDate(todayStr);
+    }
   } else if (attendanceSummary.length > 0) {
     firstDate = parseLocalDate(attendanceSummary[0].date);
     lastDate = parseLocalDate(attendanceSummary[attendanceSummary.length - 1].date);
@@ -190,7 +197,7 @@ const calculateMonthSpans = (weeks: WeekColumn[]): MonthSpan[] => {
 const parseDate = (d?:string|null) => {
   if (!d) return null;
   const s = d.slice(0,10);
-  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(s+'T00:00:00') : null;
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? parseLocalDate(s) : null;
 };
 const thDate = (d?:string|null) =>
   parseDate(d)?.toLocaleDateString('th-TH',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) ?? '';
@@ -433,7 +440,11 @@ export default function LiffPage() {
           setCohortId(enrollmentCohortId);
           
           // Load holidays for this period
-          let holidaysUrl = `/api/holidays?start_date=${period.start}&end_date=${period.end || new Date().toISOString().split('T')[0]}`;
+          const endDateStr = period.end || (() => {
+            const now = new Date();
+            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+          })();
+          let holidaysUrl = `/api/holidays?start_date=${period.start}&end_date=${endDateStr}`;
           if (enrollmentCohortId) {
             holidaysUrl += `&cohort_id=${enrollmentCohortId}`;
           }
@@ -443,7 +454,7 @@ export default function LiffPage() {
             });
           
           // Load activities for this period
-          fetch(`/api/report/activities?child_id=${childId}&start_date=${period.start}&end_date=${period.end || new Date().toISOString().split('T')[0]}`)
+          fetch(`/api/report/activities?child_id=${childId}&start_date=${period.start}&end_date=${endDateStr}`)
             .then(r=>r.json())
             .then(j=>{
               if (!cancelled) setActivities(j.data??[]);
@@ -461,15 +472,16 @@ export default function LiffPage() {
     let cancelled = false;
     
     // Calculate date range based on selected period
-    const today = new Date();
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     let dateFrom = enrollmentPeriod.start;
-    const dateTo = enrollmentPeriod.end || today.toISOString().split('T')[0];
+    const dateTo = enrollmentPeriod.end || todayStr;
     
     if (behaviorPeriod !== 'all') {
       const daysAgo = parseInt(behaviorPeriod);
-      const fromDate = new Date(today);
-      fromDate.setDate(fromDate.getDate() - daysAgo);
-      dateFrom = fromDate.toISOString().split('T')[0];
+      const today = parseLocalDate(todayStr);
+      today.setDate(today.getDate() - daysAgo);
+      dateFrom = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
       
       // Don't go before enrollment start
       if (dateFrom < enrollmentPeriod.start) {
@@ -679,9 +691,9 @@ export default function LiffPage() {
                 <span style={{fontSize:'0.7rem',fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:'0.06em'}}>การเข้าเรียน</span>
                 {enrollmentPeriod && (
                   <span style={{fontSize:'0.6rem',color:'#94a3b8'}}>
-                    {new Date(enrollmentPeriod.start).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'})}
+                    {parseLocalDate(enrollmentPeriod.start).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'})}
                     {' - '}
-                    {enrollmentPeriod.end ? new Date(enrollmentPeriod.end).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'}) : 'ปัจจุบัน'}
+                    {enrollmentPeriod.end ? parseLocalDate(enrollmentPeriod.end).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'}) : 'ปัจจุบัน'}
                   </span>
                 )}
               </div>
