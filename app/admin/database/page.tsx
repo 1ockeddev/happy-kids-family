@@ -32,6 +32,8 @@ export default function DatabasePage() {
   // export
   const [exporting, setExporting] = useState(false);
   const [exportDone, setExportDone] = useState(false);
+  const [exportFormat, setExportFormat] = useState<'json' | 'csv'>('json');
+  const [selectedExportTables, setSelectedExportTables] = useState<Set<string>>(new Set(Object.keys(TABLE_LABELS)));
 
   // import flow
   const [file, setFile]                   = useState<File | null>(null);
@@ -45,15 +47,21 @@ export default function DatabasePage() {
 
   // ── Export ──────────────────────────────────────────────────
   const handleExport = async () => {
+    if (selectedExportTables.size === 0) {
+      alert('กรุณาเลือกตารางที่ต้องการ export อย่างน้อย 1 ตาราง');
+      return;
+    }
+    
     setExporting(true); setExportDone(false);
     try {
-      const res  = await fetch('/api/db-export');
+      const tables = Array.from(selectedExportTables).join(',');
+      const res  = await fetch(`/api/db-export?format=${exportFormat}&tables=${tables}`);
       const blob = await res.blob();
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement('a');
       a.href     = url;
       const cd   = res.headers.get('content-disposition') ?? '';
-      a.download = cd.match(/filename="([^"]+)"/)?.[1] ?? 'backup.json';
+      a.download = cd.match(/filename="([^"]+)"/)?.[1] ?? `backup.${exportFormat}`;
       a.click();
       URL.revokeObjectURL(url);
       setExportDone(true);
@@ -62,8 +70,25 @@ export default function DatabasePage() {
     finally { setExporting(false); }
   };
 
+  const toggleExportTable = (table: string) => {
+    setSelectedExportTables(prev => {
+      const s = new Set(prev);
+      s.has(table) ? s.delete(table) : s.add(table);
+      return s;
+    });
+  };
+
+  const selectAllExportTables = () => setSelectedExportTables(new Set(Object.keys(TABLE_LABELS)));
+  const deselectAllExportTables = () => setSelectedExportTables(new Set());
+
   // ── File pick ───────────────────────────────────────────────
   const handleFilePick = (f: File) => {
+    // Only accept JSON for import
+    if (!f.name.endsWith('.json')) {
+      alert('รองรับเฉพาะไฟล์ JSON สำหรับการ import\nCSV สามารถใช้สำหรับ export เท่านั้น');
+      return;
+    }
+    
     setFile(f); setDryStats(null); setImportResult(null);
     setOverwriteTables(new Set()); setPreview(null);
     const reader = new FileReader();
@@ -159,20 +184,85 @@ export default function DatabasePage() {
             <Download size={18} style={{ color: '#6C5CE7' }} />
             <div>
               <h2 style={{ fontSize: 15, fontWeight: 700, color: '#4C1D95' }}>ส่งออกข้อมูล (Export)</h2>
-              <p style={{ fontSize: 12, color: '#7C3AED', marginTop: 2 }}>ดาวน์โหลดข้อมูลทั้งหมดเป็นไฟล์ JSON</p>
+              <p style={{ fontSize: 12, color: '#7C3AED', marginTop: 2 }}>เลือกตารางและรูปแบบไฟล์ที่ต้องการ</p>
             </div>
           </div>
           <div style={{ padding: 18 }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
-              {Object.entries(TABLE_LABELS).map(([t, l]) => (
-                <span key={t} style={{ fontSize: 12, background: '#F3F4F6', color: '#6B7280', padding: '3px 10px', borderRadius: 99 }}>{l}</span>
-              ))}
+            {/* Format selector */}
+            <div style={{ marginBottom: 16 }}>
+              <label className="form-label" style={{ marginBottom: 8 }}>รูปแบบไฟล์</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => setExportFormat('json')}
+                  style={{
+                    flex: 1,
+                    padding: '8px 16px',
+                    borderRadius: 8,
+                    border: exportFormat === 'json' ? '2px solid #6C5CE7' : '1px solid #E5E7EB',
+                    background: exportFormat === 'json' ? '#F0EEFF' : 'white',
+                    color: exportFormat === 'json' ? '#6C5CE7' : '#6B7280',
+                    cursor: 'pointer',
+                    fontWeight: exportFormat === 'json' ? 700 : 400,
+                    fontSize: 14
+                  }}
+                >
+                  📄 JSON
+                </button>
+                <button
+                  onClick={() => setExportFormat('csv')}
+                  style={{
+                    flex: 1,
+                    padding: '8px 16px',
+                    borderRadius: 8,
+                    border: exportFormat === 'csv' ? '2px solid #6C5CE7' : '1px solid #E5E7EB',
+                    background: exportFormat === 'csv' ? '#F0EEFF' : 'white',
+                    color: exportFormat === 'csv' ? '#6C5CE7' : '#6B7280',
+                    cursor: 'pointer',
+                    fontWeight: exportFormat === 'csv' ? 700 : 400,
+                    fontSize: 14
+                  }}
+                >
+                  📊 CSV
+                </button>
+              </div>
             </div>
-            <button className="btn btn-primary" onClick={handleExport} disabled={exporting}
+
+            {/* Table selector */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <label className="form-label" style={{ margin: 0 }}>เลือกตาราง</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn btn-ghost btn-sm" onClick={selectAllExportTables} style={{ fontSize: 11 }}>
+                    เลือกทั้งหมด
+                  </button>
+                  <button className="btn btn-ghost btn-sm" onClick={deselectAllExportTables} style={{ fontSize: 11 }}>
+                    ยกเลิกทั้งหมด
+                  </button>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, maxHeight: 200, overflowY: 'auto', padding: 8, background: '#F9FAFB', borderRadius: 8 }}>
+                {Object.entries(TABLE_LABELS).map(([t, l]) => (
+                  <label key={t} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', padding: '4px 10px', borderRadius: 6, background: selectedExportTables.has(t) ? '#E0E7FF' : 'white', border: '1px solid', borderColor: selectedExportTables.has(t) ? '#6C5CE7' : '#E5E7EB' }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedExportTables.has(t)}
+                      onChange={() => toggleExportTable(t)}
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <span style={{ fontSize: 12, color: selectedExportTables.has(t) ? '#4C1D95' : '#6B7280', fontWeight: selectedExportTables.has(t) ? 600 : 400 }}>{l}</span>
+                  </label>
+                ))}
+              </div>
+              <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 6 }}>
+                เลือกแล้ว: {selectedExportTables.size} / {Object.keys(TABLE_LABELS).length} ตาราง
+              </p>
+            </div>
+
+            <button className="btn btn-primary" onClick={handleExport} disabled={exporting || selectedExportTables.size === 0}
               style={{ width: '100%', justifyContent: 'center', background: '#6C5CE7' }}>
               {exporting ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> กำลัง export...</>
                 : exportDone ? <><CheckCircle size={15} /> ดาวน์โหลดแล้ว!</>
-                : <><Download size={15} /> Export ทั้งหมด</>}
+                : <><Download size={15} /> Export {exportFormat.toUpperCase()} ({selectedExportTables.size} ตาราง)</>}
             </button>
           </div>
         </div>
@@ -183,7 +273,7 @@ export default function DatabasePage() {
             <Upload size={18} style={{ color: '#059669' }} />
             <div>
               <h2 style={{ fontSize: 15, fontWeight: 700, color: '#064E3B' }}>นำเข้าข้อมูล (Import)</h2>
-              <p style={{ fontSize: 12, color: '#059669', marginTop: 2 }}>อัปโหลดไฟล์ JSON แล้วเลือกว่าจะเขียนทับข้อมูล conflict หรือไม่</p>
+              <p style={{ fontSize: 12, color: '#059669', marginTop: 2 }}>อัปโหลดไฟล์ JSON แล้วเลือกว่าจะเขียนทับข้อมูล conflict หรือไม่ (CSV ไม่รองรับ)</p>
             </div>
           </div>
           <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>

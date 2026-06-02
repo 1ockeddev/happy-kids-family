@@ -6,6 +6,14 @@ import CrudTable from '@/components/admin/CrudTable';
 import Modal from '@/components/ui/Modal';
 import { Pencil, Trash2 } from 'lucide-react';
 
+/* ─── Helper: Format date as YYYY-MM-DD ── */
+const formatDateForInput = (dateStr: string | Date): string => {
+  if (!dateStr) return '';
+  const str = typeof dateStr === 'string' ? dateStr : dateStr.toISOString();
+  const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return match ? match[0] : '';
+};
+
 const EMPTY_FORM = { child_id: '', cohort_id: '', start_date: '', end_date: '', graduated: false };
 
 export default function EnrollmentsPage() {
@@ -49,7 +57,13 @@ export default function EnrollmentsPage() {
   const openAdd = () => { setForm(EMPTY_FORM); setModal('add'); };
   const openEdit = (e: Enrollment) => {
     setSelected(e);
-    setForm({ child_id: e.child_id, cohort_id: e.cohort_id, start_date: e.start_date, end_date: e.end_date ?? '', graduated: e.graduated });
+    setForm({ 
+      child_id: e.child_id, 
+      cohort_id: e.cohort_id, 
+      start_date: formatDateForInput(e.start_date), 
+      end_date: formatDateForInput(e.end_date ?? ''), 
+      graduated: e.graduated 
+    });
     setModal('edit');
   };
 

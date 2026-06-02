@@ -1,8 +1,8 @@
 import { query } from '@/lib/db';
 import { serverError } from '@/lib/api-helpers';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-const TABLES = [
+const ALL_TABLES = [
   'app_user', 'child', 'cohort',
   'parent_child', 'teacher_permission', 'enrollment',
   'daily', 'attendance', 'daily_report',
@@ -10,22 +10,60 @@ const TABLES = [
   'holidays',
 ];
 
-export async function GET() {
+// Helper: Convert rows to CSV
+function rowsToCSV(rows: any[], columns: string[]): string {
+  if (rows.length === 0) return '';
+  
+  // Header row
+  const header = columns.join(',');
+  
+  // Data rows
+  const data = rows.map(row => {
+    return columns.map(col => {
+      const val = row[col];
+      if (val === null || val === undefined) return '';
+      // Escape quotes and wrap in quotes if contains comma/quote/newline
+      const str = String(val);
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    }).join(',');
+  }).join('\n');
+  
+  return `${header}\n${data}`;
+}
+
+export async function GET(req: NextRequest) {
   try {
-    // ดึง column list จริงจาก DB — ไม่ต้อง hardcode
+    const format = req.nextUrl.searchParams.get('format') ?? 'json';
+    const tablesParam = req.nextUrl.searchParams.get('tables') ?? '';
+    
+    // Parse selected tables
+    const selectedTables = tablesParam 
+      ? tablesParam.split(',').filter(t => ALL_TABLES.includes(t))
+      : ALL_TABLES;
+    
+    if (selectedTables.length === 0) {
+      return new NextResponse('No valid tables selected', { status: 400 });
+    }
+
+    // ดึง column list จริงจาก DB
     const colRows = await query(
       `SELECT table_name, column_name, data_type
        FROM information_schema.columns
        WHERE table_schema = 'public'
-         AND table_name = ANY($1)`,
-      [TABLES]
+         AND table_name = ANY($1)
+       ORDER BY table_name, ordinal_position`,
+      [selectedTables]
     );
-    const tableColumns: Record<string, Set<string>> = {};
+    
+    const tableColumns: Record<string, string[]> = {};
     const dateColumns: Record<string, Set<string>> = {};
     
     for (const { table_name, column_name, data_type } of colRows as { table_name: string; column_name: string; data_type: string }[]) {
-      if (!tableColumns[table_name]) tableColumns[table_name] = new Set();
-      tableColumns[table_name].add(column_name);
+      if (!tableColumns[table_name]) tableColumns[table_name] = [];
+      tableColumns[table_name].push(column_name);
       
       // Track date/timestamp columns
       if (data_type === 'date' || data_type === 'timestamp without time zone' || data_type === 'timestamp with time zone') {
@@ -34,37 +72,73 @@ export async function GET() {
       }
     }
 
-    const exported: Record<string, unknown[]> = {};
-    for (const table of TABLES) {
-      const cols = tableColumns[table] ?? new Set();
-      const dateCols = dateColumns[table] ?? new Set();
-      const order = cols.has('created_at') ? 'ORDER BY created_at NULLS LAST' : '';
+    if (format === 'csv') {
+      // CSV Export - one file per table in a ZIP
+      const JSZip = require('jszip');
+      const zip = new JSZip();
       
-      // Convert date columns to YYYY-MM-DD format in the query
-      const selectCols = Array.from(cols).map(col => {
-        if (dateCols.has(col)) {
-          return `to_char("${col}", 'YYYY-MM-DD') AS "${col}"`;
-        }
-        return `"${col}"`;
-      }).join(', ');
+      for (const table of selectedTables) {
+        const cols = tableColumns[table] ?? [];
+        const dateCols = dateColumns[table] ?? new Set();
+        const order = cols.includes('created_at') ? 'ORDER BY created_at NULLS LAST' : '';
+        
+        // Convert date columns to YYYY-MM-DD format
+        const selectCols = cols.map(col => {
+          if (dateCols.has(col)) {
+            return `to_char("${col}", 'YYYY-MM-DD') AS "${col}"`;
+          }
+          return `"${col}"`;
+        }).join(', ');
+        
+        const rows = await query(`SELECT ${selectCols} FROM "${table}" ${order}`, []);
+        const csv = rowsToCSV(rows, cols);
+        zip.file(`${table}.csv`, csv);
+      }
       
-      const rows = await query(`SELECT ${selectCols} FROM "${table}" ${order}`, []);
-      exported[table] = rows;
+      const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' });
+      
+      return new NextResponse(zipBuffer, {
+        headers: {
+          'Content-Type': 'application/zip',
+          'Content-Disposition': `attachment; filename="kindergarten-backup-${new Date().toISOString().slice(0, 10)}.zip"`,
+        },
+      });
+    } else {
+      // JSON Export
+      const exported: Record<string, unknown[]> = {};
+      
+      for (const table of selectedTables) {
+        const cols = tableColumns[table] ?? [];
+        const dateCols = dateColumns[table] ?? new Set();
+        const order = cols.includes('created_at') ? 'ORDER BY created_at NULLS LAST' : '';
+        
+        // Convert date columns to YYYY-MM-DD format
+        const selectCols = cols.map(col => {
+          if (dateCols.has(col)) {
+            return `to_char("${col}", 'YYYY-MM-DD') AS "${col}"`;
+          }
+          return `"${col}"`;
+        }).join(', ');
+        
+        const rows = await query(`SELECT ${selectCols} FROM "${table}" ${order}`, []);
+        exported[table] = rows;
+      }
+
+      const payload = {
+        version: 1,
+        exported_at: new Date().toISOString(),
+        tables: exported,
+      };
+
+      return new NextResponse(JSON.stringify(payload, null, 2), {
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Disposition': `attachment; filename="kindergarten-backup-${new Date().toISOString().slice(0, 10)}.json"`,
+        },
+      });
     }
-
-    const payload = {
-      version: 1,
-      exported_at: new Date().toISOString(),
-      tables: exported,
-    };
-
-    return new NextResponse(JSON.stringify(payload, null, 2), {
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Disposition': `attachment; filename="kindergarten-backup-${new Date().toISOString().slice(0, 10)}.json"`,
-      },
-    });
   } catch (err) {
+    console.error('Export error:', err);
     return serverError(err);
   }
 }

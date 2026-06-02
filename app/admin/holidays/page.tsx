@@ -4,6 +4,25 @@ import CrudTable from '@/components/admin/CrudTable';
 import Modal from '@/components/ui/Modal';
 import { Pencil, Trash2 } from 'lucide-react';
 
+/* ─── Helper: Parse date as local ── */
+const parseLocalDate = (dateStr: string): Date => {
+  if (!dateStr) return new Date();
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    const [, y, m, d] = match;
+    return new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+  }
+  return new Date(dateStr);
+};
+
+/* ─── Helper: Format date as YYYY-MM-DD ── */
+const formatDateForInput = (dateStr: string | Date): string => {
+  if (!dateStr) return '';
+  const str = typeof dateStr === 'string' ? dateStr : dateStr.toISOString();
+  const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return match ? match[0] : '';
+};
+
 interface Holiday {
   id: string;
   date: string;
@@ -110,7 +129,7 @@ export default function HolidaysPage() {
     if (h.date.includes(search)) return true;
     
     // Search in formatted Thai date
-    const thaiDate = new Date(h.date).toLocaleDateString('th-TH', { 
+    const thaiDate = parseLocalDate(h.date).toLocaleDateString('th-TH', { 
       weekday: 'short', 
       day: 'numeric', 
       month: 'short', 
@@ -119,7 +138,7 @@ export default function HolidaysPage() {
     if (thaiDate.toLowerCase().includes(searchLower)) return true;
     
     // Search by year (both Buddhist and Gregorian)
-    const year = new Date(h.date).getFullYear();
+    const year = parseLocalDate(h.date).getFullYear();
     const buddhistYear = year + 543;
     if (year.toString().includes(search)) return true;
     if (buddhistYear.toString().includes(search)) return true;
@@ -167,7 +186,7 @@ export default function HolidaysPage() {
           {
             key: 'date',
             label: 'วันที่',
-            render: h => new Date(h.date).toLocaleDateString('th-TH', { 
+            render: h => parseLocalDate(h.date).toLocaleDateString('th-TH', { 
               weekday: 'short', 
               day: 'numeric', 
               month: 'short', 
@@ -210,7 +229,7 @@ export default function HolidaysPage() {
               onClick={() => {
                 setSelected(row);
                 setForm({
-                  date: row.date,
+                  date: formatDateForInput(row.date),
                   name_th: row.name_th,
                   name_en: row.name_en || '',
                   type: row.type,

@@ -23,6 +23,14 @@ const parseLocalDate = (dateStr: string): Date => {
   return new Date(dateStr);
 };
 
+/* ─── Helper: Format date as YYYY-MM-DD ── */
+const formatDateForInput = (dateStr: string | Date): string => {
+  if (!dateStr) return '';
+  const str = typeof dateStr === 'string' ? dateStr : dateStr.toISOString();
+  const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return match ? match[0] : '';
+};
+
 /* ─── constants ── */
 const AL: Record<MilkStatus, string> = { all: 'หมด', some: 'บางส่วน', not_must: 'ไม่จำเป็น', skip: 'ข้าม' };
 const AC: Record<MilkStatus, string> = { all: 'badge-active', some: 'badge-leave', not_must: 'badge-inactive', skip: 'badge-inactive' };
@@ -558,7 +566,14 @@ export default function DailyPage() {
             </button>
             <button className="btn btn-ghost btn-sm" onClick={() => {
               setSelected(row);
-              setForm({ cohort_id: row.cohort_id, date: row.date, activity: row.activity ?? '', food: row.food ?? '', fruit: row.fruit ?? '', note: row.note ?? '' });
+              setForm({ 
+                cohort_id: row.cohort_id, 
+                date: formatDateForInput(row.date), 
+                activity: row.activity ?? '', 
+                food: row.food ?? '', 
+                fruit: row.fruit ?? '', 
+                note: row.note ?? '' 
+              });
               setShowReportInModal(false);
               setModal('edit');
             }}><Pencil size={13} /> แก้ไข</button>

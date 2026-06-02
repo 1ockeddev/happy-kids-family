@@ -6,7 +6,15 @@ export async function GET(req: NextRequest) {
   try {
     const search = req.nextUrl.searchParams.get('search') ?? '';
     const rows = await query(
-      `SELECT * FROM cohort
+      `SELECT 
+         id,
+         name,
+         level,
+         academic_year,
+         to_char(start_date, 'YYYY-MM-DD') AS start_date,
+         to_char(end_date, 'YYYY-MM-DD') AS end_date,
+         created_at
+       FROM cohort
        WHERE ($1 = '' OR name ILIKE $2 OR level ILIKE $2)
        ORDER BY academic_year DESC, name`,
       [search, `%${search}%`]

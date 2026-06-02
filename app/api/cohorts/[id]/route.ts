@@ -7,7 +7,19 @@ type Params = { params: Promise<{ id: string }> };
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
-    const row = await queryOne(`SELECT * FROM cohort WHERE id = $1`, [id]);
+    const row = await queryOne(
+      `SELECT 
+         id,
+         name,
+         level,
+         academic_year,
+         to_char(start_date, 'YYYY-MM-DD') AS start_date,
+         to_char(end_date, 'YYYY-MM-DD') AS end_date,
+         created_at
+       FROM cohort 
+       WHERE id = $1`,
+      [id]
+    );
     if (!row) return notFound('ไม่พบห้องเรียน');
     return ok(row);
   } catch (err) {

@@ -7,9 +7,16 @@ export async function GET(req: NextRequest) {
     const search = req.nextUrl.searchParams.get('search') ?? '';
     const cohort_id = req.nextUrl.searchParams.get('cohort_id') ?? '';
     const rows = await query(
-      `SELECT e.*,
-        json_build_object('id', c.id, 'name_th', c.name_th, 'name_en', c.name_en) AS child,
-        json_build_object('id', co.id, 'name', co.name, 'level', co.level) AS cohort
+      `SELECT 
+         e.id,
+         e.child_id,
+         e.cohort_id,
+         to_char(e.start_date, 'YYYY-MM-DD') AS start_date,
+         to_char(e.end_date, 'YYYY-MM-DD') AS end_date,
+         e.graduated,
+         e.created_at,
+         json_build_object('id', c.id, 'name_th', c.name_th, 'name_en', c.name_en) AS child,
+         json_build_object('id', co.id, 'name', co.name, 'level', co.level) AS cohort
        FROM enrollment e
        JOIN child c ON c.id = e.child_id
        JOIN cohort co ON co.id = e.cohort_id

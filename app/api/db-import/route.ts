@@ -80,6 +80,7 @@ export async function POST(req: NextRequest) {
         // check conflict
         const hasId   = cols.includes('id');
         const hasPK   = cols.includes('parent_id') && cols.includes('child_id');
+        const isHoliday = table === 'holidays';
         let conflict  = false;
 
         if (hasId) {
@@ -91,6 +92,13 @@ export async function POST(req: NextRequest) {
           const existing = await client.query(
             `SELECT 1 FROM "${table}" WHERE parent_id = $1 AND child_id = $2 LIMIT 1`,
             [row['parent_id'], row['child_id']]
+          );
+          conflict = existing.rows.length > 0;
+        } else if (isHoliday) {
+          // holidays has unique constraint on (date, cohort_id)
+          const existing = await client.query(
+            `SELECT id FROM holidays WHERE date = $1 AND (cohort_id = $2 OR (cohort_id IS NULL AND $2 IS NULL)) LIMIT 1`,
+            [row['date'], row['cohort_id']]
           );
           conflict = existing.rows.length > 0;
         }
@@ -108,15 +116,34 @@ export async function POST(req: NextRequest) {
           if (!isDryRun) {
             try {
               await client.query('SAVEPOINT sp1');
-              const setClauses = cols.map((c, i) => `"${c}" = $${i + 1}`).join(', ');
-              const whereClause = hasId ? 'id = $1' : 'parent_id = $1 AND child_id = $2';
-              await client.query(
-                `UPDATE "${table}" SET ${setClauses} WHERE ${whereClause}`,
-                vals
-              );
+              
+              if (hasId) {
+                // UPDATE with id
+                const setClauses = cols.map((c, i) => `"${c}" = $${i + 1}`).join(', ');
+                await client.query(
+                  `UPDATE "${table}" SET ${setClauses} WHERE id = $${cols.length + 1}`,
+                  [...vals, row['id']]
+                );
+              } else if (hasPK) {
+                // UPDATE with composite PK (parent_id, child_id)
+                const setClauses = cols.map((c, i) => `"${c}" = $${i + 1}`).join(', ');
+                await client.query(
+                  `UPDATE "${table}" SET ${setClauses} WHERE parent_id = $${cols.length + 1} AND child_id = $${cols.length + 2}`,
+                  [...vals, row['parent_id'], row['child_id']]
+                );
+              } else if (isHoliday) {
+                // UPDATE holidays with unique constraint (date, cohort_id)
+                const setClauses = cols.map((c, i) => `"${c}" = $${i + 1}`).join(', ');
+                await client.query(
+                  `UPDATE holidays SET ${setClauses} WHERE date = $${cols.length + 1} AND (cohort_id = $${cols.length + 2} OR (cohort_id IS NULL AND $${cols.length + 2}::uuid IS NULL))`,
+                  [...vals, row['date'], row['cohort_id']]
+                );
+              }
+              
               await client.query('RELEASE SAVEPOINT sp1');
               stats[table].overwritten++;
-            } catch {
+            } catch (err) {
+              console.error(`Update error for ${table}:`, err);
               await client.query('ROLLBACK TO SAVEPOINT sp1');
               stats[table].skipped++;
             }
@@ -133,7 +160,8 @@ export async function POST(req: NextRequest) {
             );
             await client.query('RELEASE SAVEPOINT sp1');
             stats[table].inserted++;
-          } catch {
+          } catch (err) {
+            console.error(`Insert error for ${table}:`, err);
             await client.query('ROLLBACK TO SAVEPOINT sp1');
             stats[table].skipped++;
           }

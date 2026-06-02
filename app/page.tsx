@@ -258,16 +258,50 @@ function Avatar({src,name,size=42,active,accentColor='#6366f1'}:{src?:string|nul
 /* ── Custom Tooltip ─────────────────────────────────*/
 function CustomTooltip({children,text}:{children:React.ReactNode;text:string}) {
   const [show, setShow] = useState(false);
-  const [pos, setPos] = useState({x:0,y:0});
+  const [pos, setPos] = useState({x:0,y:0,align:'center'});
+  const tooltipRef = React.useRef<HTMLDivElement>(null);
   
   const handleMouseEnter = (e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    setPos({x:rect.left + rect.width/2, y:rect.top - 8});
+    const centerX = rect.left + rect.width/2;
+    const topY = rect.top - 8;
+    
+    // Check if tooltip will overflow screen
+    const viewportWidth = window.innerWidth;
+    const tooltipWidth = 200; // max-width of tooltip
+    
+    let align = 'center';
+    let x = centerX;
+    
+    // If too close to right edge, align right
+    if (centerX + tooltipWidth/2 > viewportWidth - 10) {
+      align = 'right';
+      x = rect.right;
+    }
+    // If too close to left edge, align left
+    else if (centerX - tooltipWidth/2 < 10) {
+      align = 'left';
+      x = rect.left;
+    }
+    
+    setPos({x, y:topY, align});
     setShow(true);
   };
   
   const handleMouseLeave = () => {
     setShow(false);
+  };
+  
+  const getTransform = () => {
+    if (pos.align === 'left') return 'translate(0, -100%)';
+    if (pos.align === 'right') return 'translate(-100%, -100%)';
+    return 'translate(-50%, -100%)';
+  };
+  
+  const getArrowStyle = () => {
+    if (pos.align === 'left') return {left: 5};
+    if (pos.align === 'right') return {right: 5};
+    return {left: '50%', transform: 'translateX(-50%)'};
   };
   
   return (
@@ -276,11 +310,11 @@ function CustomTooltip({children,text}:{children:React.ReactNode;text:string}) {
         {children}
       </div>
       {show && (
-        <div style={{
+        <div ref={tooltipRef} style={{
           position:'fixed',
           left:pos.x,
           top:pos.y,
-          transform:'translate(-50%, -100%)',
+          transform:getTransform(),
           background:'rgba(15, 23, 42, 0.95)',
           color:'white',
           padding:'6px 10px',
@@ -299,8 +333,7 @@ function CustomTooltip({children,text}:{children:React.ReactNode;text:string}) {
           <div style={{
             position:'absolute',
             bottom:-4,
-            left:'50%',
-            transform:'translateX(-50%)',
+            ...getArrowStyle(),
             width:0,
             height:0,
             borderLeft:'4px solid transparent',

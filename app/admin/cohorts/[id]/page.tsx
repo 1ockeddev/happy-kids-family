@@ -5,6 +5,14 @@ import { Cohort, Enrollment, Child } from '@/types';
 import Modal from '@/components/ui/Modal';
 import { ArrowLeft, Plus, Trash2, GraduationCap, Users, Calendar } from 'lucide-react';
 
+/* ─── Helper: Format date as YYYY-MM-DD ── */
+const formatDateForInput = (dateStr: string | Date): string => {
+  if (!dateStr) return '';
+  const str = typeof dateStr === 'string' ? dateStr : dateStr.toISOString();
+  const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return match ? match[0] : '';
+};
+
 export default function CohortDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();

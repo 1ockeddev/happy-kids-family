@@ -7,6 +7,25 @@ import CrudTable from '@/components/admin/CrudTable';
 import Modal from '@/components/ui/Modal';
 import { Pencil, Trash2, Users } from 'lucide-react';
 
+/* ─── Helper: Parse date as local ── */
+const parseLocalDate = (dateStr: string): Date => {
+  if (!dateStr) return new Date();
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    const [, y, m, d] = match;
+    return new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+  }
+  return new Date(dateStr);
+};
+
+/* ─── Helper: Format date as YYYY-MM-DD ── */
+const formatDateForInput = (dateStr: string | Date): string => {
+  if (!dateStr) return '';
+  const str = typeof dateStr === 'string' ? dateStr : dateStr.toISOString();
+  const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return match ? match[0] : '';
+};
+
 export default function CohortsPage() {
   const router = useRouter();
   const [data, setData]     = useState<Cohort[]>([]);
@@ -51,9 +70,9 @@ export default function CohortsPage() {
               >
                 <div style={{ fontWeight: 600, fontSize: 14, color: '#1A1A2E' }}>{r.name}</div>
                 <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>
-                  {r.start_date && new Date(r.start_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
+                  {r.start_date && parseLocalDate(r.start_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
                   {' – '}
-                  {r.end_date && new Date(r.end_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
+                  {r.end_date && parseLocalDate(r.end_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
                 </div>
               </button>
             ),
@@ -76,7 +95,13 @@ export default function CohortsPage() {
             </button>
             <button className="btn btn-ghost btn-sm" onClick={() => {
               setSelected(row);
-              setForm({ name: row.name ?? '', level: row.level ?? '', academic_year: row.academic_year ?? new Date().getFullYear(), start_date: row.start_date, end_date: row.end_date });
+              setForm({ 
+                name: row.name ?? '', 
+                level: row.level ?? '', 
+                academic_year: row.academic_year ?? new Date().getFullYear(), 
+                start_date: formatDateForInput(row.start_date), 
+                end_date: formatDateForInput(row.end_date) 
+              });
               setModal('edit');
             }}>
               <Pencil size={13} /> แก้ไข

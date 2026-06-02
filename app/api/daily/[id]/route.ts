@@ -8,8 +8,19 @@ export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
     const row = await queryOne(
-      `SELECT d.*,
-        json_build_object('id', co.id, 'name', co.name, 'level', co.level) AS cohort
+      `SELECT 
+         d.id,
+         d.cohort_id,
+         to_char(d.date, 'YYYY-MM-DD') AS date,
+         d.activity,
+         d.food,
+         d.fruit,
+         d.note,
+         d.created_by,
+         d.updated_by,
+         d.created_at,
+         d.updated_at,
+         json_build_object('id', co.id, 'name', co.name, 'level', co.level) AS cohort
        FROM daily d
        JOIN cohort co ON co.id = d.cohort_id
        WHERE d.id = $1`,
