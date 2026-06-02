@@ -91,13 +91,20 @@ export async function POST(req: NextRequest) {
         const hasId   = cols.includes('id');
         const hasPK   = cols.includes('parent_id') && cols.includes('child_id');
         const isHoliday = table === 'holidays';
+        const isDailyReport = table === 'daily_report';
+        const isBehaviorScore = table === 'child_behavior_score';
+        const isEnrollment = table === 'enrollment';
+        const isDaily = table === 'daily';
+        const isAttendance = table === 'attendance';
         let conflict  = false;
+        let existingId = null;
 
         if (hasId) {
           const existing = await client.query(
             `SELECT id FROM "${table}" WHERE id = $1 LIMIT 1`, [row['id']]
           );
           conflict = existing.rows.length > 0;
+          if (conflict) existingId = existing.rows[0].id;
         } else if (hasPK) {
           const existing = await client.query(
             `SELECT 1 FROM "${table}" WHERE parent_id = $1 AND child_id = $2 LIMIT 1`,
@@ -111,6 +118,57 @@ export async function POST(req: NextRequest) {
             [row['date'], row['cohort_id']]
           );
           conflict = existing.rows.length > 0;
+          if (conflict) existingId = existing.rows[0].id;
+        }
+        
+        // Check unique constraints for tables with composite keys
+        if (!conflict) {
+          if (isDailyReport && cols.includes('daily_id') && cols.includes('child_id')) {
+            const existing = await client.query(
+              `SELECT id FROM daily_report WHERE daily_id = $1 AND child_id = $2 LIMIT 1`,
+              [row['daily_id'], row['child_id']]
+            );
+            if (existing.rows.length > 0) {
+              conflict = true;
+              existingId = existing.rows[0].id;
+            }
+          } else if (isBehaviorScore && cols.includes('daily_id') && cols.includes('child_id') && cols.includes('item_id')) {
+            const existing = await client.query(
+              `SELECT id FROM child_behavior_score WHERE daily_id = $1 AND child_id = $2 AND item_id = $3 LIMIT 1`,
+              [row['daily_id'], row['child_id'], row['item_id']]
+            );
+            if (existing.rows.length > 0) {
+              conflict = true;
+              existingId = existing.rows[0].id;
+            }
+          } else if (isEnrollment && cols.includes('child_id') && cols.includes('cohort_id') && cols.includes('start_date')) {
+            const existing = await client.query(
+              `SELECT id FROM enrollment WHERE child_id = $1 AND cohort_id = $2 AND start_date = $3 LIMIT 1`,
+              [row['child_id'], row['cohort_id'], row['start_date']]
+            );
+            if (existing.rows.length > 0) {
+              conflict = true;
+              existingId = existing.rows[0].id;
+            }
+          } else if (isDaily && cols.includes('cohort_id') && cols.includes('date')) {
+            const existing = await client.query(
+              `SELECT id FROM daily WHERE cohort_id = $1 AND date = $2 LIMIT 1`,
+              [row['cohort_id'], row['date']]
+            );
+            if (existing.rows.length > 0) {
+              conflict = true;
+              existingId = existing.rows[0].id;
+            }
+          } else if (isAttendance && cols.includes('daily_id') && cols.includes('child_id')) {
+            const existing = await client.query(
+              `SELECT id FROM attendance WHERE daily_id = $1 AND child_id = $2 LIMIT 1`,
+              [row['daily_id'], row['child_id']]
+            );
+            if (existing.rows.length > 0) {
+              conflict = true;
+              existingId = existing.rows[0].id;
+            }
+          }
         }
 
         if (conflict) {
@@ -128,12 +186,12 @@ export async function POST(req: NextRequest) {
               await client.query('SAVEPOINT sp1');
               
               let updateResult;
-              if (hasId) {
-                // UPDATE with id
+              if (hasId && existingId) {
+                // UPDATE with id (use existing id if found via unique constraint)
                 const setClauses = cols.map((c, i) => `"${c}" = $${i + 1}`).join(', ');
                 updateResult = await client.query(
                   `UPDATE "${table}" SET ${setClauses} WHERE id = $${cols.length + 1}`,
-                  [...vals, row['id']]
+                  [...vals, existingId || row['id']]
                 );
               } else if (hasPK) {
                 // UPDATE with composite PK (parent_id, child_id)
@@ -148,6 +206,14 @@ export async function POST(req: NextRequest) {
                 updateResult = await client.query(
                   `UPDATE holidays SET ${setClauses} WHERE date = $${cols.length + 1} AND (cohort_id = $${cols.length + 2} OR (cohort_id IS NULL AND $${cols.length + 2}::uuid IS NULL))`,
                   [...vals, row['date'], row['cohort_id']]
+                );
+              } else if (existingId) {
+                // Generic UPDATE using existingId found via unique constraint
+                // This covers: daily_report, child_behavior_score, enrollment, daily, attendance
+                const setClauses = cols.map((c, i) => `"${c}" = $${i + 1}`).join(', ');
+                updateResult = await client.query(
+                  `UPDATE "${table}" SET ${setClauses} WHERE id = $${cols.length + 1}`,
+                  [...vals, existingId]
                 );
               }
               

@@ -268,20 +268,30 @@ function CustomTooltip({children,text}:{children:React.ReactNode;text:string}) {
     
     // Check if tooltip will overflow screen
     const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
     const tooltipWidth = 200; // max-width of tooltip
+    const tooltipHeight = 60; // estimated height
+    const padding = 16; // padding from screen edges
     
     let align = 'center';
     let x = centerX;
+    let y = topY;
+    
+    // Check if tooltip will overflow top of screen
+    if (topY - tooltipHeight < padding) {
+      // Not enough space above, position below instead
+      y = rect.bottom + 8;
+    }
     
     // If too close to right edge, align right
-    if (centerX + tooltipWidth/2 > viewportWidth - 10) {
+    if (centerX + tooltipWidth/2 > viewportWidth - padding) {
       align = 'right';
-      x = rect.right;
+      x = Math.min(rect.right, viewportWidth - padding);
     }
     // If too close to left edge, align left
-    else if (centerX - tooltipWidth/2 < 10) {
+    else if (centerX - tooltipWidth/2 < padding) {
       align = 'left';
-      x = rect.left;
+      x = Math.max(rect.left, padding);
     }
     
     setPos({x, y:topY, align});
@@ -317,17 +327,18 @@ function CustomTooltip({children,text}:{children:React.ReactNode;text:string}) {
           transform:getTransform(),
           background:'rgba(15, 23, 42, 0.95)',
           color:'white',
-          padding:'6px 10px',
+          padding:'8px 12px',
           borderRadius:6,
           fontSize:'0.7rem',
           fontWeight:500,
           whiteSpace:'pre-line',
           pointerEvents:'none',
-          zIndex:9999,
-          boxShadow:'0 4px 12px rgba(0,0,0,0.15)',
-          maxWidth:200,
+          zIndex:99999,
+          boxShadow:'0 4px 12px rgba(0,0,0,0.2)',
+          maxWidth:'min(200px, calc(100vw - 32px))',
           textAlign:'center',
-          lineHeight:1.4
+          lineHeight:1.4,
+          wordBreak:'break-word'
         }}>
           {text}
           <div style={{
