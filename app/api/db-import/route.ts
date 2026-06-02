@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
   const stats: Record<string, {
     inserted: number; skipped: number; overwritten: number;
     conflicts: { id: string; preview: string }[];
+    errors?: string[];
   }> = {};
 
   try {
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
 
     for (const table of TABLES_ORDER) {
       const rows = payload.tables[table];
-      stats[table] = { inserted: 0, skipped: 0, overwritten: 0, conflicts: [] };
+      stats[table] = { inserted: 0, skipped: 0, overwritten: 0, conflicts: [], errors: [] };
       if (!rows?.length) continue;
 
       const allowedCols  = TABLE_COLUMNS[table] ?? [];
@@ -73,7 +74,16 @@ export async function POST(req: NextRequest) {
         const cols = Object.keys(row).filter(k => allowedCols.includes(k));
         if (!cols.length) { stats[table].skipped++; continue; }
 
-        const vals         = cols.map(c => row[c]);
+        // Prepare values - convert empty strings to null for certain fields
+        const vals = cols.map(c => {
+          const val = row[c];
+          // Convert empty string to null for optional fields
+          if (val === '' && (c.includes('note') || c.includes('_to') || c.includes('_from') || c === 'end_date' || c === 'deleted_at' || c === 'updated_by' || c === 'updated_at')) {
+            return null;
+          }
+          return val;
+        });
+        
         const placeholders = vals.map((_, i) => `$${i + 1}`).join(', ');
         const colList      = cols.map(c => `"${c}"`).join(', ');
 
@@ -117,33 +127,44 @@ export async function POST(req: NextRequest) {
             try {
               await client.query('SAVEPOINT sp1');
               
+              let updateResult;
               if (hasId) {
                 // UPDATE with id
                 const setClauses = cols.map((c, i) => `"${c}" = $${i + 1}`).join(', ');
-                await client.query(
+                updateResult = await client.query(
                   `UPDATE "${table}" SET ${setClauses} WHERE id = $${cols.length + 1}`,
                   [...vals, row['id']]
                 );
               } else if (hasPK) {
                 // UPDATE with composite PK (parent_id, child_id)
                 const setClauses = cols.map((c, i) => `"${c}" = $${i + 1}`).join(', ');
-                await client.query(
+                updateResult = await client.query(
                   `UPDATE "${table}" SET ${setClauses} WHERE parent_id = $${cols.length + 1} AND child_id = $${cols.length + 2}`,
                   [...vals, row['parent_id'], row['child_id']]
                 );
               } else if (isHoliday) {
                 // UPDATE holidays with unique constraint (date, cohort_id)
                 const setClauses = cols.map((c, i) => `"${c}" = $${i + 1}`).join(', ');
-                await client.query(
+                updateResult = await client.query(
                   `UPDATE holidays SET ${setClauses} WHERE date = $${cols.length + 1} AND (cohort_id = $${cols.length + 2} OR (cohort_id IS NULL AND $${cols.length + 2}::uuid IS NULL))`,
                   [...vals, row['date'], row['cohort_id']]
                 );
               }
               
               await client.query('RELEASE SAVEPOINT sp1');
-              stats[table].overwritten++;
-            } catch (err) {
-              console.error(`Update error for ${table}:`, err);
+              
+              // Check if update actually affected any rows
+              if (updateResult && updateResult.rowCount && updateResult.rowCount > 0) {
+                stats[table].overwritten++;
+              } else {
+                console.warn(`UPDATE returned 0 rows for ${table}, id:`, row['id']);
+                stats[table].skipped++;
+              }
+            } catch (err: any) {
+              console.error(`Update error for ${table}, id: ${row['id']}:`, err.message, err.code);
+              const errorMsg = `${row['id']}: ${err.message || err.code || 'Unknown error'}`;
+              if (!stats[table].errors) stats[table].errors = [];
+              stats[table].errors!.push(errorMsg);
               await client.query('ROLLBACK TO SAVEPOINT sp1');
               stats[table].skipped++;
             }
@@ -162,6 +183,9 @@ export async function POST(req: NextRequest) {
             stats[table].inserted++;
           } catch (err) {
             console.error(`Insert error for ${table}:`, err);
+            const errorMsg = `${row['id'] || 'unknown'}: ${(err as any).message || (err as any).code || 'Unknown error'}`;
+            if (!stats[table].errors) stats[table].errors = [];
+            stats[table].errors!.push(errorMsg);
             await client.query('ROLLBACK TO SAVEPOINT sp1');
             stats[table].skipped++;
           }

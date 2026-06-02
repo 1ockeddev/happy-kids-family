@@ -442,14 +442,25 @@ export default function DatabasePage() {
                 </div>
                 {importResult.ok && importResult.stats && (
                   <div style={{ padding: '12px 16px', background: 'white', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    {Object.entries(importResult.stats).filter(([,s]) => s.inserted > 0 || s.overwritten > 0 || s.skipped > 0).map(([t, s]) => (
-                      <div key={t} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '3px 0', borderBottom: '1px solid #F1F5F9' }}>
-                        <span style={{ color: '#6B7280' }}>{TABLE_LABELS[t] ?? t}</span>
-                        <span>
-                          {s.inserted > 0 && <span style={{ color: '#059669', fontWeight: 600 }}>+{s.inserted} ใหม่ </span>}
-                          {s.overwritten > 0 && <span style={{ color: '#E8754A', fontWeight: 600 }}>↻{s.overwritten} เขียนทับ </span>}
-                          {s.skipped > 0 && <span style={{ color: '#94A3B8' }}>/{s.skipped} ข้าม</span>}
-                        </span>
+                    {Object.entries(importResult.stats).filter(([,s]) => s.inserted > 0 || s.overwritten > 0 || s.skipped > 0).map(([t, s]: [string, any]) => (
+                      <div key={t}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '3px 0', borderBottom: '1px solid #F1F5F9' }}>
+                          <span style={{ color: '#6B7280' }}>{TABLE_LABELS[t] ?? t}</span>
+                          <span>
+                            {s.inserted > 0 && <span style={{ color: '#059669', fontWeight: 600 }}>+{s.inserted} ใหม่ </span>}
+                            {s.overwritten > 0 && <span style={{ color: '#E8754A', fontWeight: 600 }}>↻{s.overwritten} เขียนทับ </span>}
+                            {s.skipped > 0 && <span style={{ color: '#94A3B8' }}>/{s.skipped} ข้าม</span>}
+                          </span>
+                        </div>
+                        {s.errors && s.errors.length > 0 && (
+                          <div style={{ fontSize: 10, color: '#DC2626', padding: '4px 8px', background: '#FEF2F2', borderRadius: 4, marginTop: 4 }}>
+                            <strong>Errors:</strong>
+                            {s.errors.slice(0, 3).map((err: string, i: number) => (
+                              <div key={i} style={{ marginTop: 2 }}>• {err}</div>
+                            ))}
+                            {s.errors.length > 3 && <div style={{ marginTop: 2 }}>... และอีก {s.errors.length - 3} errors</div>}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
