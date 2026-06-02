@@ -404,7 +404,6 @@ export default function LiffPage() {
     daily_scores:{date:string;score:number}[];
     days_recorded:number;
   }[]>([]);
-  const [behaviorPeriod, setBehaviorPeriod] = useState<'7'|'14'|'30'|'all'>('30'); // Default 30 days
   const [activeTab, setActiveTab] = useState<'daily'|'summary'>('daily'); // Tab state
   const [cohortId, setCohortId] = useState<string|null>(null); // Store cohort_id from enrollment
 
@@ -522,29 +521,17 @@ export default function LiffPage() {
     return () => { cancelled = true; };
   },[childId]);
 
-  /* ── Load behavior summary based on selected period ── */
+  /* ── Load behavior summary for entire enrollment period ── */
   useEffect(() => {
     if (!childId || !enrollmentPeriod) return;
     
     let cancelled = false;
     
-    // Calculate date range based on selected period
+    // Always use full enrollment period
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    let dateFrom = enrollmentPeriod.start;
+    const dateFrom = enrollmentPeriod.start;
     const dateTo = enrollmentPeriod.end || todayStr;
-    
-    if (behaviorPeriod !== 'all') {
-      const daysAgo = parseInt(behaviorPeriod);
-      const today = parseLocalDate(todayStr);
-      today.setDate(today.getDate() - daysAgo);
-      dateFrom = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-      
-      // Don't go before enrollment start
-      if (dateFrom < enrollmentPeriod.start) {
-        dateFrom = enrollmentPeriod.start;
-      }
-    }
     
     fetch(`/api/report/behavior-summary?child_id=${childId}&date_from=${dateFrom}&date_to=${dateTo}`)
       .then(r=>r.json())
@@ -565,7 +552,7 @@ export default function LiffPage() {
       });
     
     return () => { cancelled = true; };
-  }, [childId, enrollmentPeriod, behaviorPeriod]);
+  }, [childId, enrollmentPeriod]);
 
   /* ── day → report ── */
   useEffect(()=>{
@@ -630,7 +617,7 @@ export default function LiffPage() {
         .avatar-row::-webkit-scrollbar{display:none}
       `}</style>
 
-      <div style={{width:'100%',maxWidth:480,background:'white',minHeight:'100dvh',paddingBottom:'calc(24px + env(safe-area-inset-bottom,0px))'}}>
+      <div style={{width:'100%',maxWidth:480,background:'white',minHeight:'100dvh',paddingBottom:'calc(88px + env(safe-area-inset-bottom,0px))'}}>
 
         {/* ─── HEADER ─────────────────────────────── */}
         <header style={{padding:'30px 24px 20px',background:'white',borderBottom:'1px solid #f1f5f9'}}>
@@ -697,48 +684,6 @@ export default function LiffPage() {
             )}
           </div>
         </header>
-
-        {/* ─── TAB BUTTONS ─────────────────────────────── */}
-        {!childLoading && childId && (
-          <div style={{padding:'12px 16px',background:'white',borderBottom:'1px solid #f1f5f9',display:'flex',gap:8}}>
-            <button
-              onClick={() => setActiveTab('daily')}
-              style={{
-                flex: 1,
-                padding: '10px 16px',
-                fontSize: '0.85rem',
-                fontWeight: 700,
-                borderRadius: 10,
-                border: 'none',
-                cursor: 'pointer',
-                background: activeTab === 'daily' ? '#6366f1' : '#f1f5f9',
-                color: activeTab === 'daily' ? 'white' : '#64748b',
-                transition: 'all 0.2s',
-                boxShadow: activeTab === 'daily' ? '0 2px 8px rgba(99, 102, 241, 0.3)' : 'none'
-              }}
-            >
-              📅 รายวัน
-            </button>
-            <button
-              onClick={() => setActiveTab('summary')}
-              style={{
-                flex: 1,
-                padding: '10px 16px',
-                fontSize: '0.85rem',
-                fontWeight: 700,
-                borderRadius: 10,
-                border: 'none',
-                cursor: 'pointer',
-                background: activeTab === 'summary' ? '#6366f1' : '#f1f5f9',
-                color: activeTab === 'summary' ? 'white' : '#64748b',
-                transition: 'all 0.2s',
-                boxShadow: activeTab === 'summary' ? '0 2px 8px rgba(99, 102, 241, 0.3)' : 'none'
-              }}
-            >
-              🌟 สรุปอุปนิสัย
-            </button>
-          </div>
-        )}
 
         {/* ─── CONTRIBUTION GRAPH (แทน DATE STRIP) ─────────────────── */}
         {!childLoading && childId && activeTab === 'daily' && (attendanceSummary.length > 0 || enrollmentPeriod) && (
@@ -879,35 +824,8 @@ export default function LiffPage() {
               <div style={{display:'flex',flexDirection:'column',gap:2}}>
                 <span style={{fontSize:'0.7rem',fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:'0.06em'}}>🌟 สรุปอุปนิสัย</span>
                 <span style={{fontSize:'0.6rem',color:'#94a3b8'}}>
-                  คะแนนเฉลี่ย {behaviorPeriod === 'all' ? 'ตลอดช่วงเรียน' : `${behaviorPeriod} วันที่ผ่านมา`}
+                  คะแนนเฉลี่ยตลอดช่วงเรียน
                 </span>
-              </div>
-              {/* Period selector */}
-              <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
-                {[
-                  {value: '7' as const, label: '7 วัน'},
-                  {value: '14' as const, label: '14 วัน'},
-                  {value: '30' as const, label: '30 วัน'},
-                  {value: 'all' as const, label: 'ทั้งหมด'}
-                ].map(period => (
-                  <button
-                    key={period.value}
-                    onClick={() => setBehaviorPeriod(period.value)}
-                    style={{
-                      padding: '4px 8px',
-                      fontSize: '0.65rem',
-                      fontWeight: 600,
-                      borderRadius: 6,
-                      border: 'none',
-                      cursor: 'pointer',
-                      background: behaviorPeriod === period.value ? '#6366f1' : '#f1f5f9',
-                      color: behaviorPeriod === period.value ? 'white' : '#64748b',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    {period.label}
-                  </button>
-                ))}
               </div>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:12}}>
@@ -935,73 +853,45 @@ export default function LiffPage() {
                         ? item.daily_scores[item.daily_scores.length - 1].score 
                         : null;
                       
-                      // Calculate trend (compare last 3 days avg vs previous 3 days avg)
-                      let trendIndicator = '→';
-                      if (item.daily_scores.length >= 6) {
-                        const recent3 = item.daily_scores.slice(-3).reduce((sum, d) => sum + d.score, 0) / 3;
-                        const previous3 = item.daily_scores.slice(-6, -3).reduce((sum, d) => sum + d.score, 0) / 3;
-                        if (recent3 > previous3 + 0.5) trendIndicator = '↗';
-                        else if (recent3 < previous3 - 0.5) trendIndicator = '↘';
-                      }
-                      
-                      // Generate star rating for today's score
-                      const starRating = todayScore !== null 
-                        ? '⭐'.repeat(Math.round((todayScore / item.max_score) * 3))
-                        : '';
-                      const emptyStars = todayScore !== null 
-                        ? '☆'.repeat(3 - Math.round((todayScore / item.max_score) * 3))
-                        : '';
-                      
                       return (
                         <div key={item.item_id} style={{display:'flex',flexDirection:'column',gap:6,paddingLeft:8,background:'#fafafa',padding:12,borderRadius:10}}>
                           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                             <span style={{fontSize:'0.75rem',fontWeight:600,color:'#475569'}}>{item.name_th}</span>
-                            <div style={{display:'flex',alignItems:'center',gap:6}}>
-                              <span style={{fontSize:'0.7rem',fontWeight:700,color}}>{item.avg_score.toFixed(1)}/{item.max_score}</span>
-                              <span style={{fontSize:'0.9rem'}}>{trendIndicator}</span>
-                            </div>
                           </div>
                           
-                          {/* Progress bar */}
-                          <div style={{width:'100%',height:4,background:'#e2e8f0',borderRadius:2,overflow:'hidden'}}>
-                            <div style={{width:`${percentage}%`,height:'100%',background:color,borderRadius:2,transition:'width 0.3s ease'}} />
-                          </div>
-                          
-                          {/* Sparkline + Today's score */}
-                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',gap:8,marginTop:4}}>
-                            {/* Sparkline bar chart */}
-                            <div style={{display:'flex',alignItems:'flex-end',gap:1,height:24,flex:1}}>
-                              {item.daily_scores.slice(-14).map((day, idx) => {
-                                const barHeight = (day.score / item.max_score) * 100;
-                                const barColor = (day.score / item.max_score) >= 0.8 ? '#10b981' : 
-                                               (day.score / item.max_score) >= 0.6 ? '#f59e0b' : '#ef4444';
-                                return (
-                                  <div
-                                    key={idx}
-                                    title={`${day.date}: ${day.score}/${item.max_score}`}
-                                    style={{
-                                      flex: 1,
-                                      height: `${barHeight}%`,
-                                      minHeight: 2,
-                                      background: barColor,
-                                      borderRadius: 1,
-                                      opacity: 0.7,
-                                      transition: 'opacity 0.2s'
-                                    }}
-                                    onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                                    onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}
-                                  />
-                                );
-                              })}
-                            </div>
-                            
-                            {/* Today's score with stars */}
-                            {todayScore !== null && (
-                              <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:1}}>
-                                <span style={{fontSize:'0.6rem',color:'#94a3b8',fontWeight:600}}>วันนี้</span>
-                                <span style={{fontSize:'0.75rem',letterSpacing:'-1px'}}>{starRating}{emptyStars}</span>
-                              </div>
-                            )}
+                          {/* Sparkline bar chart */}
+                          <div style={{display:'flex',alignItems:'flex-end',gap:1,height:24}}>
+                            {item.daily_scores.slice(-14).map((day, idx) => {
+                              const barHeight = (day.score / item.max_score) * 100;
+                              const barColor = (day.score / item.max_score) >= 0.8 ? '#10b981' : 
+                                             (day.score / item.max_score) >= 0.6 ? '#f59e0b' : '#ef4444';
+                              return (
+                                <div
+                                  key={idx}
+                                  title={`${day.date}: ${day.score}/${item.max_score}`}
+                                  onClick={() => {
+                                    // Find the dayIdx for this date
+                                    const foundIdx = dayEntries.findIndex(entry => entry.date === day.date);
+                                    if (foundIdx >= 0) {
+                                      setDayIdx(foundIdx);
+                                      setActiveTab('daily');
+                                    }
+                                  }}
+                                  style={{
+                                    flex: 1,
+                                    height: `${barHeight}%`,
+                                    minHeight: 2,
+                                    background: barColor,
+                                    borderRadius: 1,
+                                    opacity: 0.7,
+                                    transition: 'opacity 0.2s',
+                                    cursor: 'pointer'
+                                  }}
+                                  onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                                  onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}
+                                />
+                              );
+                            })}
                           </div>
                         </div>
                       );
@@ -1298,6 +1188,64 @@ export default function LiffPage() {
             </div>
           )}
         </div>
+        )}
+
+        {/* ─── BOTTOM NAVIGATION BAR ─────────────────────────────── */}
+        {!childLoading && childId && (
+          <div style={{
+            position: 'fixed',
+            bottom: 0,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: '100%',
+            maxWidth: 480,
+            background: 'white',
+            borderTop: '1px solid #e2e8f0',
+            boxShadow: '0 -2px 10px rgba(0,0,0,0.05)',
+            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+            zIndex: 1000
+          }}>
+            <div style={{display: 'flex', height: 64}}>
+              <button
+                onClick={() => setActiveTab('daily')}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 4,
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  color: activeTab === 'daily' ? '#6366f1' : '#94a3b8'
+                }}
+              >
+                <span style={{fontSize: '1.5rem'}}>📅</span>
+                <span style={{fontSize: '0.7rem', fontWeight: activeTab === 'daily' ? 700 : 500}}>รายวัน</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('summary')}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 4,
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  color: activeTab === 'summary' ? '#6366f1' : '#94a3b8'
+                }}
+              >
+                <span style={{fontSize: '1.5rem'}}>🌟</span>
+                <span style={{fontSize: '0.7rem', fontWeight: activeTab === 'summary' ? 700 : 500}}>สรุปอุปนิสัย</span>
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </div>
