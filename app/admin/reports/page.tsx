@@ -148,7 +148,7 @@ export default function ReportsPage() {
   const [loading, setLoading]     = useState(true);
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState<string | null>(null);
-  const [modal, setModal]         = useState<'add' | 'edit' | 'delete' | null>(null);
+  const [modal, setModal]         = useState<'add' | 'edit' | 'delete' | 'columns' | null>(null);
   const [selected, setSelected]   = useState<DailyReport | null>(null);
   const [form, setForm]           = useState(EMPTY_FORM);
 
@@ -160,18 +160,51 @@ export default function ReportsPage() {
   const [scores, setScores]     = useState<BehaviorScore[]>([]);
   const [excretions, setExcretions] = useState<ExLocal[]>([]);
 
+  // Column visibility state
+  const [visibleColumns, setVisibleColumns] = useState({
+    child: true,
+    date: true,
+    milk1: true,
+    milk2: false,
+    food_amount: true,
+    fruit_amount: false,
+    excretions: true,
+    nap: false,
+  });
+
   const fetchData = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const qs = new URLSearchParams();
-      if (search) qs.set('search', search);
-      const res = await fetch(`/api/daily-reports?${qs}`);
+      const res = await fetch(`/api/daily-reports`);
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'โหลดข้อมูลไม่ได้');
       setData(json.data);
     } catch (e) { setError(e instanceof Error ? e.message : 'เกิดข้อผิดพลาด'); }
     finally { setLoading(false); }
-  }, [search]);
+  }, []);
+
+  // Filter data based on search
+  const filteredData = data.filter(report => {
+    if (!search.trim()) return true;
+    
+    const searchLower = search.toLowerCase().trim();
+    
+    // Search in child name
+    const childName = report.child?.name_th?.toLowerCase() || '';
+    
+    // Search in cohort name
+    const cohortName = (report.daily as Daily & { cohort?: { name: string } })?.cohort?.name?.toLowerCase() || '';
+    
+    // Search in date
+    const dateStr = report.daily?.date 
+      ? new Date(report.daily.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })
+      : '';
+    const dateStrLower = dateStr.toLowerCase();
+    
+    return childName.includes(searchLower) || 
+           cohortName.includes(searchLower) || 
+           dateStrLower.includes(searchLower);
+  });
 
   useEffect(() => { fetchData(); }, [fetchData]);
   useEffect(() => {
@@ -869,24 +902,42 @@ export default function ReportsPage() {
         description="บันทึกการนอน นม อาหาร การขับถ่าย และพฤติกรรม"
         loading={loading} onRefresh={fetchData}
         columns={[
-          { key: 'child', label: 'นักเรียน', render: r => (
+          visibleColumns.child ? { key: 'child', label: 'นักเรียน', render: (r: DailyReport) => (
             <div>
               <div style={{ fontWeight: 500 }}>{r.child?.name_th ?? '-'}</div>
               <div style={{ fontSize: 12, color: '#9CA3AF' }}>{r.daily?.cohort?.name}</div>
             </div>
-          )},
-          { key: 'date', label: 'วันที่', hideOnMobile: true, render: r => r.daily?.date ? new Date(r.daily.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }) : '-' },
-          { key: 'milk1', label: 'นม 1', render: r => <span className={`badge ${AC[r.milk1]}`}>{AL[r.milk1]}</span> },
-          { key: 'food_amount', label: 'อาหาร', hideOnMobile: true, render: r => <span className={`badge ${AC[r.food_amount]}`}>{AL[r.food_amount]}</span> },
-          { key: 'excretions', label: '🚽', hideOnMobile: true, render: r => {
+          )} : null,
+          visibleColumns.date ? { key: 'date', label: 'วันที่', hideOnMobile: true, render: (r: DailyReport) => r.daily?.date ? new Date(r.daily.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }) : '-' } : null,
+          visibleColumns.milk1 ? { key: 'milk1', label: 'นม 1', render: (r: DailyReport) => <span className={`badge ${AC[r.milk1]}`}>{AL[r.milk1]}</span> } : null,
+          visibleColumns.milk2 ? { key: 'milk2', label: 'นม 2', hideOnMobile: true, render: (r: DailyReport) => <span className={`badge ${AC[r.milk2]}`}>{AL[r.milk2]}</span> } : null,
+          visibleColumns.food_amount ? { key: 'food_amount', label: 'อาหาร', hideOnMobile: true, render: (r: DailyReport) => <span className={`badge ${AC[r.food_amount]}`}>{AL[r.food_amount]}</span> } : null,
+          visibleColumns.fruit_amount ? { key: 'fruit_amount', label: 'ผลไม้', hideOnMobile: true, render: (r: DailyReport) => <span className={`badge ${AC[r.fruit_amount]}`}>{AL[r.fruit_amount]}</span> } : null,
+          visibleColumns.nap ? { key: 'nap', label: '😴 นอน', hideOnMobile: true, render: (r: DailyReport) => r.nap_from && r.nap_to ? <span style={{ fontSize: 12, color: '#6B7280' }}>{r.nap_from.slice(0,5)} - {r.nap_to.slice(0,5)}</span> : <span style={{ color: '#D1D5DB' }}>—</span> } : null,
+          visibleColumns.excretions ? { key: 'excretions', label: '🚽', hideOnMobile: true, render: (r: DailyReport) => {
             const exs = r.excretions ?? [];
             if (!exs.length) return <span style={{ color: '#D1D5DB' }}>—</span>;
-            return <div style={{ display: 'flex', gap: 4 }}>{exs.map((ex, i) => <span key={i} style={{ fontSize: 11, background: ex.type === 'poo' ? '#FEF6E6' : '#EBF4FA', color: ex.type === 'poo' ? '#F5A623' : '#4A90B8', padding: '2px 6px', borderRadius: 99 }}>{ex.type === 'pee' ? '💛' : '💩'} {ex.time?.slice(0,5)}</span>)}</div>;
-          }},
-        ]}
-        data={data}
+            return <div style={{ display: 'flex', gap: 4 }}>{exs.map((ex: ChildExcretion, i: number) => <span key={i} style={{ fontSize: 11, background: ex.type === 'poo' ? '#FEF6E6' : '#EBF4FA', color: ex.type === 'poo' ? '#F5A623' : '#4A90B8', padding: '2px 6px', borderRadius: 99 }}>{ex.type === 'pee' ? '💛' : '💩'} {ex.time?.slice(0,5)}</span>)}</div>;
+          }} : null,
+        ].filter((col): col is NonNullable<typeof col> => col !== null)}
+        data={filteredData}
         onAdd={openAdd} addLabel="เพิ่มรายงาน"
-        searchValue={search} onSearchChange={setSearch} searchPlaceholder="ค้นหาชื่อนักเรียน..."
+        searchValue={search} onSearchChange={setSearch} searchPlaceholder="ค้นหา ชื่อนร., cohort, วันที่..."
+        extraHeaderActions={
+          <button 
+            className="btn btn-sm" 
+            onClick={() => setModal('columns')}
+            style={{ background: '#F3F4F6', color: '#6B7280', display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+            คอลัมน์
+          </button>
+        }
         actions={row => (
           <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
             <button className="btn btn-ghost btn-sm" onClick={() => handlePrint(row)} title="ปริ้น A4"><Printer size={13} /></button>
@@ -1106,6 +1157,53 @@ export default function ReportsPage() {
 
       <Modal open={modal === 'delete'} title="ยืนยันการลบ" onClose={() => setModal(null)} onConfirm={handleDelete} confirmLabel={saving ? 'กำลังลบ...' : 'ลบ'} confirmDanger>
         <p style={{ color: '#6B7280' }}>ลบรายงานของ <strong>{selected?.child?.name_th}</strong>?</p>
+      </Modal>
+
+      {/* Column Selection Modal */}
+      <Modal 
+        open={modal === 'columns'} 
+        title="เลือกคอลัมน์ที่จะแสดง" 
+        onClose={() => setModal(null)} 
+        onConfirm={() => setModal(null)}
+        confirmLabel="ตกลง">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {[
+            { key: 'child', label: '👧 นักเรียน', disabled: true },
+            { key: 'date', label: '📅 วันที่' },
+            { key: 'milk1', label: '🍼 นม 1' },
+            { key: 'milk2', label: '🍼 นม 2' },
+            { key: 'food_amount', label: '🍱 อาหาร' },
+            { key: 'fruit_amount', label: '🍎 ผลไม้' },
+            { key: 'nap', label: '😴 การนอน' },
+            { key: 'excretions', label: '🚽 การขับถ่าย' },
+          ].map(col => (
+            <label 
+              key={col.key} 
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 10, 
+                padding: '10px 12px', 
+                background: visibleColumns[col.key as keyof typeof visibleColumns] ? '#F0EEFF' : '#F9FAFB',
+                borderRadius: 8,
+                cursor: col.disabled ? 'not-allowed' : 'pointer',
+                opacity: col.disabled ? 0.6 : 1,
+                border: `2px solid ${visibleColumns[col.key as keyof typeof visibleColumns] ? '#6C5CE7' : 'transparent'}`,
+                transition: 'all 0.2s'
+              }}
+            >
+              <input 
+                type="checkbox" 
+                checked={visibleColumns[col.key as keyof typeof visibleColumns]}
+                disabled={col.disabled}
+                onChange={(e) => setVisibleColumns(v => ({ ...v, [col.key]: e.target.checked }))}
+                style={{ width: 18, height: 18, cursor: col.disabled ? 'not-allowed' : 'pointer' }}
+              />
+              <span style={{ fontSize: 14, fontWeight: 500, color: '#1A1A2E' }}>{col.label}</span>
+              {col.disabled && <span style={{ fontSize: 11, color: '#9CA3AF', marginLeft: 'auto' }}>(จำเป็น)</span>}
+            </label>
+          ))}
+        </div>
       </Modal>
     </>
   );

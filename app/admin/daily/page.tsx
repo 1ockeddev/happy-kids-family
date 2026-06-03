@@ -352,12 +352,15 @@ export default function DailyPage() {
   // Report handlers
   const openAddReport = async (daily: Daily) => {
     setSelected(daily);
+    setChildrenReports([]); // Reset all children reports
+    setActiveChildIndex(0);
     const beer = teachers.find(t => t.display_name?.includes(DEFAULT_TEACHER_NAME));
     setReportForm({
       ...EMPTY_REPORT_FORM,
       cohort_id: daily.cohort_id,
       daily_id: daily.id,
       created_by: beer?.id ?? teachers[0]?.id ?? '',
+      child_id: '', // Will be set when selecting children
     });
     setScores([]);
     setExcretions([]);
@@ -393,75 +396,141 @@ export default function DailyPage() {
     setModal('add-report');
   };
 
+  // State for multiple children with their own data
+  const [childrenReports, setChildrenReports] = useState<{
+    child_id: string;
+    scores: BehaviorScore[];
+    excretions: ExLocal[];
+    reportForm: typeof EMPTY_REPORT_FORM;
+  }[]>([]);
+
+  const [activeChildIndex, setActiveChildIndex] = useState<number>(0);
+
+  const addChildReport = (childId: string) => {
+    // Check if already added
+    if (childrenReports.some(cr => cr.child_id === childId)) {
+      // If exists, just switch to that child
+      const index = childrenReports.findIndex(cr => cr.child_id === childId);
+      setActiveChildIndex(index);
+      return;
+    }
+
+    // Set default scores for this child
+    const defaultScores: BehaviorScore[] = [];
+    behaviorsForCohort.forEach(cat => {
+      (cat as BehaviorCategory & { items?: BehaviorItem[] }).items?.forEach(item => {
+        defaultScores.push({ item_id: item.id, score: Math.min(item.max_score, 3), note: '' });
+      });
+    });
+
+    const beer = teachers.find(t => t.display_name?.includes(DEFAULT_TEACHER_NAME));
+    const newReport = {
+      child_id: childId,
+      scores: defaultScores,
+      excretions: [],
+      reportForm: {
+        ...EMPTY_REPORT_FORM,
+        cohort_id: reportForm.cohort_id,
+        daily_id: reportForm.daily_id,
+        child_id: childId,
+        created_by: beer?.id ?? teachers[0]?.id ?? '',
+      }
+    };
+
+    setChildrenReports(prev => [...prev, newReport]);
+    setActiveChildIndex(childrenReports.length); // Switch to new child
+  };
+
+  const removeChildReport = (childId: string) => {
+    const newReports = childrenReports.filter(cr => cr.child_id !== childId);
+    setChildrenReports(newReports);
+    if (activeChildIndex >= newReports.length) {
+      setActiveChildIndex(Math.max(0, newReports.length - 1));
+    }
+  };
+
+  const updateChildReport = (childId: string, updates: Partial<typeof childrenReports[0]>) => {
+    setChildrenReports(prev =>
+      prev.map(cr => cr.child_id === childId ? { ...cr, ...updates } : cr)
+    );
+  };
+
+  const activeChildReport = childrenReports[activeChildIndex];
+
   const handleSaveReport = async () => {
-    if (!reportForm.child_id) {
-      alert('กรุณาเลือกนักเรียน');
+    if (childrenReports.length === 0) {
+      alert('กรุณาเพิ่มนักเรียนอย่างน้อย 1 คน');
       return;
     }
     
     setSaving(true);
     try {
-      const body = {
-        ...reportForm,
-        nap_from: reportForm.nap_from || null,
-        nap_to: reportForm.nap_to || null,
-        milk1_note: reportForm.milk1_note || null,
-        milk2_note: reportForm.milk2_note || null,
-        food_note: reportForm.food_note || null,
-        fruit_note: reportForm.fruit_note || null,
-        note: reportForm.note || null,
-        created_by: reportForm.created_by || null,
-        updated_by: reportForm.created_by || null,
-      };
-      
-      const res = await fetch('/api/daily-reports', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
-      
-      // Save excretions
-      const visibleExcretions = excretions.filter(ex => !ex._del);
-      await Promise.all(
-        visibleExcretions.map(ex =>
-          fetch('/api/excretions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              daily_id: reportForm.daily_id,
-              child_id: reportForm.child_id,
-              time: ex.time || null,
-              type: ex.type,
-              action: ex.action,
-            }),
-          })
-        )
-      );
-      
-      // Save behavior scores
-      if (scores.length > 0) {
+      // Create reports for all children
+      await Promise.all(childrenReports.map(async (childReport) => {
+        const body = {
+          ...childReport.reportForm,
+          nap_from: childReport.reportForm.nap_from || null,
+          nap_to: childReport.reportForm.nap_to || null,
+          milk1_note: childReport.reportForm.milk1_note || null,
+          milk2_note: childReport.reportForm.milk2_note || null,
+          food_note: childReport.reportForm.food_note || null,
+          fruit_note: childReport.reportForm.fruit_note || null,
+          note: childReport.reportForm.note || null,
+          created_by: childReport.reportForm.created_by || null,
+          updated_by: childReport.reportForm.created_by || null,
+        };
+        
+        const res = await fetch('/api/daily-reports', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error);
+        
+        // Save excretions for this child
+        const visibleExcretions = childReport.excretions.filter(ex => !ex._del);
         await Promise.all(
-          scores
-            .filter(s => s.score !== null)
-            .map(s =>
-              fetch('/api/behavior-scores', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  daily_id: reportForm.daily_id,
-                  child_id: reportForm.child_id,
-                  item_id: s.item_id,
-                  score: s.score,
-                  note: s.note || null,
-                }),
-              })
-            )
+          visibleExcretions.map(ex =>
+            fetch('/api/excretions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                daily_id: childReport.reportForm.daily_id,
+                child_id: childReport.child_id,
+                time: ex.time || null,
+                type: ex.type,
+                action: ex.action,
+              }),
+            })
+          )
         );
-      }
+        
+        // Save behavior scores for this child
+        if (childReport.scores.length > 0) {
+          await Promise.all(
+            childReport.scores
+              .filter(s => s.score !== null)
+              .map(s =>
+                fetch('/api/behavior-scores', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    daily_id: childReport.reportForm.daily_id,
+                    child_id: childReport.child_id,
+                    item_id: s.item_id,
+                    score: s.score,
+                    note: s.note || null,
+                  }),
+                })
+              )
+          );
+        }
+      }));
       
       setModal(null);
+      setChildrenReports([]);
+      setActiveChildIndex(0);
       load();
     } catch (e) {
       alert(e instanceof Error ? e.message : 'เกิดข้อผิดพลาด');
@@ -628,33 +697,99 @@ export default function DailyPage() {
           {/* Report Section */}
           {showReportInModal && form.cohort_id && (
             <div style={{ borderTop: '2px solid #E5E7EB', paddingTop: '16px' }}>
-              {/* Student Selection */}
+              {/* Student Selection - Add Multiple */}
               <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
-                <Sec emoji="👧" label="เลือกนักเรียน" color="#9CA3AF" />
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {childrenForCohort.map(c => (
-                    <button key={c.id} type="button" 
-                      onClick={() => {
-                        setReportForm({ ...reportForm, child_id: c.id });
-                        // Set default scores when child is selected
-                        if (behaviorsForCohort.length > 0) {
-                          const defaultScores: BehaviorScore[] = [];
-                          behaviorsForCohort.forEach(cat => {
-                            (cat as BehaviorCategory & { items?: BehaviorItem[] }).items?.forEach(item => {
-                              defaultScores.push({ item_id: item.id, score: Math.min(item.max_score, 3), note: '' });
-                            });
-                          });
-                          setScores(defaultScores);
-                        }
-                      }}
-                      style={{ padding: '7px 14px', borderRadius: 99, border: 'none', cursor: 'pointer', fontSize: 14, fontFamily: 'Sarabun,sans-serif', background: reportForm.child_id === c.id ? '#6C5CE7' : '#FFFFFF', color: reportForm.child_id === c.id ? 'white' : '#6B7280', fontWeight: reportForm.child_id === c.id ? 700 : 400, boxShadow: reportForm.child_id === c.id ? 'none' : '0 0 0 1px #E5E7EB', transition: 'all .15s' }}>
-                      {c.name_th}
-                    </button>
-                  ))}
+                <Sec emoji="👧" label={`เลือกนักเรียน (เพิ่มแล้ว ${childrenReports.length} คน)`} color="#9CA3AF" />
+                
+                {/* Add student buttons */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: childrenReports.length > 0 ? 12 : 0 }}>
+                  {childrenForCohort.map(c => {
+                    const isAdded = childrenReports.some(cr => cr.child_id === c.id);
+                    return (
+                      <button 
+                        key={c.id} 
+                        type="button" 
+                        onClick={() => addChildReport(c.id)}
+                        disabled={isAdded}
+                        style={{ 
+                          padding: '7px 14px', 
+                          borderRadius: 99, 
+                          border: 'none', 
+                          cursor: isAdded ? 'not-allowed' : 'pointer', 
+                          fontSize: 14, 
+                          fontFamily: 'Sarabun,sans-serif', 
+                          background: isAdded ? '#E5E7EB' : '#FFFFFF', 
+                          color: isAdded ? '#9CA3AF' : '#6B7280', 
+                          fontWeight: 400, 
+                          boxShadow: '0 0 0 1px #E5E7EB', 
+                          transition: 'all .15s',
+                          opacity: isAdded ? 0.6 : 1
+                        }}
+                      >
+                        <Plus size={12} style={{ marginRight: 4, display: 'inline' }} />
+                        {c.name_th}
+                      </button>
+                    );
+                  })}
                 </div>
+
+                {/* Tabs for added children */}
+                {childrenReports.length > 0 && (
+                  <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 12 }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {childrenReports.map((cr, index) => {
+                        const child = childrenForCohort.find(c => c.id === cr.child_id);
+                        const isActive = activeChildIndex === index;
+                        return (
+                          <div key={cr.child_id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <button
+                              type="button"
+                              onClick={() => setActiveChildIndex(index)}
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: 8,
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: 13,
+                                fontFamily: 'Sarabun,sans-serif',
+                                background: isActive ? '#6C5CE7' : '#F3F4F6',
+                                color: isActive ? 'white' : '#6B7280',
+                                fontWeight: isActive ? 600 : 400,
+                                transition: 'all .15s'
+                              }}
+                            >
+                              {child?.name_th}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeChildReport(cr.child_id)}
+                              style={{
+                                width: 20,
+                                height: 20,
+                                borderRadius: '50%',
+                                border: 'none',
+                                background: '#EF4444',
+                                color: 'white',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 12,
+                                fontWeight: 700,
+                                padding: 0
+                              }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {reportForm.child_id && (
+              {activeChildReport && (
                 <>
                   {/* Behaviors */}
                   {sortedBehaviors.map(cat => (
@@ -662,9 +797,27 @@ export default function DailyPage() {
                       <Sec emoji="🧠" label={`${cat.name_th}  ${cat.name_en}`} color="#6C5CE7" />
                       {(cat as BehaviorCategory & { items?: BehaviorItem[] }).items?.map(item => (
                         <ScoreInput key={item.id} item={item}
-                          score={scores.find(s => s.item_id === item.id)}
-                          onChange={setScore}
-                          onNoteChange={setScoreNote} />
+                          score={activeChildReport.scores.find(s => s.item_id === item.id)}
+                          onChange={(item_id, score) => {
+                            const newScores = [...activeChildReport.scores.filter(s => s.item_id !== item_id)];
+                            if (score !== null) {
+                              newScores.push({ 
+                                item_id, 
+                                score, 
+                                note: activeChildReport.scores.find(s => s.item_id === item_id)?.note ?? '' 
+                              });
+                            }
+                            updateChildReport(activeChildReport.child_id, { scores: newScores });
+                          }}
+                          onNoteChange={(item_id, note) => {
+                            const newScores = activeChildReport.scores.map(s => 
+                              s.item_id === item_id ? { ...s, note } : s
+                            );
+                            if (!newScores.find(s => s.item_id === item_id)) {
+                              newScores.push({ item_id, score: null, note });
+                            }
+                            updateChildReport(activeChildReport.child_id, { scores: newScores });
+                          }} />
                       ))}
                     </div>
                   ))}
@@ -673,8 +826,22 @@ export default function DailyPage() {
                   <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
                     <Sec emoji="😴" label="การนอน" color="#9CA3AF" />
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                      <div className="form-group"><label className="form-label">เริ่มนอน</label><input className="form-input" type="time" value={reportForm.nap_from} onChange={e => setReportForm({ ...reportForm, nap_from: e.target.value })} /></div>
-                      <div className="form-group"><label className="form-label">ตื่นนอน</label><input className="form-input" type="time" value={reportForm.nap_to} onChange={e => setReportForm({ ...reportForm, nap_to: e.target.value })} /></div>
+                      <div className="form-group">
+                        <label className="form-label">เริ่มนอน</label>
+                        <input className="form-input" type="time" 
+                          value={activeChildReport.reportForm.nap_from} 
+                          onChange={e => updateChildReport(activeChildReport.child_id, { 
+                            reportForm: { ...activeChildReport.reportForm, nap_from: e.target.value } 
+                          })} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">ตื่นนอน</label>
+                        <input className="form-input" type="time" 
+                          value={activeChildReport.reportForm.nap_to} 
+                          onChange={e => updateChildReport(activeChildReport.child_id, { 
+                            reportForm: { ...activeChildReport.reportForm, nap_to: e.target.value } 
+                          })} />
+                      </div>
                     </div>
                   </div>
 
@@ -682,16 +849,47 @@ export default function DailyPage() {
                   <div style={{ background: '#F0EEFF', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                       <Sec emoji="🚽" label="การขับถ่าย" color="#6C5CE7" />
-                      <button type="button" className="btn btn-sm" style={{ background: '#6C5CE7', color: 'white', fontSize: 12 }} onClick={addEx}><Plus size={12} /> เพิ่ม</button>
+                      <button type="button" className="btn btn-sm" 
+                        style={{ background: '#6C5CE7', color: 'white', fontSize: 12 }} 
+                        onClick={() => {
+                          const newEx = { 
+                            ...EMPTY_EX, 
+                            id: `_n_${Date.now()}`, 
+                            daily_id: '', 
+                            child_id: '', 
+                            created_at: '', 
+                            _new: true 
+                          };
+                          updateChildReport(activeChildReport.child_id, { 
+                            excretions: [...activeChildReport.excretions, newEx] 
+                          });
+                        }}>
+                        <Plus size={12} /> เพิ่ม
+                      </button>
                     </div>
-                    {visibleEx.length === 0 && <p style={{ color: '#9CA3AF', fontSize: 13 }}>ยังไม่มีบันทึก</p>}
+                    {activeChildReport.excretions.filter(ex => !ex._del).length === 0 && (
+                      <p style={{ color: '#9CA3AF', fontSize: 13 }}>ยังไม่มีบันทึก</p>
+                    )}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {visibleEx.map(ex => (
+                      {activeChildReport.excretions.filter(ex => !ex._del).map(ex => (
                         <div key={ex.id} style={{ background: 'white', borderRadius: 8, padding: '8px 12px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <input type="time" className="form-input" value={ex.time ?? ''} onChange={e => updEx(ex.id, { time: e.target.value || null })} style={{ width: 100, padding: '5px 8px', fontSize: 13 }} />
+                          <input type="time" className="form-input" value={ex.time ?? ''} 
+                            onChange={evt => {
+                              const newExs = activeChildReport.excretions.map(e => 
+                                e.id === ex.id ? { ...e, time: evt.target.value || null } : e
+                              );
+                              updateChildReport(activeChildReport.child_id, { excretions: newExs });
+                            }} 
+                            style={{ width: 100, padding: '5px 8px', fontSize: 13 }} />
                           <div style={{ display: 'flex', gap: 4 }}>
                             {(['pee', 'poo'] as ExcretionType[]).map(t => (
-                              <button key={t} type="button" onClick={() => updEx(ex.id, { type: t })}
+                              <button key={t} type="button" 
+                                onClick={() => {
+                                  const newExs = activeChildReport.excretions.map(e => 
+                                    e.id === ex.id ? { ...e, type: t } : e
+                                  );
+                                  updateChildReport(activeChildReport.child_id, { excretions: newExs });
+                                }}
                                 style={{ padding: '3px 10px', borderRadius: 99, border: 'none', cursor: 'pointer', fontSize: 12, background: ex.type === t ? (t === 'pee' ? '#EBF4FA' : '#FEF6E6') : '#F3F4F6', color: ex.type === t ? (t === 'pee' ? '#4A90B8' : '#F5A623') : '#9CA3AF', fontWeight: ex.type === t ? 600 : 400 }}>
                                 {ET[t]}
                               </button>
@@ -699,13 +897,28 @@ export default function DailyPage() {
                           </div>
                           <div style={{ display: 'flex', gap: 4 }}>
                             {(['diaper', 'potty'] as ExcretionAction[]).map(a => (
-                              <button key={a} type="button" onClick={() => updEx(ex.id, { action: a })}
+                              <button key={a} type="button" 
+                                onClick={() => {
+                                  const newExs = activeChildReport.excretions.map(e => 
+                                    e.id === ex.id ? { ...e, action: a } : e
+                                  );
+                                  updateChildReport(activeChildReport.child_id, { excretions: newExs });
+                                }}
                                 style={{ padding: '3px 10px', borderRadius: 99, border: 'none', cursor: 'pointer', fontSize: 12, background: ex.action === a ? '#F0EEFF' : '#F3F4F6', color: ex.action === a ? '#6C5CE7' : '#9CA3AF', fontWeight: ex.action === a ? 600 : 400 }}>
                                 {EA[a]}
                               </button>
                             ))}
                           </div>
-                          <button type="button" onClick={() => delEx(ex.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF' }}><X size={14} /></button>
+                          <button type="button" 
+                            onClick={() => {
+                              const newExs = activeChildReport.excretions.map(e => 
+                                e.id === ex.id ? { ...e, _del: true } : e
+                              );
+                              updateChildReport(activeChildReport.child_id, { excretions: newExs });
+                            }} 
+                            style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF' }}>
+                            <X size={14} />
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -715,19 +928,27 @@ export default function DailyPage() {
                   <div style={{ background: '#EBF7F0', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
                     <Sec emoji="🍱" label="ปริมาณที่รับประทาน" color="#4CAF76" />
                     <AmountSelect
-                      label={form.food ? `🍱 ${form.food}` : "ปริมาณอาหาร"}
-                      value={reportForm.food_amount}
-                      noteValue={reportForm.food_note}
-                      onAmountChange={v => setReportForm({ ...reportForm, food_amount: v })}
-                      onNoteChange={v => setReportForm({ ...reportForm, food_note: v })}
+                      label={selected?.food ? `🍱 ${selected.food}` : "ปริมาณอาหาร"}
+                      value={activeChildReport.reportForm.food_amount}
+                      noteValue={activeChildReport.reportForm.food_note}
+                      onAmountChange={v => updateChildReport(activeChildReport.child_id, { 
+                        reportForm: { ...activeChildReport.reportForm, food_amount: v } 
+                      })}
+                      onNoteChange={v => updateChildReport(activeChildReport.child_id, { 
+                        reportForm: { ...activeChildReport.reportForm, food_note: v } 
+                      })}
                     />
                     <div style={{ marginTop: 10 }}>
                       <AmountSelect
-                        label={form.fruit ? `🍎 ${form.fruit}` : "ปริมาณผลไม้"}
-                        value={reportForm.fruit_amount}
-                        noteValue={reportForm.fruit_note}
-                        onAmountChange={v => setReportForm({ ...reportForm, fruit_amount: v })}
-                        onNoteChange={v => setReportForm({ ...reportForm, fruit_note: v })}
+                        label={selected?.fruit ? `🍎 ${selected.fruit}` : "ปริมาณผลไม้"}
+                        value={activeChildReport.reportForm.fruit_amount}
+                        noteValue={activeChildReport.reportForm.fruit_note}
+                        onAmountChange={v => updateChildReport(activeChildReport.child_id, { 
+                          reportForm: { ...activeChildReport.reportForm, fruit_amount: v } 
+                        })}
+                        onNoteChange={v => updateChildReport(activeChildReport.child_id, { 
+                          reportForm: { ...activeChildReport.reportForm, fruit_note: v } 
+                        })}
                       />
                     </div>
                   </div>
@@ -735,13 +956,25 @@ export default function DailyPage() {
                   {/* Milk */}
                   <div style={{ background: '#FEF0EB', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
                     <Sec emoji="🍼" label="นม" color="#E8754A" />
-                    <AmountSelect label="นม มื้อ 1" value={reportForm.milk1} noteValue={reportForm.milk1_note}
-                      onAmountChange={v => setReportForm({ ...reportForm, milk1: v })}
-                      onNoteChange={v => setReportForm({ ...reportForm, milk1_note: v })} />
+                    <AmountSelect label="นม มื้อ 1" 
+                      value={activeChildReport.reportForm.milk1} 
+                      noteValue={activeChildReport.reportForm.milk1_note}
+                      onAmountChange={v => updateChildReport(activeChildReport.child_id, { 
+                        reportForm: { ...activeChildReport.reportForm, milk1: v } 
+                      })}
+                      onNoteChange={v => updateChildReport(activeChildReport.child_id, { 
+                        reportForm: { ...activeChildReport.reportForm, milk1_note: v } 
+                      })} />
                     <div style={{ marginTop: 10 }}>
-                      <AmountSelect label="นม มื้อ 2" value={reportForm.milk2} noteValue={reportForm.milk2_note}
-                        onAmountChange={v => setReportForm({ ...reportForm, milk2: v })}
-                        onNoteChange={v => setReportForm({ ...reportForm, milk2_note: v })} />
+                      <AmountSelect label="นม มื้อ 2" 
+                        value={activeChildReport.reportForm.milk2} 
+                        noteValue={activeChildReport.reportForm.milk2_note}
+                        onAmountChange={v => updateChildReport(activeChildReport.child_id, { 
+                          reportForm: { ...activeChildReport.reportForm, milk2: v } 
+                        })}
+                        onNoteChange={v => updateChildReport(activeChildReport.child_id, { 
+                          reportForm: { ...activeChildReport.reportForm, milk2_note: v } 
+                        })} />
                     </div>
                   </div>
 
@@ -757,10 +990,12 @@ export default function DailyPage() {
                     ) : (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                         {teachers.map(t => {
-                          const active = reportForm.created_by === t.id;
+                          const active = activeChildReport.reportForm.created_by === t.id;
                           return (
                             <button key={t.id} type="button"
-                              onClick={() => setReportForm({ ...reportForm, created_by: t.id })}
+                              onClick={() => updateChildReport(activeChildReport.child_id, { 
+                                reportForm: { ...activeChildReport.reportForm, created_by: t.id } 
+                              })}
                               style={{
                                 display: 'flex', alignItems: 'center', gap: 7,
                                 padding: '7px 14px', borderRadius: 99, border: 'none',
@@ -778,9 +1013,6 @@ export default function DailyPage() {
                                   </div>
                               }
                               {t.display_name ?? t.line_user_id?.slice(0, 8) ?? "(ไม่มีชื่อ)"}
-                              {t.display_name?.includes(DEFAULT_TEACHER_NAME) && !active && (
-                                <span style={{ fontSize: 10, color: '#9CA3AF' }}>(default)</span>
-                              )}
                             </button>
                           );
                         })}
@@ -794,8 +1026,10 @@ export default function DailyPage() {
                     <textarea
                       className="form-input"
                       rows={2}
-                      value={reportForm.note}
-                      onChange={e => setReportForm({ ...reportForm, note: e.target.value })}
+                      value={activeChildReport.reportForm.note}
+                      onChange={e => updateChildReport(activeChildReport.child_id, { 
+                        reportForm: { ...activeChildReport.reportForm, note: e.target.value } 
+                      })}
                       placeholder="เพิ่มเติม..."
                       style={{ resize: 'vertical' }}
                     />

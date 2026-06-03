@@ -404,6 +404,19 @@ export default function LiffPage() {
     daily_scores:{date:string;score:number}[];
     days_recorded:number;
   }[]>([]);
+  const [allBehaviorScores, setAllBehaviorScores] = useState<{
+    id:string;
+    score:number;
+    note:string|null;
+    date:string;
+    item_id:string;
+    item_name_th:string;
+    item_name_en:string;
+    max_score:number;
+    category_id:string;
+    category_name_th:string;
+    category_name_en:string;
+  }[]>([]);
   const [activeTab, setActiveTab] = useState<'daily'|'summary'>('daily'); // Tab state
   const [cohortId, setCohortId] = useState<string|null>(null); // Store cohort_id from enrollment
 
@@ -533,6 +546,7 @@ export default function LiffPage() {
     const dateFrom = enrollmentPeriod.start;
     const dateTo = enrollmentPeriod.end || todayStr;
     
+    // Load summary data for sparklines
     fetch(`/api/report/behavior-summary?child_id=${childId}&date_from=${dateFrom}&date_to=${dateTo}`)
       .then(r=>r.json())
       .then(j=>{
@@ -548,6 +562,15 @@ export default function LiffPage() {
             days_recorded: item.days_recorded || 0
           }));
           setBehaviorSummary(items);
+        }
+      });
+    
+    // Load all behavior scores
+    fetch(`/api/report/behavior-scores-all?child_id=${childId}&date_from=${dateFrom}&date_to=${dateTo}`)
+      .then(r=>r.json())
+      .then(j=>{
+        if (!cancelled) {
+          setAllBehaviorScores(j.data ?? []);
         }
       });
     
@@ -966,14 +989,12 @@ export default function LiffPage() {
                           {report.food_amount&&(
                             <span className={`status-pill status-${report.food_amount.replace('_','-')}`}>{amtL[report.food_amount]}</span>
                           )}
-                          <div className="food-note" style={{
-                            borderTop: report.food_note
-                                ? '1px solid #e2e8f0'
-                                : '1px solid #f8fafc'
-                            }}
-                            >
-                            {report.food_note ? (<>💬 {report.food_note}</>) : ('\u00A0')}
-                          </div>
+                          {report.food_note && (
+                            <div className="food-note">
+                              <i className="bi bi-chat-left-text-fill" style={{color: '#10b981', fontSize: '0.65rem', marginRight: '2px'}}></i>
+                              {report.food_note}
+                            </div>
+                          )}
                         </div>
                       )}
                       {report.daily?.fruit&&(
@@ -985,14 +1006,12 @@ export default function LiffPage() {
                           {report.fruit_amount&&(
                             <span className={`status-pill status-${report.fruit_amount.replace('_','-')}`}>{amtL[report.fruit_amount]}</span>
                           )}
-                          <div className="food-note" style={{
-                            borderTop: report.fruit_note
-                                ? '1px solid #e2e8f0'
-                                : '1px solid #f8fafc'
-                            }}
-                            >
-                            {report.fruit_note ? (<>💬 {report.fruit_note}</>) : ('\u00A0')}
-                          </div>
+                          {report.fruit_note && (
+                            <div className="food-note">
+                              <i className="bi bi-chat-left-text-fill" style={{color: '#10b981', fontSize: '0.65rem', marginRight: '2px'}}></i>
+                              {report.fruit_note}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1024,61 +1043,94 @@ export default function LiffPage() {
                     <div style={{display:'flex',alignItems:'center',fontWeight:700,fontSize:'1rem',marginBottom:16,color:'#334155'}}>
                       <span style={{marginRight:8,fontSize:'1.1rem'}}>✨</span> อุปนิสัยวันนี้
                     </div>
-                    <div style={{display:'flex',flexDirection:'column',gap:20}}>
-                      {Object.values(behaviorGroups).map(g=>{
-                        const excellent = g.items.filter(s=>s.score>=s.max_score);
-                        const good      = g.items.filter(s=>s.score>0&&s.score<s.max_score);
-                        const improve   = g.items.filter(s=>s.score===0);
-                        return (
-                          <div key={g.name_th}>
-                            <p style={{fontSize:'0.78rem',fontWeight:800,color:'#7c3aed',marginBottom:10}}>{g.name_th}</p>
-                            {[
-                              {items:excellent, face:<FaceHappy />, label:'ทำได้ดีเยี่ยม', color:'#10b981', tagBg:'#f0fdf4', tagBorder:'#bbf7d0', tagColor:'#166534'},
-                              {items:good,      face:<FaceSmile />, label:'ทำได้ดี',       color:'#3b82f6', tagBg:'#eff6ff', tagBorder:'#bfdbfe', tagColor:'#1e40af'},
-                              {items:improve,   face:<FaceNeutral />, label:'ควรส่งเสริม', color:'#f59e0b', tagBg:'#fffbeb', tagBorder:'#fde68a', tagColor:'#92400e'},
-                            ].filter(gr=>gr.items.length>0).map(gr=>(
-                              <div key={gr.label} style={{marginBottom:10}}>
-                                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8,color:gr.color}}>
-                                  {gr.face}
-                                  <span style={{fontWeight:700,fontSize:'0.9rem'}}>{gr.label}</span>
-                                </div>
-                                {/* habit-stack: inline tags + full-width tags with notes */}
-                                <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
-                                  {gr.items.map(s=>{
-                                    const hasNote = !!s.note;
-                                    return hasNote ? (
-                                      <div key={s.item_id} style={{width:'100%',display:'flex',flexDirection:'column',padding:'10px 12px',borderRadius:12,border:`1px solid ${gr.tagBorder}`,background:gr.tagBg}}>
-                                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',width:'100%',gap:8}}>
-                                          <span style={{fontSize:'0.85rem',fontWeight:700,color:gr.tagColor}}>{s.name_th}</span>
-                                          <span style={{fontSize:'0.72rem',color:gr.tagColor,opacity:0.7}}>✓</span>
-                                        </div>
-                                        <div style={{marginTop:6,fontSize:'0.75rem',color:'#64748b',lineHeight:1.4}}>{s.note}</div>
+                    <div style={{display:'flex',flexDirection:'column',gap:16}}>
+                      {Object.values(behaviorGroups).map(g=>(
+                        <div key={g.name_th}>
+                          <p style={{fontSize:'0.78rem',fontWeight:800,color:'#7c3aed',marginBottom:10,textTransform:'uppercase',letterSpacing:'0.05em'}}>{g.name_th}</p>
+                          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                            {g.items.map(s=>{
+                              // Calculate percentage
+                              const percentage = (s.score / s.max_score) * 100;
+                              
+                              // Determine face icon and color based on percentage
+                              let faceIcon: React.ReactElement;
+                              let color: string;
+                              let bgColor: string;
+                              let borderColor: string;
+                              
+                              if (percentage >= 80) {
+                                // ดีมาก - เขียว
+                                faceIcon = <FaceHappy size={24} color="#10b981" />;
+                                color = '#10b981';
+                                bgColor = '#f0fdf4';
+                                borderColor = '#bbf7d0';
+                              } else if (percentage >= 60) {
+                                // ดี - เหลืองสด
+                                faceIcon = <FaceSmile size={24} color="#facc15" />;
+                                color = '#facc15';
+                                bgColor = '#fefce8';
+                                borderColor = '#fef08a';
+                              } else {
+                                // ควรปรับปรุง - ส้มเข้ม
+                                faceIcon = <FaceNeutral size={24} color="#f97316" />;
+                                color = '#f97316';
+                                bgColor = '#fff7ed';
+                                borderColor = '#fed7aa';
+                              }
+                              
+                              return (
+                                <div key={s.item_id} style={{
+                                  display:'flex',
+                                  alignItems:'center',
+                                  justifyContent:'space-between',
+                                  padding:'12px 14px',
+                                  borderRadius:12,
+                                  border:`1px solid ${borderColor}`,
+                                  background:bgColor,
+                                  gap:12
+                                }}>
+                                  <div style={{flex:1,minWidth:0}}>
+                                    <div style={{fontSize:'0.9rem',fontWeight:700,color:'#1e293b'}}>
+                                      {s.name_th}
+                                    </div>
+                                    {s.note && (
+                                      <div style={{
+                                        fontSize:'0.75rem',
+                                        color:'#475569',
+                                        lineHeight:1.5,
+                                        marginTop:8,
+                                        padding:'8px 10px',
+                                        background:'white',
+                                        borderRadius:8,
+                                        border:`1px dashed ${color}`
+                                      }}>
+                                        <i className="bi bi-chat-left-text-fill" style={{color, fontSize:'0.7rem',marginRight:'6px'}}></i>
+                                        {s.note}
                                       </div>
-                                    ) : (
-                                      <div key={s.item_id} style={{display:'flex',alignItems:'center',padding:'6px 12px',borderRadius:20,border:`1px solid ${gr.tagBorder}`,background:gr.tagBg}}>
-                                        <span style={{fontSize:'0.85rem',fontWeight:700,color:gr.tagColor}}>{s.name_th}</span>
-                                      </div>
-                                    );
-                                  })}
+                                    )}
+                                  </div>
+                                  <div style={{flexShrink:0}}>
+                                    {faceIcon}
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
-                        );
-                      })}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
 
                 {/* Nap */}
                 <div style={{background:'white',borderRadius:16,padding:'20px',marginBottom:14,border:'1px solid #e2e8f0'}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:18}}>
-                    <div style={{display:'flex',alignItems:'center',fontWeight:700,fontSize:'1rem',color:'#4338ca',gap:8}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:20}}>
+                    <div style={{display:'flex',alignItems:'center',fontWeight:700,fontSize:'1rem',color:'#4338ca',gap:8,marginBottom:0}}>
                       <span>😴</span> การนอนกลางวัน
                     </div>
                     {report.nap_from&&report.nap_to&&(
                       <div style={{textAlign:'right'}}>
-                        <span style={{display:'block',fontSize:'1.05rem',fontWeight:800,color:'#1e1b4b'}}>
+                        <span style={{display:'block',fontSize:'1.1rem',fontWeight:800,color:'#1e1b4b'}}>
                           {(()=>{const d=(new Date('2000-01-01T'+report.nap_to).getTime()-new Date('2000-01-01T'+report.nap_from).getTime())/60000;return `${Math.floor(d/60)} ชม. ${d%60} นาที`;})()}
                         </span>
                         <span style={{fontSize:'0.75rem',color:'#818cf8',fontWeight:700}}>
@@ -1088,25 +1140,129 @@ export default function LiffPage() {
                     )}
                   </div>
                   {report.nap_from&&report.nap_to ? (()=>{
-                    const toMin=(t:string)=>{const[h,m]=t.split(':').map(Number);return h*60+m;};
-                    const start=9*60,end=15*60,total=end-start;
-                    const ns=toMin(report.nap_from),ne=toMin(report.nap_to);
-                    const left=((ns-start)/total)*100, width=((ne-ns)/total)*100;
+                    const parseTime = (timeStr: string) => {
+                      const [h, m] = timeStr.split(':').map(Number);
+                      return { hours: h, minutes: m, totalMinutes: h * 60 + m };
+                    };
+                    
+                    const startTime = parseTime(report.nap_from);
+                    const endTime = parseTime(report.nap_to);
+                    
+                    // Timeline settings
+                    const dayStart = 9 * 60;      // 09:00
+                    const dayMid = 12 * 60;       // 12:00
+                    const dayEnd = 14.5 * 60;     // 14:30
+                    const totalRange = dayEnd - dayStart;
+                    
+                    // Calculate positions
+                    const napStart = Math.max(startTime.totalMinutes, dayStart);
+                    const napEnd = Math.min(endTime.totalMinutes, dayEnd);
+                    const napLeftPercent = ((napStart - dayStart) / totalRange) * 100;
+                    const napWidthPercent = ((napEnd - napStart) / totalRange) * 100;
+                    
+                    // Light blue background (extended nap area)
+                    const bgStart = Math.max(dayMid, dayStart);
+                    const bgEnd = dayEnd;
+                    const bgLeftPercent = ((bgStart - dayStart) / totalRange) * 100;
+                    const bgWidthPercent = ((bgEnd - bgStart) / totalRange) * 100;
+                    
+                    // Calculate clock angles
+                    const getAngle = (hours: number, minutes: number) => {
+                      const totalMin = (hours % 12) * 60 + minutes;
+                      return (totalMin / 720) * 360;
+                    };
+                    
+                    const startAngle = getAngle(startTime.hours, startTime.minutes);
+                    const startPercent = (startAngle / 360) * 100;
+                    
                     return (
-                      <div style={{position:'relative',paddingTop:16}}>
-                        <div style={{position:'absolute',top:0,width:'100%',fontSize:'0.65rem',color:'#94a3b8',fontWeight:700}}>
-                          <span style={{position:'absolute',left:0}}>09:00</span>
-                          <span style={{position:'absolute',left:'50%',transform:'translateX(-50%)'}}>12:00</span>
-                          <span style={{position:'absolute',right:0}}>15:00</span>
+                      <div style={{display:'flex',alignItems:'center',gap:15}}>
+                        {/* Analog Clock */}
+                        <div style={{
+                          width:50,
+                          height:50,
+                          borderRadius:'50%',
+                          background:`conic-gradient(#e2e8f0 0% ${startPercent}%, #818cf8 ${startPercent}% ${startPercent + 0.5}%, #e2e8f0 ${startPercent + 0.5}% 100%)`,
+                          position:'relative',
+                          flexShrink:0,
+                          border:'2px solid #f8fafc'
+                        }}>
+                          {/* Hour hand */}
+                          <div style={{
+                            position:'absolute',
+                            top:'50%',
+                            left:'50%',
+                            width:'1.5px',
+                            height:'20px',
+                            background:'#60a5fa',
+                            transform:`translate(-50%, -100%) rotate(${startAngle}deg)`,
+                            transformOrigin:'bottom'
+                          }}></div>
+                          {/* Minute hand */}
+                          <div style={{
+                            position:'absolute',
+                            top:'50%',
+                            left:'50%',
+                            width:'1.5px',
+                            height:'20px',
+                            background:'#60a5fa',
+                            transform:`translate(-50%, -100%) rotate(${startAngle + 60}deg)`,
+                            transformOrigin:'bottom'
+                          }}></div>
+                          {/* Center dot */}
+                          <div style={{
+                            position:'absolute',
+                            top:'50%',
+                            left:'50%',
+                            transform:'translate(-50%, -50%)',
+                            width:'4px',
+                            height:'4px',
+                            background:'#4338ca',
+                            borderRadius:'50%'
+                          }}></div>
                         </div>
-                        <div style={{width:'100%',height:10,background:'#f1f5f9',borderRadius:5,overflow:'hidden',margin:'6px 0'}}>
-                          <div style={{position:'relative',height:'100%'}}>
-                            <div style={{position:'absolute',left:`${left}%`,width:`${width}%`,height:'100%',background:'#818cf8',borderRadius:5}} />
+                        
+                        {/* Timeline */}
+                        <div style={{flex:1,position:'relative',paddingTop:15}}>
+                          {/* Top time labels */}
+                          <div style={{position:'absolute',top:0,width:'100%',fontSize:'0.65rem',color:'#94a3b8',fontWeight:700}}>
+                            <span style={{position:'absolute',left:0,transform:'translateX(-50%)'}}>09:00</span>
+                            <span style={{position:'absolute',left:`${bgLeftPercent}%`,transform:'translateX(-50%)'}}>12:00</span>
+                            <span style={{position:'absolute',right:0,transform:'translateX(50%)'}}>14:30</span>
                           </div>
-                        </div>
-                        <div style={{position:'relative',height:14,fontSize:'0.65rem',fontWeight:700,color:'#4338ca'}}>
-                          <span style={{position:'absolute',left:`${left}%`,transform:'translateX(-50%)'}}>{report.nap_from.slice(0,5)}</span>
-                          <span style={{position:'absolute',left:`${left+width}%`,transform:'translateX(-50%)'}}>{report.nap_to.slice(0,5)}</span>
+                          
+                          {/* Timeline bar */}
+                          <div style={{width:'100%',height:10,background:'#f1f5f9',borderRadius:5,position:'relative',overflow:'hidden',margin:'5px 0'}}>
+                            {/* Light blue background area */}
+                            <div style={{
+                              position:'absolute',
+                              left:`${bgLeftPercent}%`,
+                              width:`${bgWidthPercent}%`,
+                              height:'100%',
+                              background:'#e0f2fe'
+                            }}></div>
+                            {/* Actual nap time (dark blue) */}
+                            <div style={{
+                              position:'absolute',
+                              left:`${napLeftPercent}%`,
+                              width:`${napWidthPercent}%`,
+                              height:'100%',
+                              background:'#818cf8',
+                              borderRadius:5
+                            }}></div>
+                          </div>
+                          
+                          {/* Bottom labels */}
+                          <div style={{position:'relative',width:'100%',height:12,fontSize:'0.6rem',fontWeight:700,color:'#cbd5e1'}}>
+                            <span style={{position:'absolute',left:0,transform:'translateX(-50%)'}}>START</span>
+                            <span style={{position:'absolute',left:`${napLeftPercent}%`,transform:'translateX(-50%)',color:'#4338ca'}}>
+                              {report.nap_from.slice(0,5)}
+                            </span>
+                            <span style={{position:'absolute',left:`${napLeftPercent + napWidthPercent}%`,transform:'translateX(-50%)',color:'#4338ca'}}>
+                              {report.nap_to.slice(0,5)}
+                            </span>
+                            <span style={{position:'absolute',left:'100%',transform:'translateX(-50%)'}}>END</span>
+                          </div>
                         </div>
                       </div>
                     );
@@ -1163,7 +1319,10 @@ export default function LiffPage() {
                 {/* Teacher note */}
                 {report.note&&(
                   <div style={{background:'#eff6ff',borderRadius:16,padding:'16px 18px',marginBottom:14,border:'1px solid #dbeafe'}}>
-                    <p style={{fontSize:'0.7rem',fontWeight:800,color:'#3b82f6',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:6}}>💬 ข้อความจากครู</p>
+                    <p style={{fontSize:'0.7rem',fontWeight:800,color:'#3b82f6',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:6,display:'flex',alignItems:'center',gap:4}}>
+                      <i className="bi bi-chat-left-text-fill" style={{color: '#3b82f6', fontSize: '0.75rem'}}></i> 
+                      ข้อความจากครู
+                    </p>
                     <p style={{fontSize:'0.95rem',color:'#1e293b',lineHeight:1.7,margin:0}}>{report.note}</p>
                   </div>
                 )}
@@ -1199,9 +1358,11 @@ export default function LiffPage() {
             transform: 'translateX(-50%)',
             width: '100%',
             maxWidth: 480,
-            background: 'white',
-            borderTop: '1px solid #e2e8f0',
-            boxShadow: '0 -2px 10px rgba(0,0,0,0.05)',
+            background: 'rgba(255, 255, 255, 0.7)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            borderTop: '1px solid rgba(255, 255, 255, 0.3)',
+            boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.1)',
             paddingBottom: 'env(safe-area-inset-bottom, 0px)',
             zIndex: 1000
           }}>
@@ -1219,11 +1380,31 @@ export default function LiffPage() {
                   border: 'none',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
-                  color: activeTab === 'daily' ? '#6366f1' : '#94a3b8'
+                  color: activeTab === 'daily' ? '#6366f1' : '#94a3b8',
+                  position: 'relative'
                 }}
               >
-                <span style={{fontSize: '1.5rem'}}>📅</span>
+                {/* Calendar Icon */}
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
                 <span style={{fontSize: '0.7rem', fontWeight: activeTab === 'daily' ? 700 : 500}}>รายวัน</span>
+                {/* Active indicator */}
+                {activeTab === 'daily' && (
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: 40,
+                    height: 3,
+                    background: '#6366f1',
+                    borderRadius: '0 0 3px 3px'
+                  }} />
+                )}
               </button>
               <button
                 onClick={() => setActiveTab('summary')}
@@ -1238,11 +1419,28 @@ export default function LiffPage() {
                   border: 'none',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
-                  color: activeTab === 'summary' ? '#6366f1' : '#94a3b8'
+                  color: activeTab === 'summary' ? '#6366f1' : '#94a3b8',
+                  position: 'relative'
                 }}
               >
-                <span style={{fontSize: '1.5rem'}}>🌟</span>
+                {/* Star Icon */}
+                <svg width="24" height="24" viewBox="0 0 24 24" fill={activeTab === 'summary' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                </svg>
                 <span style={{fontSize: '0.7rem', fontWeight: activeTab === 'summary' ? 700 : 500}}>สรุปอุปนิสัย</span>
+                {/* Active indicator */}
+                {activeTab === 'summary' && (
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: 40,
+                    height: 3,
+                    background: '#6366f1',
+                    borderRadius: '0 0 3px 3px'
+                  }} />
+                )}
               </button>
             </div>
           </div>

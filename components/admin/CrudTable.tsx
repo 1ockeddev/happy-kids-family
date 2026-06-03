@@ -1,5 +1,5 @@
 'use client';
-import { ReactNode } from 'react';
+import { ReactNode, useState, useMemo } from 'react';
 import { Search, Plus, RefreshCw, AlertCircle } from 'lucide-react';
 
 interface Column<T> {
@@ -12,15 +12,80 @@ interface CrudTableProps<T> {
   onAdd?: () => void; addLabel?: string;
   searchValue?: string; onSearchChange?: (v: string) => void; searchPlaceholder?: string;
   actions?: (row: T) => ReactNode;
+  extraHeaderActions?: ReactNode;
 }
 
 export default function CrudTable<T extends { id: string }>({
   title, description, columns, data,
   loading, error, onRefresh,
   onAdd, addLabel = 'เพิ่มใหม่',
-  searchValue, onSearchChange, searchPlaceholder = 'ค้นหา...',
+  searchValue: externalSearchValue, onSearchChange: externalOnSearchChange, searchPlaceholder = 'ค้นหา...',
   actions,
+  extraHeaderActions,
 }: CrudTableProps<T>) {
+  // Internal search state (used when no external search props provided)
+  const [internalSearchValue, setInternalSearchValue] = useState('');
+  
+  // Use external search if provided, otherwise use internal
+  const searchValue = externalSearchValue !== undefined ? externalSearchValue : internalSearchValue;
+  const onSearchChange = externalOnSearchChange || setInternalSearchValue;
+  
+  // Filter data based on search value
+  const filteredData = useMemo(() => {
+    if (!searchValue || searchValue.trim() === '') return data;
+    
+    const searchLower = searchValue.toLowerCase().trim();
+    
+    return data.filter(row => {
+      // Search in all columns based on their rendered content
+      return columns.some(col => {
+        let searchText = '';
+        
+        if (col.render) {
+          // If column has custom render, get the rendered content as text
+          try {
+            const rendered = col.render(row);
+            
+            // Extract text from React nodes
+            if (rendered === null || rendered === undefined) {
+              searchText = '';
+            } else if (typeof rendered === 'string' || typeof rendered === 'number') {
+              searchText = String(rendered);
+            } else if (typeof rendered === 'boolean') {
+              searchText = rendered ? 'true' : 'false';
+            } else if (typeof rendered === 'object' && 'props' in rendered) {
+              // Try to extract text from React element
+              const extractText = (node: any): string => {
+                if (!node) return '';
+                if (typeof node === 'string' || typeof node === 'number') return String(node);
+                if (Array.isArray(node)) return node.map(extractText).join(' ');
+                if (typeof node === 'object' && node.props) {
+                  if (node.props.children) return extractText(node.props.children);
+                  // Check common text props
+                  if (node.props.title) return String(node.props.title);
+                  if (node.props.alt) return String(node.props.alt);
+                  if (node.props.label) return String(node.props.label);
+                }
+                return '';
+              };
+              searchText = extractText(rendered);
+            }
+          } catch (e) {
+            // Fallback to raw field value if render fails
+            const value = (row as Record<string, unknown>)[col.key];
+            searchText = value !== null && value !== undefined ? String(value) : '';
+          }
+        } else {
+          // No custom render, use raw field value
+          const value = (row as Record<string, unknown>)[col.key];
+          searchText = value !== null && value !== undefined ? String(value) : '';
+        }
+        
+        return searchText.toLowerCase().includes(searchLower);
+      });
+    });
+  }, [data, searchValue, columns]);
+  
   return (
     <>
       {/* ── Page header ── */}
@@ -31,6 +96,7 @@ export default function CrudTable<T extends { id: string }>({
             {description && <p style={{ color: '#9CA3AF', fontSize: 12, marginTop: 2 }}>{description}</p>}
           </div>
           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+            {extraHeaderActions}
             {onRefresh && (
               <button className="btn btn-ghost btn-sm" onClick={onRefresh}>
                 <RefreshCw size={14} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
@@ -47,14 +113,12 @@ export default function CrudTable<T extends { id: string }>({
 
       {/* ── Body ── */}
       <div className="page-body">
-        {/* Search */}
-        {onSearchChange && (
-          <div style={{ position: 'relative', marginBottom: 12 }}>
-            <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} />
-            <input type="text" className="form-input" placeholder={searchPlaceholder} value={searchValue}
-              onChange={e => onSearchChange(e.target.value)} style={{ paddingLeft: 36 }} />
-          </div>
-        )}
+        {/* Search - Always show (not conditional on data.length) */}
+        <div style={{ position: 'relative', marginBottom: 12 }}>
+          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} />
+          <input type="text" className="form-input" placeholder={searchPlaceholder} value={searchValue}
+            onChange={e => onSearchChange(e.target.value)} style={{ paddingLeft: 36 }} />
+        </div>
 
         {/* Error */}
         {error && (
@@ -88,13 +152,13 @@ export default function CrudTable<T extends { id: string }>({
                       {actions && <td />}
                     </tr>
                   ))
-                ) : data.length === 0 ? (
+                ) : filteredData.length === 0 ? (
                   <tr>
                     <td colSpan={columns.length + (actions ? 1 : 0)} style={{ textAlign: 'center', padding: '36px 20px', color: '#9CA3AF', fontSize: 14 }}>
-                      ไม่พบข้อมูล
+                      {searchValue ? 'ไม่พบข้อมูลที่ค้นหา' : 'ไม่พบข้อมูล'}
                     </td>
                   </tr>
-                ) : data.map(row => (
+                ) : filteredData.map(row => (
                   <tr key={row.id}>
                     {columns.map(col => (
                       <td key={col.key} className={col.hideOnMobile ? 'hide-mobile' : ''}>
@@ -108,7 +172,7 @@ export default function CrudTable<T extends { id: string }>({
             </table>
           </div>
           <div style={{ padding: '10px 14px', borderTop: '1px solid #F3F4F6', color: '#9CA3AF', fontSize: 12 }}>
-            {loading ? 'กำลังโหลด...' : `ทั้งหมด ${data.length} รายการ`}
+            {loading ? 'กำลังโหลด...' : searchValue ? `พบ ${filteredData.length} จาก ${data.length} รายการ` : `ทั้งหมด ${data.length} รายการ`}
           </div>
         </div>
       </div>
