@@ -419,6 +419,7 @@ export default function LiffPage() {
   }[]>([]);
   const [activeTab, setActiveTab] = useState<'daily'|'summary'>('daily'); // Tab state
   const [cohortId, setCohortId] = useState<string|null>(null); // Store cohort_id from enrollment
+  const [copied, setCopied] = useState(false); // For copy LINE ID button
 
   /* ── LIFF ready ── */
   useEffect(() => {
@@ -621,7 +622,6 @@ export default function LiffPage() {
 
   if (notRegistered&&!childLoading) {
     const lineId = liff.profile?.userId || 'ไม่พบ LINE ID';
-    const [copied, setCopied] = useState(false);
     
     const handleCopy = () => {
       navigator.clipboard.writeText(lineId).then(() => {
