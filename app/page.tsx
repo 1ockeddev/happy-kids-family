@@ -384,6 +384,7 @@ export default function LiffPage() {
   const [children, setChildren] = useState<Child[]>([]);
   const [parentId, setParentId] = useState<string|null>(null);
   const [childId,  setChildId]  = useState<string|null>(null);
+  const [currentUser, setCurrentUser] = useState<AppUser|null>(null);
   const hasRestoredParent = React.useRef(false);
   const hasInitialized = React.useRef(false);
 
@@ -455,11 +456,18 @@ export default function LiffPage() {
         return;
       }
       const user = regJson.data;
-      // ถ้าเป็น teacher → redirect ไป admin/users
+      setCurrentUser(user);
+      
+      // ถ้าเป็น teacher → โหลดเด็กทั้งหมด
       if (user?.role === 'teacher') {
-        router.replace('/admin/users');
+        const childRes = await fetch('/api/report/children');
+        const childJson = await childRes.json();
+        const kids: Child[] = childJson.data ?? [];
+        setChildren(kids);
+        if (kids.length === 0) setNotRegistered(true);
         return;
       }
+      
       // parent → โหลดลูก
       const childRes = await fetch(`/api/report/line-children?line_user_id=${liff.profile!.userId}`);
       const childJson = await childRes.json();
@@ -802,7 +810,28 @@ export default function LiffPage() {
         {/* ─── HEADER ─────────────────────────────── */}
         <header style={{padding:'30px 24px 20px',background:'white',borderBottom:'1px solid #f1f5f9'}}>
 
+          {/* ─── TEACHER MODE: Child Selector ─────────────────────────────── */}
+          {currentUser?.role === 'teacher' && (
+            <div style={{marginBottom:20,paddingBottom:20,borderBottom:'1px solid #f1f5f9'}}>
+              <span style={{fontSize:'0.65rem',textTransform:'uppercase',letterSpacing:1,color:'#94a3b8',fontWeight:800,display:'block',marginBottom:12}}>เลือกนักเรียน</span>
+              <div className="avatar-row">
+                {childLoading ? [1,2,3,4].map(i=><SkCircle key={i} size={48}/>) :
+                  children.map(c=>(
+                    <button key={c.id} type="button" onClick={()=>setChildId(c.id)}
+                      style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6,background:'none',border:'none',padding:0,cursor:'pointer',flexShrink:0}}>
+                      <Avatar src={c.photo_url} name={c.name_th} size={48} active={childId===c.id} accentColor="#6366f1" />
+                      <span style={{fontSize:'0.7rem',color:childId===c.id?'#1e293b':'#94a3b8',fontWeight:childId===c.id?700:500,transition:'all .2s',maxWidth:60,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                        {c.name_th || c.name_en || '?'}
+                      </span>
+                    </button>
+                  ))
+                }
+              </div>
+            </div>
+          )}
+
           {/* two-way selector */}
+          {currentUser?.role !== 'teacher' && (
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:20,gap:12}}>
 
             {/* ฝั่งผู้ปกครอง */}
@@ -842,12 +871,15 @@ export default function LiffPage() {
               </div>
             </div>
           </div>
+          )}
 
           {/* title zone — center */}
           <div style={{textAlign:'center',marginTop:4}}>
+            {currentUser?.role !== 'teacher' && (
               <p style={{margin:'0 0 4px',fontSize:'0.78rem',fontWeight:600,color:'#f472b6',transition:'all .2s'}}>
                 {parents.find(p=>p.id===parentId)?.display_name ?? '\u00A0'}
               </p>
+            )}
             {childLoading ? (
               <div style={{display:'flex',flexDirection:'column',gap:8,alignItems:'center',marginTop:4}}>
                 <SkRow w={160} h={22} /><SkRow w={200} h={14} />
