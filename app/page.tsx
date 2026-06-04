@@ -714,6 +714,31 @@ export default function LiffPage() {
   const exDiaper = report?.excretions?.filter(e=>e.action==='diaper')??[];
   const exPotty  = report?.excretions?.filter(e=>e.action==='potty')??[];
 
+  /* ── Auto-scroll to selected date in calendar ── */
+  useEffect(() => {
+    if (!currentEntry || dayEntries.length === 0) return;
+    
+    const scrollToSelectedDate = () => {
+      const selectedElement = document.querySelector(`[data-day-date="${currentEntry.date}"]`);
+      const container = document.getElementById('calendar-scroll-container');
+      
+      if (selectedElement && container) {
+        const containerRect = container.getBoundingClientRect();
+        const elementRect = selectedElement.getBoundingClientRect();
+        const scrollLeft = (selectedElement as HTMLElement).offsetLeft - (containerRect.width / 2) + (elementRect.width / 2);
+        
+        container.scrollTo({
+          left: scrollLeft,
+          behavior: 'smooth'
+        });
+      }
+    };
+    
+    // Delay to ensure DOM is rendered
+    const timer = setTimeout(scrollToSelectedDate, 400);
+    return () => clearTimeout(timer);
+  }, [dayIdx, currentEntry, dayEntries]);
+
   /* ── loading ── */
   if (!liff.ready) return (
     <div style={{minHeight:'100dvh',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:12,background:'#f8fafc'}}>
@@ -931,7 +956,7 @@ export default function LiffPage() {
                 <div style={{display:'flex',alignItems:'center',gap:3}}><div style={{width:8,height:8,borderRadius:2,background:'#c084fc'}} /><span style={{color:'#64748b'}}>หยุด</span></div>
               </div>
             </div>
-            <div style={{overflowX:'auto',scrollbarWidth:'none',WebkitOverflowScrolling:'touch',overflowY:'visible'}}>
+            <div id="calendar-scroll-container" style={{overflowX:'auto',scrollbarWidth:'none',WebkitOverflowScrolling:'touch',overflowY:'visible'}}>
               {(() => {
                 // Generate weeks with report mapping
                 const weeks = generateWeeksWithReportMapping(attendanceSummary, dayEntries, enrollmentPeriod, holidays, activities);
@@ -1001,13 +1026,7 @@ export default function LiffPage() {
                               return (
                                 <CustomTooltip key={dayIdxInWeek} text={tooltipText}>
                                   <div
-                                    ref={isSelected ? (el) => {
-                                      if (el) {
-                                        setTimeout(() => {
-                                          el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                                        }, 100);
-                                      }
-                                    } : undefined}
+                                    data-day-date={day.dateStr}
                                     onClick={() => {
                                       // Don't allow clicking on holidays
                                       if (!day.isHoliday && day.hasReport && day.dayIdx !== null) {
