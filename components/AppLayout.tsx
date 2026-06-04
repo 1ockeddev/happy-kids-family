@@ -169,7 +169,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           onChildSelect={setChildId}
         />
         
-        {React.cloneElement(children as React.ReactElement, { childId, parents, parentId })}
+        {React.cloneElement(children as React.ReactElement, { childId, parents, parentId } as any)}
         
         {!childLoading && childId && <BottomNav />}
       </div>
