@@ -500,6 +500,13 @@ export default function LiffPage() {
 
   /* ── child → parents ── */
   useEffect(()=>{
+    // Teachers don't need to load parents
+    if (currentUser?.role === 'teacher') {
+      setParents([]);
+      setParentId(null);
+      return;
+    }
+    
     if (!childId) { 
       setParents([]); 
       setParentId(null); 
@@ -524,7 +531,7 @@ export default function LiffPage() {
         }
       });
     return () => { cancelled = true; };
-  },[childId]);
+  },[childId, currentUser]);
 
   // Save parentId to localStorage whenever it changes
   useEffect(() => {
@@ -764,12 +771,12 @@ export default function LiffPage() {
           <h2 style={{fontWeight:800,color:'#0f172a',marginBottom:8}}>ยังไม่มีข้อมูล</h2>
           <p style={{fontSize:14,color:'#64748b',lineHeight:1.6,marginBottom:20}}>
             LINE บัญชีนี้ยังไม่ได้ผูกกับนักเรียน<br/>
-            กรุณาแจ้ง LINE ID ให้ครูเบียร์
+            กรุณาแจ้ง CODE ให้ครูเบียร์
           </p>
           
           {/* LINE ID Section */}
           <div style={{background:'#f8fafc',borderRadius:12,padding:'16px',marginBottom:16,border:'1px solid #e2e8f0'}}>
-            <p style={{fontSize:'0.7rem',color:'#94a3b8',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:8}}>LINE ID ของคุณ</p>
+            <p style={{fontSize:'0.7rem',color:'#94a3b8',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:8}}>CODE ของคุณ</p>
             <p style={{fontSize:'0.85rem',color:'#1e293b',fontWeight:600,wordBreak:'break-all',fontFamily:'monospace',marginBottom:12}}>{lineId}</p>
             <button
               onClick={handleCopy}
@@ -804,14 +811,14 @@ export default function LiffPage() {
                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                   </svg>
-                  คัดลอก LINE ID
+                  คัดลอก CODE
                 </>
               )}
             </button>
           </div>
           
           <p style={{fontSize:'0.75rem',color:'#94a3b8',lineHeight:1.5}}>
-            📱 กดปุ่มด้านบนเพื่อคัดลอก LINE ID<br/>
+            📱 กดปุ่มด้านบนเพื่อคัดลอก CODE<br/>
             แล้วส่งให้ครูเบียร์เพื่อเชื่อมโยงบัญชี
           </p>
         </div>
