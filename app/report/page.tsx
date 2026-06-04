@@ -348,7 +348,7 @@ export default function ReportPage() {
 
               {/* Heart connector */}
               <div style={{ display:'flex', alignItems:'center', justifyContent:'center', color:'#fb7185', fontSize:'1.1rem', padding:'0 8px', alignSelf:'center', marginTop:16, flexShrink:0 }}>
-                ❤️
+                <i className="bi bi-heart-fill" style={{color:'#ff8787'}}></i>
               </div>
 
               {/* Parent placeholder — future feature */}

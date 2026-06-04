@@ -121,10 +121,17 @@ export default function UsersPage() {
                 </div>
               )}
               <div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>{r.display_name ?? '(ยังไม่มีชื่อ)'}</div>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>
+                  {r.display_name ?? '(ยังไม่มีชื่อ)'}
+                  {r.line_display_name && r.line_display_name !== r.display_name && (
+                    <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 400, marginLeft: 6 }}>
+                      (LINE: {r.line_display_name})
+                    </span>
+                  )}
+                </div>
                 <div style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'monospace' }}>
                 {r.line_user_id
-                  ? <span style={{ color: '#10B981' }}>✓ {r.line_user_id.slice(0, 16)}...</span>
+                  ? <span style={{ color: '#10B981' }}>✓ {r.line_user_id}</span>
                   : <span style={{ color: '#F59E0B', fontSize: 11 }}>⏳ รอผูก LINE</span>
                 }
               </div>
@@ -191,6 +198,11 @@ export default function UsersPage() {
         <div className="form-group">
           <label className="form-label">
             ชื่อที่แสดง <span style={{ color: '#E85C5C' }}>*</span>
+            {selected?.line_display_name && selected.line_display_name !== form.display_name && (
+              <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 400, marginLeft: 6 }}>
+                (ชื่อ LINE: {selected.line_display_name})
+              </span>
+            )}
           </label>
           <input 
             className="form-input" 
@@ -200,7 +212,10 @@ export default function UsersPage() {
             autoFocus
           />
           <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
-            ชื่อนี้จะแสดงในระบบและรายงาน
+            {modal === 'edit' && selected?.line_display_name ? 
+              '✏️ ชื่อนี้แก้ไขได้ และจะไม่ถูกเปลี่ยนแปลงโดยอัตโนมัติ (ชื่อจาก LINE จะอัพเดทแยกต่างหาก)' :
+              'ชื่อนี้จะแสดงในระบบและรายงาน'
+            }
           </p>
         </div>
 

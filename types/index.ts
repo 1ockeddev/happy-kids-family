@@ -7,7 +7,7 @@ export type UserStatus = 'active' | 'inactive';
 
 export interface AppUser {
   id: string; line_user_id: string | null; role: UserRole; status: UserStatus;
-  display_name: string | null; picture_url: string | null; created_at: string;
+  display_name: string | null; line_display_name: string | null; picture_url: string | null; created_at: string;
 }
 export interface Child {
   id: string; name_en: string | null; name_th: string | null;

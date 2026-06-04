@@ -220,14 +220,14 @@ export default function DailyPage() {
 
   // Load children and behaviors when cohort changes in add/edit modal
   useEffect(() => {
-    if (!form.cohort_id || modal === 'delete') {
-      setChildrenForCohort([]);
-      setBehaviorsForCohort([]);
+    // For add-report modal, skip this effect (it loads data in openAddReport)
+    if (modal === 'add-report') {
       return;
     }
     
-    // Skip if modal is add-report (it loads its own data)
-    if (modal === 'add-report') {
+    if (!form.cohort_id || modal === 'delete') {
+      setChildrenForCohort([]);
+      setBehaviorsForCohort([]);
       return;
     }
     
@@ -274,74 +274,94 @@ export default function DailyPage() {
         dailyId = selected!.id;
       }
       
-      // If report section is shown and child is selected, save report
-      if (showReportInModal && reportForm.child_id) {
-        const body = {
-          ...reportForm,
-          daily_id: dailyId,
-          cohort_id: form.cohort_id,
-          nap_from: reportForm.nap_from || null,
-          nap_to: reportForm.nap_to || null,
-          milk1_note: reportForm.milk1_note || null,
-          milk2_note: reportForm.milk2_note || null,
-          food_note: reportForm.food_note || null,
-          fruit_note: reportForm.fruit_note || null,
-          note: reportForm.note || null,
-          created_by: reportForm.created_by || null,
-          updated_by: reportForm.created_by || null,
-        };
-        
-        const res = await fetch('/api/daily-reports', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error);
-        
-        // Save excretions
-        const visibleExcretions = excretions.filter(ex => !ex._del);
-        await Promise.all(
-          visibleExcretions.map(ex =>
-            fetch('/api/excretions', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                daily_id: dailyId,
+      // If report section is shown, save reports
+      if (showReportInModal) {
+        // Support both childrenReports array and single reportForm
+        const reportsToSave = childrenReports.length > 0 
+          ? childrenReports 
+          : reportForm.child_id 
+            ? [{
                 child_id: reportForm.child_id,
-                time: ex.time || null,
-                type: ex.type,
-                action: ex.action,
-              }),
-            })
-          )
-        );
+                scores: scores,
+                excretions: excretions,
+                reportForm: reportForm
+              }]
+            : [];
         
-        // Save behavior scores
-        if (scores.length > 0) {
+        // Save all reports
+        for (const childReport of reportsToSave) {
+          const body = {
+            ...childReport.reportForm,
+            daily_id: dailyId,
+            cohort_id: form.cohort_id,
+            nap_from: childReport.reportForm.nap_from || null,
+            nap_to: childReport.reportForm.nap_to || null,
+            milk1_note: childReport.reportForm.milk1_note || null,
+            milk2_note: childReport.reportForm.milk2_note || null,
+            food_note: childReport.reportForm.food_note || null,
+            fruit_note: childReport.reportForm.fruit_note || null,
+            note: childReport.reportForm.note || null,
+            created_by: childReport.reportForm.created_by || null,
+            updated_by: childReport.reportForm.created_by || null,
+          };
+          
+          const res = await fetch('/api/daily-reports', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error);
+          
+          // Save excretions for this child
+          const visibleExcretions = childReport.excretions.filter(ex => !ex._del);
           await Promise.all(
-            scores
-              .filter(s => s.score !== null)
-              .map(s =>
-                fetch('/api/behavior-scores', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    daily_id: dailyId,
-                    child_id: reportForm.child_id,
-                    item_id: s.item_id,
-                    score: s.score,
-                    note: s.note || null,
-                  }),
-                })
-              )
+            visibleExcretions.map(ex =>
+              fetch('/api/excretions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  daily_id: dailyId,
+                  child_id: childReport.child_id,
+                  time: ex.time || null,
+                  type: ex.type,
+                  action: ex.action,
+                }),
+              })
+            )
           );
+          
+          // Save behavior scores for this child
+          if (childReport.scores.length > 0) {
+            await Promise.all(
+              childReport.scores
+                .filter(s => s.score !== null)
+                .map(s =>
+                  fetch('/api/behavior-scores', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      daily_id: dailyId,
+                      child_id: childReport.child_id,
+                      item_id: s.item_id,
+                      score: s.score,
+                      note: s.note || null,
+                    }),
+                  })
+                )
+            );
+          }
         }
       }
       
       setModal(null);
       setShowReportInModal(false);
-      load();
+      setChildrenReports([]);
+      setActiveChildIndex(0);
+      
+      // Wait a bit for database to commit, then reload
+      await new Promise(resolve => setTimeout(resolve, 100));
+      await load();
     } catch (e) {
       alert(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ');
     } finally {
@@ -365,12 +385,19 @@ export default function DailyPage() {
     setScores([]);
     setExcretions([]);
     
+    // Open modal first to show loading state
+    setModal('add-report');
+    
     // Load children for this cohort
     try {
       const res = await fetch(`/api/enrollments?cohort_id=${daily.cohort_id}`);
       const json = await res.json();
-      setChildrenForCohort((json.data ?? []).map((e: { child?: Child }) => e.child).filter(Boolean) as Child[]);
-    } catch {
+      console.log('Enrollments API response:', json);
+      const children = (json.data ?? []).map((e: { child?: Child }) => e.child).filter(Boolean) as Child[];
+      console.log('Children loaded:', children);
+      setChildrenForCohort(children);
+    } catch (e) {
+      console.error('Error loading children:', e);
       setChildrenForCohort([]);
     }
     
@@ -378,6 +405,7 @@ export default function DailyPage() {
     try {
       const res = await fetch(`/api/behavior-categories?cohort_id=${daily.cohort_id}`);
       const json = await res.json();
+      console.log('Behaviors API response:', json);
       const cats: BehaviorCategory[] = json.data ?? [];
       setBehaviorsForCohort(cats);
       
@@ -389,11 +417,10 @@ export default function DailyPage() {
         });
       });
       setScores(defaultScores);
-    } catch {
+    } catch (e) {
+      console.error('Error loading behaviors:', e);
       setBehaviorsForCohort([]);
     }
-    
-    setModal('add-report');
   };
 
   // State for multiple children with their own data
@@ -458,15 +485,27 @@ export default function DailyPage() {
   const activeChildReport = childrenReports[activeChildIndex];
 
   const handleSaveReport = async () => {
-    if (childrenReports.length === 0) {
-      alert('กรุณาเพิ่มนักเรียนอย่างน้อย 1 คน');
+    // Support both single child report (reportForm) and multiple children (childrenReports)
+    const reportsToSave = childrenReports.length > 0 
+      ? childrenReports 
+      : reportForm.child_id 
+        ? [{
+            child_id: reportForm.child_id,
+            scores: scores,
+            excretions: excretions,
+            reportForm: reportForm
+          }]
+        : [];
+    
+    if (reportsToSave.length === 0) {
+      alert('กรุณาเลือกนักเรียน');
       return;
     }
     
     setSaving(true);
     try {
       // Create reports for all children
-      await Promise.all(childrenReports.map(async (childReport) => {
+      await Promise.all(reportsToSave.map(async (childReport) => {
         const body = {
           ...childReport.reportForm,
           nap_from: childReport.reportForm.nap_from || null,
@@ -531,7 +570,10 @@ export default function DailyPage() {
       setModal(null);
       setChildrenReports([]);
       setActiveChildIndex(0);
-      load();
+      
+      // Wait a bit for database to commit, then reload
+      await new Promise(resolve => setTimeout(resolve, 100));
+      await load();
     } catch (e) {
       alert(e instanceof Error ? e.message : 'เกิดข้อผิดพลาด');
     } finally {
@@ -928,7 +970,7 @@ export default function DailyPage() {
                   <div style={{ background: '#EBF7F0', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
                     <Sec emoji="🍱" label="ปริมาณที่รับประทาน" color="#4CAF76" />
                     <AmountSelect
-                      label={selected?.food ? `🍱 ${selected.food}` : "ปริมาณอาหาร"}
+                      label={form.food ? `🍱 ${form.food}` : "ปริมาณอาหาร"}
                       value={activeChildReport.reportForm.food_amount}
                       noteValue={activeChildReport.reportForm.food_note}
                       onAmountChange={v => updateChildReport(activeChildReport.child_id, { 
@@ -940,7 +982,7 @@ export default function DailyPage() {
                     />
                     <div style={{ marginTop: 10 }}>
                       <AmountSelect
-                        label={selected?.fruit ? `🍎 ${selected.fruit}` : "ปริมาณผลไม้"}
+                        label={form.fruit ? `🍎 ${form.fruit}` : "ปริมาณผลไม้"}
                         value={activeChildReport.reportForm.fruit_amount}
                         noteValue={activeChildReport.reportForm.fruit_note}
                         onAmountChange={v => updateChildReport(activeChildReport.child_id, { 

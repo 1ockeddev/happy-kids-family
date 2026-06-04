@@ -170,6 +170,7 @@ export default function ReportsPage() {
     fruit_amount: false,
     excretions: true,
     nap: false,
+    teacher: false,
   });
 
   const fetchData = useCallback(async () => {
@@ -919,6 +920,22 @@ export default function ReportsPage() {
             if (!exs.length) return <span style={{ color: '#D1D5DB' }}>—</span>;
             return <div style={{ display: 'flex', gap: 4 }}>{exs.map((ex: ChildExcretion, i: number) => <span key={i} style={{ fontSize: 11, background: ex.type === 'poo' ? '#FEF6E6' : '#EBF4FA', color: ex.type === 'poo' ? '#F5A623' : '#4A90B8', padding: '2px 6px', borderRadius: 99 }}>{ex.type === 'pee' ? '💛' : '💩'} {ex.time?.slice(0,5)}</span>)}</div>;
           }} : null,
+          visibleColumns.teacher ? { key: 'teacher', label: '👩‍🏫 ครู', hideOnMobile: true, render: (r: DailyReport) => {
+            const teacher = teachers.find(t => t.id === r.created_by);
+            if (!teacher) return <span style={{ color: '#D1D5DB', fontSize: 12 }}>—</span>;
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {teacher.picture_url ? (
+                  <img src={teacher.picture_url} style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} alt="" />
+                ) : (
+                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#6C5CE7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'white', fontWeight: 700 }}>
+                    {teacher.display_name?.slice(0,1) ?? '?'}
+                  </div>
+                )}
+                <span style={{ fontSize: 13 }}>{teacher.display_name ?? '—'}</span>
+              </div>
+            );
+          }} : null,
         ].filter((col): col is NonNullable<typeof col> => col !== null)}
         data={filteredData}
         onAdd={openAdd} addLabel="เพิ่มรายงาน"
@@ -1176,6 +1193,7 @@ export default function ReportsPage() {
             { key: 'fruit_amount', label: '🍎 ผลไม้' },
             { key: 'nap', label: '😴 การนอน' },
             { key: 'excretions', label: '🚽 การขับถ่าย' },
+            { key: 'teacher', label: '👩‍🏫 ครูผู้บันทึก' },
           ].map(col => (
             <label 
               key={col.key} 

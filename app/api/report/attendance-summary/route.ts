@@ -14,18 +14,26 @@ export async function GET(req: NextRequest) {
          to_char(d.date, 'YYYY-MM-DD') AS date,
          CASE
            WHEN dr.id IS NOT NULL THEN 'present'
-           ELSE a.status
+           WHEN a.status IS NOT NULL THEN a.status
+           ELSE NULL
          END AS status
        FROM enrollment e
        JOIN daily d ON d.cohort_id = e.cohort_id
        LEFT JOIN attendance a ON a.daily_id = d.id AND a.child_id = $1
        LEFT JOIN daily_report dr ON dr.daily_id = d.id AND dr.child_id = $1
        WHERE e.child_id = $1
-         AND d.date >= e.start_date
-         AND (e.end_date IS NULL OR d.date <= e.end_date)
        ORDER BY date ASC`,
       [child_id]
     );
+    
+    console.log(`📊 /api/report/attendance-summary for child ${child_id}:`, {
+      total: rows.length,
+      present: rows.filter((r: any) => r.status === 'present').length,
+      withStatus: rows.filter((r: any) => r.status !== null).length,
+      noStatus: rows.filter((r: any) => r.status === null).length,
+      latest5: rows.slice(-5)
+    });
+    
     return ok(rows);
   } catch (err) {
     console.error('Attendance summary error:', err);

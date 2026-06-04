@@ -11,10 +11,19 @@ export async function GET(req: NextRequest) {
 
     const rows = await query(
       `SELECT
-         to_char(MIN(start_date), 'YYYY-MM-DD') AS start_date,
-         to_char(MAX(COALESCE(end_date, CURRENT_DATE + INTERVAL '1 year')), 'YYYY-MM-DD') AS end_date
-       FROM enrollment
-       WHERE child_id = $1`,
+         to_char(MIN(e.start_date), 'YYYY-MM-DD') AS start_date,
+         to_char(
+           GREATEST(
+             MAX(COALESCE(e.end_date, CURRENT_DATE + INTERVAL '1 year')),
+             (SELECT MAX(d.date) 
+              FROM daily_report dr
+              JOIN daily d ON dr.daily_id = d.id
+              WHERE dr.child_id = $1)
+           ), 
+           'YYYY-MM-DD'
+         ) AS end_date
+       FROM enrollment e
+       WHERE e.child_id = $1`,
       [child_id]
     );
     

@@ -1,9 +1,11 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useLiff } from '@/lib/useLiff';
 import { Child, DailyReport, Attendance, MilkStatus, ExcretionType, ExcretionAction, AppUser } from '@/types';
+import LoadingWrapper from '@/components/loading/LoadingWrapper';
+import BehaviorCardSkeleton from '@/components/loading/skeletons/BehaviorCardSkeleton';
 
 /* ── label maps ─────────────────────────────── */
 const amtL: Record<MilkStatus,string> = { all:'ทานหมด', some:'ทานครึ่งเดียว', not_must:'ไม่จำเป็น', skip:'ไม่ทาน' };
@@ -13,7 +15,7 @@ const amtStyle: Record<MilkStatus,{bg:string;color:string}> = {
   not_must: {bg:'#dbeafe',color:'#1e40af'},
   skip:     {bg:'#ffe4e6',color:'#9f1239'},
 };
-const attL:  Record<string,string> = { present:'😊 มาเรียน', absent:'😴 ขาดเรียน', sick:'🤒 ป่วย', leave:'📝 ลา' };
+const attL:  Record<string,string> = { present:'มาเรียน', absent:'ขาดเรียน', sick:'ป่วย', leave:'ลา' };
 const attC:  Record<string,string> = { present:'#10b981', absent:'#ef4444', sick:'#f59e0b', leave:'#3b82f6' };
 const attBg: Record<string,string> = { present:'#ecfdf5', absent:'#fef2f2', sick:'#fffbeb', leave:'#eff6ff' };
 
@@ -114,7 +116,7 @@ const generateWeeksWithReportMapping = (
 
   // Create date maps for O(1) lookup
   const dateMap = new Map(attendanceSummary.map(d => [d.date, d.status]));
-  const dayEntriesMap = new Map(dayEntries.map((entry, idx) => [entry.date, idx]));
+  const dayEntriesMap = new Map(dayEntries.map((entry, idx) => [entry.date, { idx, hasReport: !!entry.report_id }]));
   const holidaysMap = new Map(holidays.map(h => [h.date, h.name_th]));
   const activitiesMap = new Map(activities.map(a => [a.date, a.activity]));
 
@@ -127,8 +129,9 @@ const generateWeeksWithReportMapping = (
     for (let i = 0; i < 7; i++) {
       const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
       const status = dateMap.get(dateStr) ?? null;
-      const dayIdx = dayEntriesMap.get(dateStr) ?? null;
-      const hasReport = dayIdx !== null; // Has report if date exists in dayEntries
+      const dayEntryData = dayEntriesMap.get(dateStr);
+      const dayIdx = dayEntryData?.idx ?? null;
+      const hasReport = dayEntryData?.hasReport ?? false; // Has report if report_id exists
       const isHoliday = holidaysMap.has(dateStr);
       const holidayName = holidaysMap.get(dateStr);
       const activity = activitiesMap.get(dateStr);
@@ -374,11 +377,15 @@ function CustomTooltip({children,text}:{children:React.ReactNode;text:string}) {
 export default function LiffPage() {
   const liff = useLiff();
   const router = useRouter();
+  const pathname = usePathname();
+  const activeTab = pathname === '/summary-behavior' ? 'summary' : 'daily';
 
   const [parents,  setParents]  = useState<AppUser[]>([]);
   const [children, setChildren] = useState<Child[]>([]);
   const [parentId, setParentId] = useState<string|null>(null);
   const [childId,  setChildId]  = useState<string|null>(null);
+  const hasRestoredParent = React.useRef(false);
+  const hasInitialized = React.useRef(false);
 
   const [dayEntries,  setDayEntries]  = useState<DayEntry[]>([]);
   const [dayIdx,      setDayIdx]      = useState(0);
@@ -390,6 +397,8 @@ export default function LiffPage() {
   const [childLoading,  setChildLoading]  = useState(false);
   const [daysLoading,   setDaysLoading]   = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [showSummaryShimmer, setShowSummaryShimmer] = useState(false);
   const [notRegistered, setNotRegistered] = useState(false);
   const [attendanceSummary, setAttendanceSummary] = useState<{date:string;status:string}[]>([]);
   const [enrollmentPeriod, setEnrollmentPeriod] = useState<{start:string;end:string|null}|null>(null);
@@ -417,9 +426,16 @@ export default function LiffPage() {
     category_name_th:string;
     category_name_en:string;
   }[]>([]);
-  const [activeTab, setActiveTab] = useState<'daily'|'summary'>('daily'); // Tab state
   const [cohortId, setCohortId] = useState<string|null>(null); // Store cohort_id from enrollment
   const [copied, setCopied] = useState(false); // For copy LINE ID button
+  const [foodSummary, setFoodSummary] = useState<{
+    food: { food_amount: MilkStatus; count: number }[];
+    fruit: { fruit_amount: MilkStatus; count: number }[];
+    milk1: { milk_amount: MilkStatus; count: number }[];
+    milk2: { milk_amount: MilkStatus; count: number }[];
+    nap: { total_days: number; nap_days: number; avg_hours: number | null };
+    excretions: { type: ExcretionType; action: ExcretionAction; count: number }[];
+  }>({ food: [], fruit: [], milk1: [], milk2: [], nap: { total_days: 0, nap_days: 0, avg_hours: null }, excretions: [] });
 
   /* ── LIFF ready ── */
   useEffect(() => {
@@ -457,21 +473,62 @@ export default function LiffPage() {
 
   useEffect(()=>{
     if (children.length > 0 && !childId) {
-      setChildId(children[0].id);
+      // Try to restore from localStorage first
+      const savedChildId = localStorage.getItem('selectedChildId');
+      if (savedChildId && children.find(c => c.id === savedChildId)) {
+        setChildId(savedChildId);
+      } else {
+        setChildId(children[0].id);
+      }
     }
   },[children, childId]);
 
+  // Save childId to localStorage whenever it changes
+  useEffect(() => {
+    if (childId) {
+      localStorage.setItem('selectedChildId', childId);
+    }
+  }, [childId]);
+
   /* ── child → parents ── */
   useEffect(()=>{
-    if (!childId) { setParents([]); setParentId(null); return; }
-    setParentId(null); // reset parent selection when child changes
+    if (!childId) { 
+      setParents([]); 
+      setParentId(null); 
+      hasRestoredParent.current = false;
+      return; 
+    }
     let cancelled = false;
     fetch(`/api/report/child-parents?child_id=${childId}`).then(r=>r.json())
       .then(j=>{
-        if (!cancelled) setParents(j.data??[]);
+        if (!cancelled) {
+          const parentsList = j.data ?? [];
+          setParents(parentsList);
+          
+          // Always try to restore parentId from localStorage when parents list is loaded
+          const savedParentId = localStorage.getItem('selectedParentId');
+          if (savedParentId && parentsList.find((p: AppUser) => p.id === savedParentId)) {
+            setParentId(savedParentId);
+          }
+          
+          // Mark as initialized after first restore attempt
+          hasInitialized.current = true;
+        }
       });
     return () => { cancelled = true; };
   },[childId]);
+
+  // Save parentId to localStorage whenever it changes
+  useEffect(() => {
+    // Don't save until we've tried to restore at least once
+    if (!hasInitialized.current) return;
+    
+    if (parentId) {
+      localStorage.setItem('selectedParentId', parentId);
+    } else {
+      localStorage.removeItem('selectedParentId');
+    }
+  }, [parentId]);
 
   /* ── child → days ── */
   useEffect(()=>{
@@ -483,7 +540,15 @@ export default function LiffPage() {
     // Load days
     fetch(`/api/report/dates?child_id=${childId}`).then(r=>r.json())
       .then(j=>{
-        if (!cancelled) setDayEntries(j.data??[]);
+        if (!cancelled) {
+          console.log('📅 dayEntries loaded:', j.data);
+          // Show entries with reports
+          const withReports = (j.data ?? []).filter((e: any) => e.report_id);
+          const withoutReports = (j.data ?? []).filter((e: any) => !e.report_id);
+          console.log(`  ✅ With reports (${withReports.length}):`, withReports.slice(0, 5));
+          console.log(`  ❌ Without reports (${withoutReports.length}):`, withoutReports.slice(0, 5));
+          setDayEntries(j.data??[]);
+        }
       })
       .finally(()=>{
         if (!cancelled) setDaysLoading(false);
@@ -492,7 +557,14 @@ export default function LiffPage() {
     // Load attendance summary for contribution graph
     fetch(`/api/report/attendance-summary?child_id=${childId}`).then(r=>r.json())
       .then(j=>{
-        if (!cancelled) setAttendanceSummary(j.data??[]);
+        if (!cancelled) {
+          console.log('📊 attendanceSummary loaded:', j.data);
+          const present = (j.data ?? []).filter((d: any) => d.status === 'present');
+          const others = (j.data ?? []).filter((d: any) => d.status !== 'present');
+          console.log(`  🟢 Present (${present.length}):`, present.slice(0, 5));
+          console.log(`  ⚪ Others (${others.length}):`, others.slice(0, 5));
+          setAttendanceSummary(j.data??[]);
+        }
       });
     
     // Load enrollment period
@@ -540,6 +612,7 @@ export default function LiffPage() {
     if (!childId || !enrollmentPeriod) return;
     
     let cancelled = false;
+    setSummaryLoading(true);
     
     // Always use full enrollment period
     const now = new Date();
@@ -563,7 +636,16 @@ export default function LiffPage() {
             days_recorded: item.days_recorded || 0
           }));
           setBehaviorSummary(items);
+          
+          // Show shimmer briefly if has data
+          if (items.length > 0) {
+            setShowSummaryShimmer(true);
+            setTimeout(() => setShowSummaryShimmer(false), 300);
+          }
         }
+      })
+      .finally(() => {
+        if (!cancelled) setSummaryLoading(false);
       });
     
     // Load all behavior scores
@@ -573,6 +655,18 @@ export default function LiffPage() {
         if (!cancelled) {
           setAllBehaviorScores(j.data ?? []);
         }
+      });
+    
+    // Load food summary
+    fetch(`/api/report/food-summary?child_id=${childId}&date_from=${dateFrom}&date_to=${dateTo}`)
+      .then(r=>r.json())
+      .then(j=>{
+        if (!cancelled) {
+          setFoodSummary(j.data ?? { food: [], fruit: [], milk1: [], milk2: [], nap: { total_days: 0, nap_days: 0, avg_hours: null }, excretions: [] });
+        }
+      })
+      .catch(err => {
+        console.error('Error loading food summary:', err);
       });
     
     return () => { cancelled = true; };
@@ -729,7 +823,7 @@ export default function LiffPage() {
 
             {/* ❤️ connector */}
             <div style={{display:'flex',alignItems:'center',justifyContent:'center',color:'#ff8787',fontSize:'1.1rem',padding:'0 6px',alignSelf:'center',marginTop:10,flexShrink:0}}>
-              ❤️
+              <i className="bi bi-heart-fill" style={{color:'#ff8787'}}></i>
             </div>
 
             {/* ฝั่งลูก */}
@@ -763,9 +857,22 @@ export default function LiffPage() {
                 <h1 style={{margin:0,fontSize:'1.3rem',fontWeight:800,color:'#0f172a',letterSpacing:'-0.3px'}}>
                   {selectedChild?.name_th ?? 'เลือกบุตรหลาน'}
                 </h1>
-                <p style={{margin:'4px 0 0',fontSize:'0.75rem',color:'#64748b',fontWeight:500}}>
-                  {currentEntry ? thDate(currentEntry.date) : 'กรุณาเลือกบุตรหลาน'}
-                </p>
+                {selectedChild && currentEntry ? (
+                  <div style={{display:'inline-block',marginTop:10,padding:'4px 14px',background:'#f8fafc',border:'1px solid #f1f5f9',borderRadius:100}}>
+                    <p style={{margin:0,fontSize:'0.8rem',color:'#64748b',fontWeight:600,display:'flex',alignItems:'center',gap:6}}>
+                      <i className="bi bi-calendar3" style={{color:'#6366f1'}}></i>
+                      {thDate(currentEntry.date)}
+                    </p>
+                  </div>
+                ) : selectedChild ? (
+                  <p style={{margin:'10px 0 0',fontSize:'0.75rem',color:'#94a3b8',fontWeight:500}}>
+                    กำลังโหลดข้อมูล...
+                  </p>
+                ) : (
+                  <p style={{margin:'10px 0 0',fontSize:'0.75rem',color:'#94a3b8',fontWeight:500}}>
+                    กรุณาเลือกบุตรหลาน
+                  </p>
+                )}
               </>
             )}
           </div>
@@ -862,6 +969,13 @@ export default function LiffPage() {
                               return (
                                 <CustomTooltip key={dayIdxInWeek} text={tooltipText}>
                                   <div
+                                    ref={isSelected ? (el) => {
+                                      if (el) {
+                                        setTimeout(() => {
+                                          el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                                        }, 100);
+                                      }
+                                    } : undefined}
                                     onClick={() => {
                                       // Don't allow clicking on holidays
                                       if (!day.isHoliday && day.hasReport && day.dayIdx !== null) {
@@ -904,8 +1018,15 @@ export default function LiffPage() {
         )}
 
         {/* ─── BEHAVIOR SUMMARY ─────────────────────────────── */}
-        {!childLoading && childId && activeTab === 'summary' && behaviorSummary.length > 0 && (
-          <div style={{padding:'16px',background:'white',borderBottom:'1px solid #f1f5f9'}}>
+        {!childLoading && childId && activeTab === 'summary' && (
+          <LoadingWrapper
+            isLoading={summaryLoading}
+            hasData={behaviorSummary.length > 0}
+            showShimmer={showSummaryShimmer}
+            showEmptyState={!!childId && !!enrollmentPeriod} // Wait for both child and enrollment period
+            shimmerComponent={<BehaviorCardSkeleton />}
+          >
+            <div style={{padding:'16px',background:'white',borderBottom:'1px solid #f1f5f9'}}>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
               <div style={{display:'flex',flexDirection:'column',gap:2}}>
                 <span style={{fontSize:'0.7rem',fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:'0.06em'}}>🌟 สรุปอุปนิสัย</span>
@@ -960,7 +1081,7 @@ export default function LiffPage() {
                                     const foundIdx = dayEntries.findIndex(entry => entry.date === day.date);
                                     if (foundIdx >= 0) {
                                       setDayIdx(foundIdx);
-                                      setActiveTab('daily');
+                                      router.push('/');
                                     }
                                   }}
                                   style={{
@@ -987,6 +1108,217 @@ export default function LiffPage() {
               })()}
             </div>
           </div>
+          </LoadingWrapper>
+        )}
+
+        {/* ─── FOOD & FRUIT SUMMARY ─────────────────────────────── */}
+        {!childLoading && childId && activeTab === 'summary' && (
+          <div style={{padding:'16px',background:'white',borderBottom:'1px solid #f1f5f9'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+              <div style={{display:'flex',flexDirection:'column',gap:2}}>
+                <span style={{fontSize:'0.7rem',fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:'0.06em'}}>📊 สรุปสถิติ</span>
+                <span style={{fontSize:'0.6rem',color:'#94a3b8'}}>
+                  ตลอดช่วงเรียน
+                </span>
+              </div>
+            </div>
+            
+            <div style={{display:'flex',flexDirection:'column',gap:16}}>
+              {/* Food Statistics */}
+              {foodSummary.food?.length > 0 && (
+                <div style={{background:'#f8fafc',padding:12,borderRadius:10}}>
+                  <div style={{fontSize:'0.75rem',fontWeight:600,color:'#475569',marginBottom:8,display:'flex',alignItems:'center',gap:6}}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+                      <path d="M7 2v20"/>
+                      <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+                    </svg>
+                    อาหารกลางวัน
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                    {foodSummary.food.map(item => (
+                      <div key={item.food_amount} style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                        <span style={{fontSize:'0.75rem',color:'#64748b'}}>{amtL[item.food_amount]}</span>
+                        <div style={{display:'flex',alignItems:'center',gap:6}}>
+                          <div style={{
+                            height:6,
+                            width:Math.max(20, (item.count / Math.max(...foodSummary.food.map(f => f.count))) * 100),
+                            background:item.food_amount==='all'?'#10b981':item.food_amount==='some'?'#f59e0b':'#94a3b8',
+                            borderRadius:3
+                          }}/>
+                          <span style={{fontSize:'0.75rem',fontWeight:600,color:'#1e293b',minWidth:30,textAlign:'right'}}>{item.count} ครั้ง</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Fruit Statistics */}
+              {foodSummary.fruit?.length > 0 && (
+                <div style={{background:'#f8fafc',padding:12,borderRadius:10}}>
+                  <div style={{fontSize:'0.75rem',fontWeight:600,color:'#475569',marginBottom:8,display:'flex',alignItems:'center',gap:6}}>
+                    <svg width="14" height="14" viewBox="0 0 512 512" fill="#ef4444" opacity="0.8">
+                      <path d="M445.618,228.059h-42.029l27.986-43.14c1.954-3.012,1.096-7.037-1.916-8.991c-3.011-1.953-7.036-1.097-8.99,1.916l-32.576,50.215h-70.124c-2.758-63.71-45.818-114.503-98.357-114.503c-46.697,0-86.652,40.321-96.29,95.396C95.139,188.996,75.1,164.417,70.731,143.56c-1.033-4.947-4.933-8.683-9.936-9.518c-4.923-0.823-9.735,1.366-12.333,5.579c-0.116,0.18-0.21,0.344-0.287,0.487c-8.978,15.282-11.588,33.751-7.811,52.788c-4.686-4.875-8.418-9.9-10.996-14.962c-2.297-4.498-7.044-7.077-12.088-6.572c-5.022,0.502-9.144,3.953-10.5,8.801l-0.047,0.17c-7.67,27.815,2.96,57.899,27.076,81.47c-5.247-2.475-9.847-5.33-13.638-8.552c-3.893-3.31-9.313-3.891-13.809-1.481c-4.399,2.358-6.863,7.083-6.276,12.036l0.034,0.276c2.977,23.833,18.146,44.562,42.713,58.368c18.833,10.583,41.506,16.112,65.323,16.111c6.442,0,12.972-0.405,19.526-1.223c15.844-1.979,30.252-5.563,42.955-10.496c14.35,7.672,31.206,11.714,48.975,11.714c26.114,0,49.632-8.628,66.982-24.424c16.946,15.588,39.94,24.427,67.025,24.427c58.916,0,98.5-41.794,98.5-104C452.118,230.969,449.208,228.059,445.618,228.059z M201.131,133.386c0,0.477-2,2.5-6,2.5c-3.508,0-5.476-1.555-5.908-2.259c2.088-1.007,4.215-1.91,6.375-2.711C199.273,131.07,201.131,132.928,201.131,133.386z"/>
+                    </svg>
+                    ผลไม้
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                    {foodSummary.fruit.map(item => (
+                      <div key={item.fruit_amount} style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                        <span style={{fontSize:'0.75rem',color:'#64748b'}}>{amtL[item.fruit_amount]}</span>
+                        <div style={{display:'flex',alignItems:'center',gap:6}}>
+                          <div style={{
+                            height:6,
+                            width:Math.max(20, (item.count / Math.max(...foodSummary.fruit.map(f => f.count))) * 100),
+                            background:item.fruit_amount==='all'?'#10b981':item.fruit_amount==='some'?'#f59e0b':'#94a3b8',
+                            borderRadius:3
+                          }}/>
+                          <span style={{fontSize:'0.75rem',fontWeight:600,color:'#1e293b',minWidth:30,textAlign:'right'}}>{item.count} ครั้ง</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Milk1 Statistics */}
+              {foodSummary.milk1?.length > 0 && (
+                <div style={{background:'#f8fafc',padding:12,borderRadius:10}}>
+                  <div style={{fontSize:'0.75rem',fontWeight:600,color:'#475569',marginBottom:8,display:'flex',alignItems:'center',gap:6}}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M6 2L4 6v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6l-2-4z"/>
+                      <path d="M6 6h12"/>
+                      <path d="M10 11v6M14 11v6"/>
+                    </svg>
+                    นม มื้อ 1
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                    {foodSummary.milk1.map(item => (
+                      <div key={item.milk_amount} style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                        <span style={{fontSize:'0.75rem',color:'#64748b'}}>{amtL[item.milk_amount]}</span>
+                        <div style={{display:'flex',alignItems:'center',gap:6}}>
+                          <div style={{
+                            height:6,
+                            width:Math.max(20, (item.count / Math.max(...foodSummary.milk1.map(f => f.count))) * 100),
+                            background:item.milk_amount==='all'?'#10b981':item.milk_amount==='some'?'#f59e0b':'#94a3b8',
+                            borderRadius:3
+                          }}/>
+                          <span style={{fontSize:'0.75rem',fontWeight:600,color:'#1e293b',minWidth:30,textAlign:'right'}}>{item.count} ครั้ง</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Milk2 Statistics */}
+              {foodSummary.milk2?.length > 0 && (
+                <div style={{background:'#f8fafc',padding:12,borderRadius:10}}>
+                  <div style={{fontSize:'0.75rem',fontWeight:600,color:'#475569',marginBottom:8,display:'flex',alignItems:'center',gap:6}}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M6 2L4 6v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6l-2-4z"/>
+                      <path d="M6 6h12"/>
+                      <path d="M10 11v6M14 11v6"/>
+                    </svg>
+                    นม มื้อ 2
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                    {foodSummary.milk2.map(item => (
+                      <div key={item.milk_amount} style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                        <span style={{fontSize:'0.75rem',color:'#64748b'}}>{amtL[item.milk_amount]}</span>
+                        <div style={{display:'flex',alignItems:'center',gap:6}}>
+                          <div style={{
+                            height:6,
+                            width:Math.max(20, (item.count / Math.max(...foodSummary.milk2.map(f => f.count))) * 100),
+                            background:item.milk_amount==='all'?'#10b981':item.milk_amount==='some'?'#f59e0b':'#94a3b8',
+                            borderRadius:3
+                          }}/>
+                          <span style={{fontSize:'0.75rem',fontWeight:600,color:'#1e293b',minWidth:30,textAlign:'right'}}>{item.count} ครั้ง</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Nap Statistics */}
+              {foodSummary.nap?.total_days > 0 && (
+                <div style={{background:'#f8fafc',padding:12,borderRadius:10}}>
+                  <div style={{fontSize:'0.75rem',fontWeight:600,color:'#475569',marginBottom:8,display:'flex',alignItems:'center',gap:6}}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M2 12h1.5M8 6v1.5M18 6v1.5M22 12h-1.5"/>
+                      <path d="M19 17a7 7 0 1 1-14 0"/>
+                    </svg>
+                    การนอนกลางวัน
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                      <span style={{fontSize:'0.75rem',color:'#64748b'}}>นอนทั้งหมด</span>
+                      <span style={{fontSize:'0.75rem',fontWeight:600,color:'#1e293b'}}>{foodSummary.nap.nap_days} / {foodSummary.nap.total_days} วัน</span>
+                    </div>
+                    {foodSummary.nap.avg_hours !== null && (
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                        <span style={{fontSize:'0.75rem',color:'#64748b'}}>ระยะเวลาเฉลี่ย</span>
+                        <span style={{fontSize:'0.75rem',fontWeight:600,color:'#1e293b'}}>
+                          {Math.floor(foodSummary.nap.avg_hours)} ชม. {Math.round((foodSummary.nap.avg_hours % 1) * 60)} นาที
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {/* Excretion Statistics */}
+              {foodSummary.excretions?.length > 0 && (
+                <div style={{background:'#f8fafc',padding:12,borderRadius:10}}>
+                  <div style={{fontSize:'0.75rem',fontWeight:600,color:'#475569',marginBottom:8,display:'flex',alignItems:'center',gap:6}}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 11l3 3L22 4"/>
+                      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                    </svg>
+                    การขับถ่าย
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                    {(() => {
+                      const peeTotal = foodSummary.excretions.filter(e => e.type === 'pee').reduce((sum, e) => sum + e.count, 0);
+                      const pooTotal = foodSummary.excretions.filter(e => e.type === 'poo').reduce((sum, e) => sum + e.count, 0);
+                      const diaperCount = foodSummary.excretions.filter(e => e.action === 'diaper').reduce((sum, e) => sum + e.count, 0);
+                      const pottyCount = foodSummary.excretions.filter(e => e.action === 'potty').reduce((sum, e) => sum + e.count, 0);
+                      
+                      return (
+                        <>
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                            <span style={{fontSize:'0.75rem',color:'#64748b'}}>💛 ปัสสาวะ</span>
+                            <span style={{fontSize:'0.75rem',fontWeight:600,color:'#1e293b'}}>{peeTotal} ครั้ง</span>
+                          </div>
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                            <span style={{fontSize:'0.75rem',color:'#64748b'}}>💩 อุจจาระ</span>
+                            <span style={{fontSize:'0.75rem',fontWeight:600,color:'#1e293b'}}>{pooTotal} ครั้ง</span>
+                          </div>
+                          <div style={{height:1,background:'#e2e8f0',margin:'4px 0'}}/>
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                            <span style={{fontSize:'0.75rem',color:'#64748b'}}>🩲 ผ้าอ้อม</span>
+                            <span style={{fontSize:'0.75rem',fontWeight:600,color:'#1e293b'}}>{diaperCount} ครั้ง</span>
+                          </div>
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                            <span style={{fontSize:'0.75rem',color:'#64748b',display:'flex',alignItems:'center',gap:4}}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M9 11l3 3L22 4"/>
+                                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                              </svg>
+                              กระโถน
+                            </span>
+                            <span style={{fontSize:'0.75rem',fontWeight:600,color:'#1e293b'}}>{pottyCount} ครั้ง</span>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {/* ─── CONTENT ────────────────────────────── */}
@@ -1001,14 +1333,40 @@ export default function LiffPage() {
             </div>
           )}
 
-          {!reportLoading && childId && (
+          {!reportLoading && childId && dayEntries.length > 0 && (
             <div className="fade">
 
               {/* Attendance */}
               {attendance && (
                 <div style={{background:attBg[attendance.status],borderRadius:16,padding:'14px 18px',marginBottom:14,display:'flex',alignItems:'center',gap:12,border:`1px solid ${attC[attendance.status]}22`}}>
-                  <div style={{width:44,height:44,borderRadius:'50%',background:'white',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>
-                    {attendance.status==='present'?'😊':attendance.status==='sick'?'🤒':attendance.status==='absent'?'😴':'📝'}
+                  <div style={{width:44,height:44,borderRadius:'50%',background:'white',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                    {attendance.status==='present' ? (
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                      </svg>
+                    ) : attendance.status==='sick' ? (
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 9v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9"/>
+                        <path d="M9 22V12h6v10"/>
+                        <path d="M2 10.6L12 2l10 8.6"/>
+                        <line x1="12" y1="6" x2="12" y2="8"/>
+                        <line x1="12" y1="16" x2="12" y2="18"/>
+                      </svg>
+                    ) : attendance.status==='absent' ? (
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="15" y1="9" x2="9" y2="15"/>
+                        <line x1="9" y1="9" x2="15" y2="15"/>
+                      </svg>
+                    ) : (
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="12" y1="18" x2="12" y2="12"/>
+                        <line x1="9" y1="15" x2="15" y2="15"/>
+                      </svg>
+                    )}
                   </div>
                   <div>
                     <p style={{fontSize:10,color:attC[attendance.status],fontWeight:800,marginBottom:3,textTransform:'uppercase',letterSpacing:'0.06em'}}>สถานะวันนี้</p>
@@ -1020,7 +1378,12 @@ export default function LiffPage() {
 
               {!report && !attendance && dayEntries.length>0 && (
                 <div style={{background:'white',borderRadius:16,padding:'32px',textAlign:'center',border:'1px solid #e2e8f0',marginBottom:14}}>
-                  <p style={{fontSize:32,marginBottom:8}}>📋</p>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{margin:'0 auto 12px'}}>
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="9" y1="13" x2="15" y2="13"/>
+                    <line x1="9" y1="17" x2="15" y2="17"/>
+                  </svg>
                   <p style={{color:'#94a3b8',fontSize:14}}>ยังไม่มีรายงานสำหรับวันนี้</p>
                 </div>
               )}
@@ -1037,8 +1400,13 @@ export default function LiffPage() {
 
                 {/* Food & Milk */}
                 <div style={{background:'white',borderRadius:16,padding:'18px',marginBottom:14,border:'1px solid #e2e8f0'}}>
-                  <div style={{display:'flex',alignItems:'center',fontWeight:700,fontSize:'1rem',marginBottom:14,color:'#334155'}}>
-                    <span style={{marginRight:8,fontSize:'1.1rem'}}>🥣</span> อาหารและโภชนาการ
+                  <div style={{display:'flex',alignItems:'center',fontWeight:700,fontSize:'1rem',marginBottom:14,color:'#334155',gap:8,fontFamily:'Prompt, sans-serif'}}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+                      <path d="M7 2v20"/>
+                      <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+                    </svg>
+                    อาหารและโภชนาการ
                   </div>
 
                   {(report.daily?.food||report.daily?.fruit)&&(
@@ -1082,7 +1450,14 @@ export default function LiffPage() {
 
                   {(report.milk1!=='skip'||report.milk2!=='skip')&&(
                     <div className="milk-section">
-                      <h3 className="milk-section-title">🥛 การดื่มนมประจำวัน</h3>
+                      <h3 className="milk-section-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:'inline-block',verticalAlign:'middle',marginRight:4}}>
+                          <path d="M6 2L4 6v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6l-2-4z"/>
+                          <path d="M6 6h12"/>
+                          <path d="M10 11v6M14 11v6"/>
+                        </svg>
+                        การดื่มนมประจำวัน
+                      </h3>
                       <div style={{display:'flex',flexDirection:'column',gap:8}}>
                         {[{label:'กล่องที่ 1 (เช้า)',val:report.milk1,note:report.milk1_note},{label:'กล่องที่ 2 (บ่าย)',val:report.milk2,note:report.milk2_note}]
                           .filter(m=>m.val!=='skip')
@@ -1103,8 +1478,11 @@ export default function LiffPage() {
                 {/* Behaviors */}
                 {scores.length>0&&(
                   <div style={{background:'white',borderRadius:16,padding:'18px',marginBottom:14,border:'1px solid #e2e8f0'}}>
-                    <div style={{display:'flex',alignItems:'center',fontWeight:700,fontSize:'1rem',marginBottom:16,color:'#334155'}}>
-                      <span style={{marginRight:8,fontSize:'1.1rem'}}>✨</span> อุปนิสัยวันนี้
+                    <div style={{display:'flex',alignItems:'center',fontWeight:700,fontSize:'1rem',marginBottom:16,color:'#334155',gap:8,fontFamily:'Prompt, sans-serif'}}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                      </svg>
+                      อุปนิสัยวันนี้
                     </div>
                     <div style={{display:'flex',flexDirection:'column',gap:16}}>
                       {Object.values(behaviorGroups).map(g=>(
@@ -1117,28 +1495,24 @@ export default function LiffPage() {
                               
                               // Determine face icon and color based on percentage
                               let faceIcon: React.ReactElement;
-                              let color: string;
-                              let bgColor: string;
-                              let borderColor: string;
+                              let iconColor: string;
+                              
+                              // Universal gray style for all items
+                              const bgColor = '#f8fafc';
+                              const borderColor = '#e2e8f0';
                               
                               if (percentage >= 80) {
                                 // ดีมาก - เขียว
                                 faceIcon = <FaceHappy size={24} color="#10b981" />;
-                                color = '#10b981';
-                                bgColor = '#f0fdf4';
-                                borderColor = '#bbf7d0';
+                                iconColor = '#10b981';
                               } else if (percentage >= 60) {
                                 // ดี - เหลืองสด
                                 faceIcon = <FaceSmile size={24} color="#facc15" />;
-                                color = '#facc15';
-                                bgColor = '#fefce8';
-                                borderColor = '#fef08a';
+                                iconColor = '#facc15';
                               } else {
                                 // ควรปรับปรุง - ส้มเข้ม
                                 faceIcon = <FaceNeutral size={24} color="#f97316" />;
-                                color = '#f97316';
-                                bgColor = '#fff7ed';
-                                borderColor = '#fed7aa';
+                                iconColor = '#f97316';
                               }
                               
                               return (
@@ -1152,6 +1526,9 @@ export default function LiffPage() {
                                   background:bgColor,
                                   gap:12
                                 }}>
+                                  <div style={{flexShrink:0}}>
+                                    {faceIcon}
+                                  </div>
                                   <div style={{flex:1,minWidth:0}}>
                                     <div style={{fontSize:'0.9rem',fontWeight:700,color:'#1e293b'}}>
                                       {s.name_th}
@@ -1165,15 +1542,12 @@ export default function LiffPage() {
                                         padding:'8px 10px',
                                         background:'white',
                                         borderRadius:8,
-                                        border:`1px dashed ${color}`
+                                        border:`1px dashed ${iconColor}`
                                       }}>
-                                        <i className="bi bi-chat-left-text-fill" style={{color, fontSize:'0.7rem',marginRight:'6px'}}></i>
+                                        <i className="bi bi-chat-left-text-fill" style={{color:iconColor, fontSize:'0.7rem',marginRight:'6px'}}></i>
                                         {s.note}
                                       </div>
                                     )}
-                                  </div>
-                                  <div style={{flexShrink:0}}>
-                                    {faceIcon}
                                   </div>
                                 </div>
                               );
@@ -1188,8 +1562,12 @@ export default function LiffPage() {
                 {/* Nap */}
                 <div style={{background:'white',borderRadius:16,padding:'20px',marginBottom:14,border:'1px solid #e2e8f0'}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:20}}>
-                    <div style={{display:'flex',alignItems:'center',fontWeight:700,fontSize:'1rem',color:'#4338ca',gap:8,marginBottom:0}}>
-                      <span>😴</span> การนอนกลางวัน
+                    <div style={{display:'flex',alignItems:'center',fontWeight:700,fontSize:'1rem',color:'#334155',gap:8,marginBottom:0,fontFamily:'Prompt, sans-serif'}}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M2 12h1.5M8 6v1.5M18 6v1.5M22 12h-1.5"/>
+                        <path d="M19 17a7 7 0 1 1-14 0"/>
+                      </svg>
+                      การนอนกลางวัน
                     </div>
                     {report.nap_from&&report.nap_to&&(
                       <div style={{textAlign:'right'}}>
@@ -1335,14 +1713,22 @@ export default function LiffPage() {
                 {/* Excretions */}
                 {(exDiaper.length>0||exPotty.length>0)&&(
                   <div style={{background:'white',borderRadius:16,padding:'18px',marginBottom:14,border:'1px solid #e2e8f0'}}>
-                    <div style={{display:'flex',alignItems:'center',fontWeight:700,fontSize:'1rem',marginBottom:14,color:'#334155'}}>
-                      <span style={{marginRight:8}}>🚽</span> การขับถ่าย
+                    <div style={{display:'flex',alignItems:'center',fontWeight:700,fontSize:'1rem',marginBottom:14,color:'#334155',gap:8,fontFamily:'Prompt, sans-serif'}}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9 11l3 3L22 4"/>
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                      </svg>
+                      การขับถ่าย
                     </div>
                     <div style={{display:'flex',flexDirection:'column',gap:12}}>
                       {exDiaper.length>0&&(
                         <div style={{background:'#fff7ed',padding:14,borderRadius:14,border:'1px solid #ffedd5'}}>
                           <p style={{fontSize:'0.85rem',fontWeight:800,color:'#c2410c',marginBottom:10,display:'flex',alignItems:'center',gap:6}}>
-                            👶 ผ้าอ้อม (Diapers)
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="3" y="8" width="18" height="12" rx="2"/>
+                              <path d="M7 8V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/>
+                            </svg>
+                            ผ้าอ้อม (Diapers)
                           </p>
                           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
                             {[{label:'ฉี่ (Wet)',items:exDiaper.filter(e=>e.type==='pee')},{label:'อึ (Soiled)',items:exDiaper.filter(e=>e.type==='poo')}]
@@ -1360,7 +1746,11 @@ export default function LiffPage() {
                       {exPotty.length>0&&(
                         <div style={{background:'#f0fdf4',padding:14,borderRadius:14,border:'1px solid #dcfce7'}}>
                           <p style={{fontSize:'0.85rem',fontWeight:800,color:'#15803d',marginBottom:10,display:'flex',alignItems:'center',gap:6}}>
-                            🚽 นั่งกระโถน (Potty)
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M9 11l3 3L22 4"/>
+                              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                            </svg>
+                            นั่งกระโถน (Potty)
                           </p>
                           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
                             {[{label:'ฉี่ (Pee)',items:exPotty.filter(e=>e.type==='pee')},{label:'อึ (Poo)',items:exPotty.filter(e=>e.type==='poo')}]
@@ -1403,10 +1793,17 @@ export default function LiffPage() {
             </div>
           )}
 
-          {!childId&&!childLoading&&(
+          {!childId && !childLoading && (
             <div style={{textAlign:'center',padding:'48px 20px',color:'#94a3b8'}}>
               <p style={{fontSize:44,marginBottom:10}}>👆</p>
               <p style={{fontSize:'0.95rem'}}>เลือกบุตรหลานเพื่อดูรายงาน</p>
+            </div>
+          )}
+          
+          {childId && !reportLoading && dayEntries.length === 0 && !daysLoading && (
+            <div style={{textAlign:'center',padding:'48px 20px',color:'#94a3b8'}}>
+              <p style={{fontSize:44,marginBottom:10}}>📋</p>
+              <p style={{fontSize:'0.95rem'}}>ยังไม่มีรายงานประจำวัน</p>
             </div>
           )}
         </div>
@@ -1431,14 +1828,14 @@ export default function LiffPage() {
           }}>
             <div style={{display: 'flex', height: 64}}>
               <button
-                onClick={() => setActiveTab('daily')}
+                onClick={() => router.push('/')}
                 style={{
                   flex: 1,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 4,
+                  gap: 2,
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
@@ -1447,22 +1844,18 @@ export default function LiffPage() {
                   position: 'relative'
                 }}
               >
-                {/* Calendar Icon */}
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                  <line x1="16" y1="2" x2="16" y2="6"></line>
-                  <line x1="8" y1="2" x2="8" y2="6"></line>
-                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                  <polyline points="9 22 9 12 15 12 15 22"/>
                 </svg>
-                <span style={{fontSize: '0.7rem', fontWeight: activeTab === 'daily' ? 700 : 500}}>รายวัน</span>
-                {/* Active indicator */}
+                <span style={{fontSize: '0.6rem', fontWeight: activeTab === 'daily' ? 700 : 500}}>หน้าแรก</span>
                 {activeTab === 'daily' && (
                   <div style={{
                     position: 'absolute',
                     top: 0,
                     left: '50%',
                     transform: 'translateX(-50%)',
-                    width: 40,
+                    width: 30,
                     height: 3,
                     background: '#6366f1',
                     borderRadius: '0 0 3px 3px'
@@ -1470,35 +1863,139 @@ export default function LiffPage() {
                 )}
               </button>
               <button
-                onClick={() => setActiveTab('summary')}
+                onClick={() => router.push('/summary-behavior')}
                 style={{
                   flex: 1,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 4,
+                  gap: 2,
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
-                  color: activeTab === 'summary' ? '#6366f1' : '#94a3b8',
+                  color: pathname === '/summary-behavior' ? '#6366f1' : '#94a3b8',
                   position: 'relative'
                 }}
               >
-                {/* Star Icon */}
-                <svg width="24" height="24" viewBox="0 0 24 24" fill={activeTab === 'summary' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill={pathname === '/summary-behavior' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                 </svg>
-                <span style={{fontSize: '0.7rem', fontWeight: activeTab === 'summary' ? 700 : 500}}>สรุปอุปนิสัย</span>
-                {/* Active indicator */}
-                {activeTab === 'summary' && (
+                <span style={{fontSize: '0.6rem', fontWeight: pathname === '/summary-behavior' ? 700 : 500}}>อุปนิสัย</span>
+                {pathname === '/summary-behavior' && (
                   <div style={{
                     position: 'absolute',
                     top: 0,
                     left: '50%',
                     transform: 'translateX(-50%)',
-                    width: 40,
+                    width: 30,
+                    height: 3,
+                    background: '#6366f1',
+                    borderRadius: '0 0 3px 3px'
+                  }} />
+                )}
+              </button>
+              <button
+                onClick={() => router.push('/summary-food-milk')}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 2,
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  color: pathname === '/summary-food-milk' ? '#6366f1' : '#94a3b8',
+                  position: 'relative'
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+                  <path d="M7 2v20"/>
+                  <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+                </svg>
+                <span style={{fontSize: '0.6rem', fontWeight: pathname === '/summary-food-milk' ? 700 : 500}}>อาหาร นม</span>
+                {pathname === '/summary-food-milk' && (
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: 30,
+                    height: 3,
+                    background: '#6366f1',
+                    borderRadius: '0 0 3px 3px'
+                  }} />
+                )}
+              </button>
+              <button
+                onClick={() => router.push('/summary-nap')}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 2,
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  color: pathname === '/summary-nap' ? '#6366f1' : '#94a3b8',
+                  position: 'relative'
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 12h1.5M8 6v1.5M18 6v1.5M22 12h-1.5"/>
+                  <path d="M19 17a7 7 0 1 1-14 0"/>
+                </svg>
+                <span style={{fontSize: '0.6rem', fontWeight: pathname === '/summary-nap' ? 700 : 500}}>การนอน</span>
+                {pathname === '/summary-nap' && (
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: 30,
+                    height: 3,
+                    background: '#6366f1',
+                    borderRadius: '0 0 3px 3px'
+                  }} />
+                )}
+              </button>
+              <button
+                onClick={() => router.push('/summary-excretion')}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 2,
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  color: pathname === '/summary-excretion' ? '#6366f1' : '#94a3b8',
+                  position: 'relative'
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M7 11h10M7 15h6"/>
+                  <rect x="3" y="3" width="18" height="18" rx="2"/>
+                </svg>
+                <span style={{fontSize: '0.6rem', fontWeight: pathname === '/summary-excretion' ? 700 : 500}}>ขับถ่าย</span>
+                {pathname === '/summary-excretion' && (
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: 30,
                     height: 3,
                     background: '#6366f1',
                     borderRadius: '0 0 3px 3px'
