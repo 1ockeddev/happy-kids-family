@@ -467,12 +467,10 @@ export default function LiffPage() {
         
         fetch('/api/children').then(r=>r.json()).then(j=>{
           const kids: Child[] = j.data ?? [];
-          console.log('👶 Dev mode: Children loaded:', kids.length);
           setChildren(kids);
         });
       } else {
         // Default: load children with reports (parent view)
-        console.log('👪 Dev mode: Parent - Loading children with reports');
         fetch('/api/report/children').then(r=>r.json()).then(j=>{
           setChildren(j.data??[]);
         });
@@ -480,39 +478,32 @@ export default function LiffPage() {
       return;
     }
     
-    console.log('📱 LINE userId:', liff.profile.userId, 'displayName:', liff.profile.displayName);
     setChildLoading(true);
     fetch('/api/auth/line-register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({line_user_id:liff.profile.userId,display_name:liff.profile.displayName,picture_url:liff.profile.pictureUrl??null})})
     .then(r=>r.json())
     .then(async regJson => {
-      console.log('📦 API Response:', regJson);
       if (regJson.status === 403) {
-        setNotRegistered(true);  // แสดงหน้า "ติดต่อครู"
+        setNotRegistered(true);
         return;
       }
       const user = regJson.data;
-      console.log('👤 User data:', user);
       setCurrentUser(user);
-      console.log('🔍 User role:', user?.role);
       
       // ถ้าเป็น teacher → โหลดเด็กทั้งหมด
       if (user?.role === 'teacher') {
-        console.log('👨‍🏫 Teacher mode: Loading all children');
         const childRes = await fetch('/api/children');
         const childJson = await childRes.json();
         const kids: Child[] = childJson.data ?? [];
-        console.log('👶 Children loaded:', kids.length, kids);
         setChildren(kids);
         if (kids.length === 0) setNotRegistered(true);
-        return;
+      } else {
+        // parent → โหลดลูก
+        const childRes = await fetch(`/api/report/line-children?line_user_id=${liff.profile!.userId}`);
+        const childJson = await childRes.json();
+        const kids:Child[] = childJson.data??[];
+        setChildren(kids);
+        if (kids.length===0) setNotRegistered(true);
       }
-      
-      // parent → โหลดลูก
-      const childRes = await fetch(`/api/report/line-children?line_user_id=${liff.profile!.userId}`);
-      const childJson = await childRes.json();
-      const kids:Child[] = childJson.data??[];
-      setChildren(kids);
-      if (kids.length===0) setNotRegistered(true);
     })
     .catch(()=>setNotRegistered(true))
     .finally(()=>setChildLoading(false));

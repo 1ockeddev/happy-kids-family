@@ -82,10 +82,19 @@ export default function UsersPage() {
         role: form.role, status: form.status,
         line_user_id: form.line_user_id || null,
       };
+      const roleChanged = modal === 'edit' && selected && selected.role !== form.role;
+      
       modal === 'add'
         ? await usersApi.create(payload)
         : await usersApi.update(selected!.id, payload);
-      setModal(null); load();
+      
+      setModal(null); 
+      load();
+      
+      // แจ้งเตือนถ้าเปลี่ยน role
+      if (roleChanged) {
+        alert(`✅ บันทึกสำเร็จ!\n\n⚠️ สำคัญ: ผู้ใช้ "${form.display_name}" ต้องรีเฟรชหน้า Mini App\nเพื่อให้เห็นบทบาทใหม่ (${form.role === 'teacher' ? 'ครู' : 'ผู้ปกครอง'})`);
+      }
     } catch (e) { alert(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ'); }
     finally { setSaving(false); }
   };
@@ -271,6 +280,13 @@ export default function UsersPage() {
               <option value="parent">👨‍👩‍👧 ผู้ปกครอง</option>
               <option value="teacher">👩‍🏫 ครู</option>
             </select>
+            {modal === 'edit' && selected && selected.role !== form.role && (
+              <div style={{ marginTop: 6, padding: '6px 10px', background: '#FEF9C3', border: '1px solid #FDE68A', borderRadius: 6 }}>
+                <p style={{ fontSize: 10, color: '#92400E', margin: 0, lineHeight: 1.4 }}>
+                  ⚠️ <strong>สำคัญ:</strong> หลังเปลี่ยนบทบาท<br/>ผู้ใช้ต้อง <strong>รีเฟรชหน้า Mini App</strong> ถึงจะเห็นการเปลี่ยนแปลง
+                </p>
+              </div>
+            )}
           </div>
           <div className="form-group">
             <label className="form-label">สถานะ</label>
