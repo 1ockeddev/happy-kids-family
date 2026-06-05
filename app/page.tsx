@@ -440,29 +440,68 @@ export default function LiffPage() {
 
   /* ── LIFF ready ── */
   useEffect(() => {
+    console.log('🚀 LIFF ready:', liff.ready, 'profile:', liff.profile);
     if (!liff.ready) return;
+    
+    // Development mode: No LINE profile (local testing)
     if (!liff.profile?.userId) {
-      fetch('/api/report/children').then(r=>r.json()).then(j=>{
-        setChildren(j.data??[]);
-      });
+      console.log('⚠️ Development mode - No LINE profile');
+      
+      // Check localStorage for mock role
+      const mockRole = localStorage.getItem('mockRole') as 'teacher' | 'parent' | null;
+      console.log('🔧 Mock role from localStorage:', mockRole);
+      
+      if (mockRole === 'teacher') {
+        console.log('👨‍🏫 Dev mode: Teacher - Loading all children');
+        const mockUser: AppUser = {
+          id: 'dev-teacher-id',
+          line_user_id: null,
+          role: 'teacher',
+          status: 'active',
+          display_name: 'Dev Teacher',
+          line_display_name: null,
+          picture_url: null,
+          created_at: new Date().toISOString()
+        };
+        setCurrentUser(mockUser);
+        
+        fetch('/api/children').then(r=>r.json()).then(j=>{
+          const kids: Child[] = j.data ?? [];
+          console.log('👶 Dev mode: Children loaded:', kids.length);
+          setChildren(kids);
+        });
+      } else {
+        // Default: load children with reports (parent view)
+        console.log('👪 Dev mode: Parent - Loading children with reports');
+        fetch('/api/report/children').then(r=>r.json()).then(j=>{
+          setChildren(j.data??[]);
+        });
+      }
       return;
     }
+    
+    console.log('📱 LINE userId:', liff.profile.userId, 'displayName:', liff.profile.displayName);
     setChildLoading(true);
     fetch('/api/auth/line-register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({line_user_id:liff.profile.userId,display_name:liff.profile.displayName,picture_url:liff.profile.pictureUrl??null})})
     .then(r=>r.json())
     .then(async regJson => {
+      console.log('📦 API Response:', regJson);
       if (regJson.status === 403) {
         setNotRegistered(true);  // แสดงหน้า "ติดต่อครู"
         return;
       }
       const user = regJson.data;
+      console.log('👤 User data:', user);
       setCurrentUser(user);
+      console.log('🔍 User role:', user?.role);
       
       // ถ้าเป็น teacher → โหลดเด็กทั้งหมด
       if (user?.role === 'teacher') {
-        const childRes = await fetch('/api/report/children');
+        console.log('👨‍🏫 Teacher mode: Loading all children');
+        const childRes = await fetch('/api/children');
         const childJson = await childRes.json();
         const kids: Child[] = childJson.data ?? [];
+        console.log('👶 Children loaded:', kids.length, kids);
         setChildren(kids);
         if (kids.length === 0) setNotRegistered(true);
         return;
@@ -549,19 +588,24 @@ export default function LiffPage() {
   useEffect(()=>{
     if (!childId) return;
     setDaysLoading(true);
-    setDayEntries([]); setDayIdx(0); setReport(null); setAttendance(null); setScores([]);
+    setDayEntries([]); 
+    setDayIdx(0); 
+    setReport(null); 
+    setAttendance(null); 
+    setScores([]);
+    setEnrollmentPeriod(null);
+    setAttendanceSummary([]);
+    setHolidays([]);
+    setActivities([]);
+    setCohortId(null);
     let cancelled = false;
     
     // Load days
     fetch(`/api/report/dates?child_id=${childId}`).then(r=>r.json())
       .then(j=>{
         if (!cancelled) {
-          console.log('📅 dayEntries loaded:', j.data);
-          // Show entries with reports
           const withReports = (j.data ?? []).filter((e: any) => e.report_id);
           const withoutReports = (j.data ?? []).filter((e: any) => !e.report_id);
-          console.log(`  ✅ With reports (${withReports.length}):`, withReports.slice(0, 5));
-          console.log(`  ❌ Without reports (${withoutReports.length}):`, withoutReports.slice(0, 5));
           setDayEntries(j.data??[]);
         }
       })
@@ -573,49 +617,65 @@ export default function LiffPage() {
     fetch(`/api/report/attendance-summary?child_id=${childId}`).then(r=>r.json())
       .then(j=>{
         if (!cancelled) {
-          console.log('📊 attendanceSummary loaded:', j.data);
           const present = (j.data ?? []).filter((d: any) => d.status === 'present');
           const others = (j.data ?? []).filter((d: any) => d.status !== 'present');
-          console.log(`  🟢 Present (${present.length}):`, present.slice(0, 5));
-          console.log(`  ⚪ Others (${others.length}):`, others.slice(0, 5));
           setAttendanceSummary(j.data??[]);
         }
+      })
+      .catch(() => {
+        if (!cancelled) setAttendanceSummary([]);
       });
     
     // Load enrollment period
     fetch(`/api/report/enrollment-period?child_id=${childId}`).then(r=>r.json())
       .then(j=>{
-        if (!cancelled && j.data?.start_date) {
-          const period = {
-            start: j.data.start_date,
-            end: j.data.end_date
-          };
-          setEnrollmentPeriod(period);
-          
-          // Store cohort_id for holidays API
-          const enrollmentCohortId = j.data.cohort_id || null;
-          setCohortId(enrollmentCohortId);
-          
-          // Load holidays for this period
-          const endDateStr = period.end || (() => {
-            const now = new Date();
-            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-          })();
-          let holidaysUrl = `/api/holidays?start_date=${period.start}&end_date=${endDateStr}`;
-          if (enrollmentCohortId) {
-            holidaysUrl += `&cohort_id=${enrollmentCohortId}`;
+        if (!cancelled) {
+          if (j.data?.start_date) {
+            const period = {
+              start: j.data.start_date,
+              end: j.data.end_date
+            };
+            setEnrollmentPeriod(period);
+            
+            // Store cohort_id for holidays API
+            const enrollmentCohortId = j.data.cohort_id || null;
+            setCohortId(enrollmentCohortId);
+            
+            // Load holidays for this period
+            const endDateStr = period.end || (() => {
+              const now = new Date();
+              return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            })();
+            let holidaysUrl = `/api/holidays?start_date=${period.start}&end_date=${endDateStr}`;
+            if (enrollmentCohortId) {
+              holidaysUrl += `&cohort_id=${enrollmentCohortId}`;
+            }
+            fetch(holidaysUrl).then(r=>r.json())
+              .then(j=>{
+                if (!cancelled) setHolidays(j.data??[]);
+              });
+            
+            // Load activities for this period
+            fetch(`/api/report/activities?child_id=${childId}&start_date=${period.start}&end_date=${endDateStr}`)
+              .then(r=>r.json())
+              .then(j=>{
+                if (!cancelled) setActivities(j.data??[]);
+              });
+          } else {
+            // ไม่มี enrollment period - reset ทุกอย่าง
+            setEnrollmentPeriod(null);
+            setCohortId(null);
+            setHolidays([]);
+            setActivities([]);
           }
-          fetch(holidaysUrl).then(r=>r.json())
-            .then(j=>{
-              if (!cancelled) setHolidays(j.data??[]);
-            });
-          
-          // Load activities for this period
-          fetch(`/api/report/activities?child_id=${childId}&start_date=${period.start}&end_date=${endDateStr}`)
-            .then(r=>r.json())
-            .then(j=>{
-              if (!cancelled) setActivities(j.data??[]);
-            });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setEnrollmentPeriod(null);
+          setCohortId(null);
+          setHolidays([]);
+          setActivities([]);
         }
       });
     
@@ -690,7 +750,13 @@ export default function LiffPage() {
   /* ── day → report ── */
   useEffect(()=>{
     const entry = dayEntries[dayIdx];
-    if (!entry||!childId){setReport(null);setAttendance(null);setScores([]);return;}
+    if (!entry||!childId){
+      setReport(null);
+      setAttendance(null);
+      setScores([]);
+      setReportLoading(false); // ✅ หยุด loading เมื่อไม่มี entry
+      return;
+    }
     setReportLoading(true);
     let cancelled = false;
     Promise.all([
@@ -720,31 +786,76 @@ export default function LiffPage() {
   },{});
   const exDiaper = report?.excretions?.filter(e=>e.action==='diaper')??[];
   const exPotty  = report?.excretions?.filter(e=>e.action==='potty')??[];
+  
+  // Development mode: Toggle role (only on localhost)
+  const [isDevelopment, setIsDevelopment] = useState(false);
+  const [showDevMenu, setShowDevMenu] = useState(false);
+  
+  useEffect(() => {
+    // Only show dev mode on localhost AND without LINE profile
+    const isLocalhost = typeof window !== 'undefined' && 
+      (window.location.hostname === 'localhost' || 
+       window.location.hostname === '127.0.0.1' ||
+       window.location.hostname.endsWith('.local'));
+    setIsDevelopment(isLocalhost && !liff.profile?.userId);
+  }, [liff.profile?.userId]);
 
   /* ── Auto-scroll to selected date in calendar ── */
   useEffect(() => {
     if (!currentEntry || dayEntries.length === 0) return;
     
+    let attempts = 0;
+    const maxAttempts = 15;
+    let timerId: NodeJS.Timeout;
+    
     const scrollToSelectedDate = () => {
-      const selectedElement = document.querySelector(`[data-day-date="${currentEntry.date}"]`);
+      const selectedElement = document.querySelector(`[data-day-date="${currentEntry.date}"]`) as HTMLElement;
       const container = document.getElementById('calendar-scroll-container');
       
-      if (selectedElement && container) {
+      if (!selectedElement || !container) {
+        // Retry if element not found yet (up to maxAttempts)
+        if (attempts < maxAttempts) {
+          attempts++;
+          timerId = setTimeout(scrollToSelectedDate, 150);
+        }
+        return;
+      }
+      
+      try {
         const containerRect = container.getBoundingClientRect();
         const elementRect = selectedElement.getBoundingClientRect();
-        const scrollLeft = (selectedElement as HTMLElement).offsetLeft - (containerRect.width / 2) + (elementRect.width / 2);
         
+        // Calculate scroll position to center the selected element
+        const elementOffsetLeft = selectedElement.offsetLeft;
+        const scrollLeft = elementOffsetLeft - (containerRect.width / 2) + (elementRect.width / 2);
+        
+        // Use scrollTo for better mobile support
         container.scrollTo({
-          left: scrollLeft,
+          left: Math.max(0, scrollLeft),
           behavior: 'smooth'
         });
+      } catch (error) {
+        // Fallback for older browsers
+        try {
+          const elementOffsetLeft = selectedElement.offsetLeft;
+          container.scrollLeft = elementOffsetLeft - (container.clientWidth / 2);
+        } catch (e) {
+          // Silent fail
+        }
       }
     };
     
-    // Delay to ensure DOM is rendered
-    const timer = setTimeout(scrollToSelectedDate, 400);
-    return () => clearTimeout(timer);
-  }, [dayIdx, currentEntry, dayEntries]);
+    // Start scrolling attempt immediately
+    timerId = setTimeout(() => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(scrollToSelectedDate);
+      });
+    }, 100);
+    
+    return () => {
+      if (timerId) clearTimeout(timerId);
+    };
+  }, [dayIdx, currentEntry, dayEntries, childId, enrollmentPeriod, attendanceSummary]);
 
   /* ── loading ── */
   if (!liff.ready) return (
@@ -842,7 +953,7 @@ export default function LiffPage() {
         {/* ─── HEADER ─────────────────────────────── */}
         <header style={{padding:'30px 24px 20px',background:'white',borderBottom:'1px solid #f1f5f9'}}>
 
-          {/* ─── TEACHER MODE: Child Selector ─────────────────────────────── */}
+          {/* ─── TEACHER MODE: Child Selector (always show) ─────────────────────────────── */}
           {currentUser?.role === 'teacher' && (
             <div style={{marginBottom:20,paddingBottom:20,borderBottom:'1px solid #f1f5f9'}}>
               <span style={{fontSize:'0.65rem',textTransform:'uppercase',letterSpacing:1,color:'#94a3b8',fontWeight:800,display:'block',marginBottom:12}}>เลือกนักเรียน</span>
@@ -853,7 +964,7 @@ export default function LiffPage() {
                       style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6,background:'none',border:'none',padding:0,cursor:'pointer',flexShrink:0}}>
                       <Avatar src={c.photo_url} name={c.name_th} size={48} active={childId===c.id} accentColor="#6366f1" />
                       <span style={{fontSize:'0.7rem',color:childId===c.id?'#1e293b':'#94a3b8',fontWeight:childId===c.id?700:500,transition:'all .2s',maxWidth:60,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                        {c.name_th || c.name_en || '?'}
+                        {c.nickname_th || c.nickname_en || c.name_th || c.name_en || '?'}
                       </span>
                     </button>
                   ))
@@ -862,8 +973,8 @@ export default function LiffPage() {
             </div>
           )}
 
-          {/* two-way selector */}
-          {currentUser?.role !== 'teacher' && (
+          {/* two-way selector (Parent Mode OR Teacher Mode with selected child) */}
+          {((currentUser?.role !== 'teacher') || (currentUser?.role === 'teacher' && childId)) && (
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:20,gap:12}}>
 
             {/* ฝั่งผู้ปกครอง */}
@@ -887,18 +998,32 @@ export default function LiffPage() {
               <i className="bi bi-heart-fill" style={{color:'#ff8787'}}></i>
             </div>
 
-            {/* ฝั่งลูก */}
+            {/* ฝั่งลูก/นักเรียน */}
             <div style={{display:'flex',flexDirection:'column',gap:8,flex:1,overflow:'hidden',alignItems:'flex-end'}}>
-              <span style={{fontSize:'0.65rem',textTransform:'uppercase',letterSpacing:1,color:'#94a3b8',fontWeight:800,whiteSpace:'nowrap'}}>ลูก / หลาน</span>
+              <span style={{fontSize:'0.65rem',textTransform:'uppercase',letterSpacing:1,color:'#94a3b8',fontWeight:800,whiteSpace:'nowrap'}}>
+                {currentUser?.role === 'teacher' ? 'นักเรียน' : 'ลูก / หลาน'}
+              </span>
               <div className="avatar-row" style={{justifyContent:'flex-end',direction:'rtl'}}>
                 {childLoading ? [1,2,3].map(i=><SkCircle key={i} size={42}/>) :
-                  children.map(c=>(
-                    <button key={c.id} type="button" onClick={()=>setChildId(c.id)}
-                      style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,background:'none',border:'none',padding:0,cursor:'pointer',flexShrink:0,direction:'ltr'}}>
-                      <Avatar src={c.photo_url} name={c.name_th} size={42} active={childId===c.id} accentColor="#6366f1" />
-                      <div style={{width:4,height:4,borderRadius:'50%',background:childId===c.id?'#6366f1':'transparent',transition:'all .2s'}} />
-                    </button>
-                  ))
+                  (currentUser?.role === 'teacher' && childId ? 
+                    // Teacher mode: แสดงแค่นักเรียนที่เลือก
+                    children.filter(c => c.id === childId).map(c=>(
+                      <button key={c.id} type="button" onClick={()=>setChildId(c.id)}
+                        style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,background:'none',border:'none',padding:0,cursor:'pointer',flexShrink:0,direction:'ltr'}}>
+                        <Avatar src={c.photo_url} name={c.name_th} size={42} active={true} accentColor="#6366f1" />
+                        <div style={{width:4,height:4,borderRadius:'50%',background:'#6366f1',transition:'all .2s'}} />
+                      </button>
+                    ))
+                    :
+                    // Parent mode: แสดงลูกทั้งหมด
+                    children.map(c=>(
+                      <button key={c.id} type="button" onClick={()=>setChildId(c.id)}
+                        style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,background:'none',border:'none',padding:0,cursor:'pointer',flexShrink:0,direction:'ltr'}}>
+                        <Avatar src={c.photo_url} name={c.name_th} size={42} active={childId===c.id} accentColor="#6366f1" />
+                        <div style={{width:4,height:4,borderRadius:'50%',background:childId===c.id?'#6366f1':'transparent',transition:'all .2s'}} />
+                      </button>
+                    ))
+                  )
                 }
               </div>
             </div>
@@ -907,7 +1032,8 @@ export default function LiffPage() {
 
           {/* title zone — center */}
           <div style={{textAlign:'center',marginTop:4}}>
-            {currentUser?.role !== 'teacher' && (
+            {/* แสดงชื่อผู้ปกครองเมื่อมีการเลือก (ทั้ง parent และ teacher mode) */}
+            {(currentUser?.role !== 'teacher' || (currentUser?.role === 'teacher' && childId)) && (
               <p style={{margin:'0 0 4px',fontSize:'0.78rem',fontWeight:600,color:'#f472b6',transition:'all .2s'}}>
                 {parents.find(p=>p.id===parentId)?.display_name ?? '\u00A0'}
               </p>
@@ -919,7 +1045,7 @@ export default function LiffPage() {
             ) : (
               <>
                 <h1 style={{margin:0,fontSize:'1.3rem',fontWeight:800,color:'#0f172a',letterSpacing:'-0.3px'}}>
-                  {selectedChild?.name_th ?? 'เลือกบุตรหลาน'}
+                  {selectedChild?.name_th ?? (currentUser?.role === 'teacher' ? selectedChild?.nickname_en || 'เลือกนักเรียน' : 'เลือกบุตรหลาน')}
                 </h1>
                 {selectedChild && currentEntry ? (
                   <div style={{display:'inline-block',marginTop:10,padding:'4px 14px',background:'#f8fafc',border:'1px solid #f1f5f9',borderRadius:100}}>
@@ -929,12 +1055,14 @@ export default function LiffPage() {
                     </p>
                   </div>
                 ) : selectedChild ? (
-                  <p style={{margin:'10px 0 0',fontSize:'0.75rem',color:'#94a3b8',fontWeight:500}}>
-                    กำลังโหลดข้อมูล...
-                  </p>
+                  <div style={{display:'inline-block',marginTop:10,padding:'4px 14px',background:'#f8fafc',border:'1px solid #f1f5f9',borderRadius:100}}>
+                    <p style={{margin:0,fontSize:'0.8rem',color:'#64748b',fontWeight:600,display:'flex',alignItems:'center',gap:6}}>
+                      รอลงข้อมูล
+                    </p>
+                  </div>
                 ) : (
                   <p style={{margin:'10px 0 0',fontSize:'0.75rem',color:'#94a3b8',fontWeight:500}}>
-                    กรุณาเลือกบุตรหลาน
+                    {currentUser?.role === 'teacher' ? 'กรุณาเลือกนักเรียน' : 'กรุณาเลือกบุตรหลาน'}
                   </p>
                 )}
               </>
@@ -943,7 +1071,7 @@ export default function LiffPage() {
         </header>
 
         {/* ─── CONTRIBUTION GRAPH (แทน DATE STRIP) ─────────────────── */}
-        {!childLoading && childId && activeTab === 'daily' && (attendanceSummary.length > 0 || enrollmentPeriod) && (
+        {!childLoading && childId && activeTab === 'daily' && enrollmentPeriod && (
           <div style={{padding:'16px',background:'white',borderBottom:'1px solid #f1f5f9'}}>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
               <div style={{display:'flex',flexDirection:'column',gap:2}}>
@@ -1850,17 +1978,12 @@ export default function LiffPage() {
 
             </div>
           )}
-
-          {!childId && !childLoading && (
-            <div style={{textAlign:'center',padding:'48px 20px',color:'#94a3b8'}}>
-              <p style={{fontSize:44,marginBottom:10}}>👆</p>
-              <p style={{fontSize:'0.95rem'}}>เลือกบุตรหลานเพื่อดูรายงาน</p>
-            </div>
-          )}
           
           {childId && !reportLoading && dayEntries.length === 0 && !daysLoading && (
             <div style={{textAlign:'center',padding:'48px 20px',color:'#94a3b8'}}>
-              <p style={{fontSize:44,marginBottom:10}}>📋</p>
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{margin:'0 auto 10px',display:'block',color:'#cbd5e1'}}>
+                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+              </svg>
               <p style={{fontSize:'0.95rem'}}>ยังไม่มีรายงานประจำวัน</p>
             </div>
           )}
@@ -2064,6 +2187,85 @@ export default function LiffPage() {
           </div>
         )}
       </div>
+      
+      {/* Development Mode Toggle */}
+      {isDevelopment && (
+        <div style={{position:'fixed',bottom:100,right:20,zIndex:99999}}>
+          <button
+            onClick={() => setShowDevMenu(!showDevMenu)}
+            style={{
+              width:50,
+              height:50,
+              borderRadius:'50%',
+              background:'#6366f1',
+              color:'white',
+              border:'none',
+              boxShadow:'0 4px 12px rgba(99,102,241,0.4)',
+              cursor:'pointer',
+              fontSize:'1.2rem',
+              display:'flex',
+              alignItems:'center',
+              justifyContent:'center'
+            }}
+          >
+            🔧
+          </button>
+          {showDevMenu && (
+            <div style={{
+              position:'absolute',
+              bottom:60,
+              right:0,
+              background:'white',
+              borderRadius:12,
+              boxShadow:'0 4px 20px rgba(0,0,0,0.15)',
+              padding:16,
+              minWidth:200,
+              border:'1px solid #e2e8f0'
+            }}>
+              <p style={{margin:'0 0 12px',fontSize:'0.75rem',fontWeight:700,color:'#0f172a'}}>Dev Mode</p>
+              <button
+                onClick={() => {
+                  localStorage.setItem('mockRole', 'teacher');
+                  window.location.reload();
+                }}
+                style={{
+                  width:'100%',
+                  padding:'10px',
+                  marginBottom:8,
+                  background:localStorage.getItem('mockRole') === 'teacher' ? '#6366f1' : '#f1f5f9',
+                  color:localStorage.getItem('mockRole') === 'teacher' ? 'white' : '#64748b',
+                  border:'none',
+                  borderRadius:8,
+                  fontSize:'0.85rem',
+                  fontWeight:600,
+                  cursor:'pointer'
+                }}
+              >
+                👨‍🏫 Teacher Mode
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.removeItem('mockRole');
+                  window.location.reload();
+                }}
+                style={{
+                  width:'100%',
+                  padding:'10px',
+                  background:!localStorage.getItem('mockRole') ? '#6366f1' : '#f1f5f9',
+                  color:!localStorage.getItem('mockRole') ? 'white' : '#64748b',
+                  border:'none',
+                  borderRadius:8,
+                  fontSize:'0.85rem',
+                  fontWeight:600,
+                  cursor:'pointer'
+                }}
+              >
+                👪 Parent Mode
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

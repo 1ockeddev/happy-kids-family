@@ -51,10 +51,21 @@ export default function CohortDetailPage({ params }: { params: Promise<{ id: str
   }, []);
 
   const enrolledChildIds = new Set(enrollments.map(e => e.child_id));
-  const availableChildren = allChildren.filter(c =>
-    !enrolledChildIds.has(c.id) &&
-    (c.name_th?.includes(search) || c.name_en?.toLowerCase().includes(search.toLowerCase()))
-  );
+  const availableChildren = allChildren.filter(c => {
+    if (enrolledChildIds.has(c.id)) return false;
+    if (!search) return true;
+    const searchLower = search.toLowerCase();
+    return (
+      c.nickname_th?.toLowerCase().includes(searchLower) ||
+      c.nickname_en?.toLowerCase().includes(searchLower) ||
+      c.firstname_th?.toLowerCase().includes(searchLower) ||
+      c.firstname_en?.toLowerCase().includes(searchLower) ||
+      c.lastname_th?.toLowerCase().includes(searchLower) ||
+      c.lastname_en?.toLowerCase().includes(searchLower) ||
+      c.name_th?.toLowerCase().includes(searchLower) ||
+      c.name_en?.toLowerCase().includes(searchLower)
+    );
+  });
 
   const toggleChild = (id: string) =>
     setSelectedChildIds(prev =>
@@ -111,7 +122,12 @@ export default function CohortDetailPage({ params }: { params: Promise<{ id: str
   const active  = enrollments.filter(e => !e.graduated);
   const grads   = enrollments.filter(e => e.graduated);
 
-  const StudentRow = ({ e }: { e: Enrollment }) => (
+  const StudentRow = ({ e }: { e: Enrollment }) => {
+    // แสดงชื่อตามลำดับความสำคัญ
+    const displayName = e.child?.nickname_th || '-';
+    const displayNameEn = e.child?.nickname_en || '-';
+    
+    return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 14,
       padding: '12px 20px', borderBottom: '1px solid #F3F4F6',
@@ -124,8 +140,8 @@ export default function CohortDetailPage({ params }: { params: Promise<{ id: str
         {e.graduated ? '🎓' : '👧'}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 600, fontSize: 14 }}>{e.child?.name_th ?? '-'}</div>
-        <div style={{ fontSize: 12, color: '#9CA3AF' }}>{e.child?.name_en}</div>
+        <div style={{ fontWeight: 600, fontSize: 14 }}>{displayName}</div>
+        <div style={{ fontSize: 12, color: '#9CA3AF' }}>{displayNameEn}</div>
       </div>
       <div style={{ fontSize: 12, color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 4 }}>
         <Calendar size={11} />
@@ -151,7 +167,8 @@ export default function CohortDetailPage({ params }: { params: Promise<{ id: str
         </div>
       )}
     </div>
-  );
+  )};
+
 
   if (loading) {
     return (
@@ -284,6 +301,7 @@ export default function CohortDetailPage({ params }: { params: Promise<{ id: str
             }}>
               {availableChildren.map(c => {
                 const picked = selectedChildIds.includes(c.id);
+                const displayName = c.nickname_th || c.nickname_en || c.firstname_th || c.firstname_en || c.name_th || c.name_en || '?';
                 return (
                   <button
                     key={c.id} type="button"
@@ -299,7 +317,7 @@ export default function CohortDetailPage({ params }: { params: Promise<{ id: str
                     }}
                   >
                     {picked && <span style={{ fontSize: 11 }}>✓</span>}
-                    {c.name_th}
+                    {displayName}
                   </button>
                 );
               })}
@@ -317,7 +335,7 @@ export default function CohortDetailPage({ params }: { params: Promise<{ id: str
         confirmLabel={saving ? 'กำลังบันทึก...' : '🎓 ยืนยันจบการศึกษา'}
       >
         <p style={{ color: '#6B7280' }}>
-          บันทึกว่า <strong>{selectedEnroll?.child?.name_th}</strong> จบการศึกษาจาก{' '}
+          บันทึกว่า <strong>{selectedEnroll?.child?.nickname_th || selectedEnroll?.child?.nickname_en || selectedEnroll?.child?.name_th || selectedEnroll?.child?.name_en}</strong> จบการศึกษาจาก{' '}
           <strong>{cohort?.name}</strong>?
         </p>
       </Modal>
@@ -332,7 +350,7 @@ export default function CohortDetailPage({ params }: { params: Promise<{ id: str
         confirmDanger
       >
         <p style={{ color: '#6B7280' }}>
-          ลบ <strong>{selectedEnroll?.child?.name_th}</strong>{' '}
+          ลบ <strong>{selectedEnroll?.child?.nickname_th || selectedEnroll?.child?.nickname_en || selectedEnroll?.child?.name_th || selectedEnroll?.child?.name_en}</strong>{' '}
           ออกจาก <strong>{cohort?.name}</strong>?
         </p>
       </Modal>

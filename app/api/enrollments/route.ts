@@ -15,15 +15,35 @@ export async function GET(req: NextRequest) {
          to_char(e.end_date, 'YYYY-MM-DD') AS end_date,
          e.graduated,
          e.created_at,
-         json_build_object('id', c.id, 'name_th', c.name_th, 'name_en', c.name_en) AS child,
+         json_build_object(
+           'id', c.id, 
+           'name_th', c.name_th, 
+           'name_en', c.name_en,
+           'firstname_th', c.firstname_th,
+           'firstname_en', c.firstname_en,
+           'lastname_th', c.lastname_th,
+           'lastname_en', c.lastname_en,
+           'nickname_th', c.nickname_th,
+           'nickname_en', c.nickname_en,
+           'birthdate', c.birthdate::text,
+           'photo_url', c.photo_url
+         ) AS child,
          json_build_object('id', co.id, 'name', co.name, 'level', co.level) AS cohort
        FROM enrollment e
        JOIN child c ON c.id = e.child_id
        JOIN cohort co ON co.id = e.cohort_id
        WHERE c.deleted_at IS NULL
-         AND ($1 = '' OR c.name_th ILIKE $2 OR c.name_en ILIKE $2)
+         AND ($1 = '' OR 
+              c.name_th ILIKE $2 OR 
+              c.name_en ILIKE $2 OR
+              c.firstname_th ILIKE $2 OR
+              c.firstname_en ILIKE $2 OR
+              c.lastname_th ILIKE $2 OR
+              c.lastname_en ILIKE $2 OR
+              c.nickname_th ILIKE $2 OR
+              c.nickname_en ILIKE $2)
          AND ($3 = '' OR e.cohort_id::text = $3)
-       ORDER BY c.name_th`,
+       ORDER BY c.nickname_th, c.name_th`,
       [search, `%${search}%`, cohort_id]
     );
     return ok(rows);

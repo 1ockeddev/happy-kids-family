@@ -111,8 +111,8 @@ export default function EnrollmentsPage() {
         columns={[
           { key: 'child', label: 'นักเรียน', render: r => (
             <div>
-              <div style={{ fontWeight: 500 }}>{r.child?.name_th ?? '-'}</div>
-              <div style={{ fontSize: 12, color: '#9CA3AF' }}>{r.child?.name_en}</div>
+              <div style={{ fontWeight: 500 }}>{r.child?.nickname_th ?? '-'}</div>
+              <div style={{ fontSize: 12, color: '#9CA3AF' }}>{r.child?.nickname_en}</div>
             </div>
           )},
           { key: 'cohort', label: 'ห้องเรียน', render: r => (

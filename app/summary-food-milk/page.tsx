@@ -5,37 +5,23 @@ import { useLiff } from '@/lib/useLiff';
 import { Child, AppUser, MilkStatus } from '@/types';
 import LoadingWrapper from '@/components/loading/LoadingWrapper';
 import FoodSummarySkeleton from '@/components/loading/skeletons/FoodSummarySkeleton';
+import AppHeader from '@/components/AppHeader';
 
 const amtL: Record<MilkStatus,string> = { all:'ทานหมด', some:'ทานครึ่งเดียว', not_must:'ไม่จำเป็น', skip:'ไม่ทาน' };
 
-function Avatar({src,name,size=42,active,accentColor='#6366f1'}:{src?:string|null;name?:string|null;size?:number;active?:boolean;accentColor?:string}) {
-  const initial = (name ?? '?').slice(0,1).toUpperCase();
-  const colors  = ['#E8754A','#6366f1','#4A90B8','#4CAF76','#F5A623','#E85C5C','#ec4899','#34d399'];
-  const bg      = colors[(initial.charCodeAt(0))%colors.length];
-  return src
-    ? <img src={src} alt={name||''} style={{width:size,height:size,borderRadius:'50%',objectFit:'cover',border:`2px solid ${active?accentColor:'#e2e8f0'}`,opacity:active?1:0.35,transition:'all .2s',flexShrink:0}} />
-    : <div style={{width:size,height:size,borderRadius:'50%',background:active?bg:'#f1f5f9',display:'flex',alignItems:'center',justifyContent:'center',color:active?'white':'#94a3b8',fontSize:size*0.4,fontWeight:700,border:`2px solid ${active?accentColor:'#e2e8f0'}`,opacity:active?1:0.35,transition:'all .2s',flexShrink:0}}>
-        {initial}
-      </div>;
-}
-
-const shimmer: React.CSSProperties = {
-  background:'linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%)',
-  backgroundSize:'200% 100%', animation:'shimmer 1.4s infinite', borderRadius:8,
+const parseLocalDate = (str: string) => {
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d);
 };
-const SkRow = ({w='100%',h=14,mb=0}:{w?:string|number;h?:number;mb?:number}) =>
-  <div style={{...shimmer,width:w,height:h,marginBottom:mb}} />;
-const SkCircle = ({size=40}:{size?:number}) =>
-  <div style={{...shimmer,width:size,height:size,borderRadius:'50%',flexShrink:0}} />;
 
 export default function FoodMilkSummaryPage() {
   const liff = useLiff();
   const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [parents, setParents] = useState<AppUser[]>([]);
   const [children, setChildren] = useState<Child[]>([]);
   const [parentId, setParentId] = useState<string|null>(null);
   const [childId, setChildId] = useState<string|null>(null);
-  const hasRestoredParent = React.useRef(false);
   const hasInitialized = React.useRef(false);
   const [childLoading, setChildLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(false);
@@ -52,12 +38,14 @@ export default function FoodMilkSummaryPage() {
   /* ── LIFF ready ── */
   useEffect(() => {
     if (!liff.ready) return;
+    
     if (!liff.profile?.userId) {
       fetch('/api/report/children').then(r=>r.json()).then(j=>{
         setChildren(j.data??[]);
       });
       return;
     }
+    
     setChildLoading(true);
     fetch('/api/auth/line-register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({line_user_id:liff.profile.userId,display_name:liff.profile.displayName,picture_url:liff.profile.pictureUrl??null})})
     .then(r=>r.json())
@@ -67,15 +55,19 @@ export default function FoodMilkSummaryPage() {
         return;
       }
       const user = regJson.data;
+      setCurrentUser(user);
+      
       if (user?.role === 'teacher') {
-        router.replace('/admin/users');
-        return;
+        const childRes = await fetch('/api/children');
+        const childJson = await childRes.json();
+        setChildren(childJson.data ?? []);
+      } else {
+        const childRes = await fetch(`/api/report/line-children?line_user_id=${liff.profile!.userId}`);
+        const childJson = await childRes.json();
+        const kids:Child[] = childJson.data??[];
+        setChildren(kids);
+        if (kids.length===0) setNotRegistered(true);
       }
-      const childRes = await fetch(`/api/report/line-children?line_user_id=${liff.profile!.userId}`);
-      const childJson = await childRes.json();
-      const kids:Child[] = childJson.data??[];
-      setChildren(kids);
-      if (kids.length===0) setNotRegistered(true);
     })
     .catch(()=>setNotRegistered(true))
     .finally(()=>setChildLoading(false));
@@ -83,7 +75,6 @@ export default function FoodMilkSummaryPage() {
 
   useEffect(()=>{
     if (children.length > 0 && !childId) {
-      // Try to restore from localStorage first
       const savedChildId = localStorage.getItem('selectedChildId');
       if (savedChildId && children.find(c => c.id === savedChildId)) {
         setChildId(savedChildId);
@@ -93,7 +84,6 @@ export default function FoodMilkSummaryPage() {
     }
   },[children, childId]);
 
-  // Save childId to localStorage whenever it changes
   useEffect(() => {
     if (childId) {
       localStorage.setItem('selectedChildId', childId);
@@ -102,10 +92,16 @@ export default function FoodMilkSummaryPage() {
 
   /* ── child → parents ── */
   useEffect(()=>{
+    if (currentUser?.role === 'teacher' && !childId) {
+      setParents([]);
+      setParentId(null);
+      return;
+    }
+    
     if (!childId) { 
       setParents([]); 
       setParentId(null); 
-      hasRestoredParent.current = false;
+      hasInitialized.current = false;
       return; 
     }
     let cancelled = false;
@@ -115,22 +111,18 @@ export default function FoodMilkSummaryPage() {
           const parentsList = j.data ?? [];
           setParents(parentsList);
           
-          // Always try to restore parentId from localStorage when parents list is loaded
           const savedParentId = localStorage.getItem('selectedParentId');
           if (savedParentId && parentsList.find((p: AppUser) => p.id === savedParentId)) {
             setParentId(savedParentId);
           }
           
-          // Mark as initialized after first restore attempt
           hasInitialized.current = true;
         }
       });
     return () => { cancelled = true; };
-  },[childId]);
+  },[childId, currentUser]);
 
-  // Save parentId to localStorage whenever it changes
   useEffect(() => {
-    // Don't save until we've tried to restore at least once
     if (!hasInitialized.current) return;
     
     if (parentId) {
@@ -235,86 +227,20 @@ export default function FoodMilkSummaryPage() {
       <div style={{width:'100%',maxWidth:480,background:'white',minHeight:'100dvh',paddingBottom:'calc(88px + env(safe-area-inset-bottom,0px))'}}>
 
         {/* ─── HEADER ─────────────────────────────── */}
-        <header style={{padding:'30px 24px 20px',background:'white',borderBottom:'1px solid #f1f5f9'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:20,gap:12}}>
-            <div style={{display:'flex',flexDirection:'column',gap:8,flex:1,overflow:'hidden'}}>
-              <span style={{fontSize:'0.65rem',textTransform:'uppercase',letterSpacing:1,color:'#94a3b8',fontWeight:800,whiteSpace:'nowrap'}}>ผู้ปกครอง</span>
-              <div className="avatar-row">
-                {childLoading ? [1,2].map(i=><SkCircle key={i} size={42}/>) :
-                  parents.map(p=>(
-                    <button key={p.id} type="button" onClick={()=>setParentId(parentId===p.id?null:p.id)}
-                      style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,background:'none',border:'none',padding:0,cursor:'pointer',flexShrink:0}}>
-                      <Avatar src={p.picture_url} name={p.display_name} size={42} active={parentId===p.id} accentColor="#f472b6" />
-                      <div style={{width:4,height:4,borderRadius:'50%',background:parentId===p.id?'#f472b6':'transparent',transition:'all .2s'}} />
-                    </button>
-                  ))
-                }
-              </div>
-            </div>
-            <div style={{display:'flex',alignItems:'center',justifyContent:'center',color:'#ff8787',fontSize:'1.1rem',padding:'0 6px',alignSelf:'center',marginTop:10,flexShrink:0}}>
-              <i className="bi bi-heart-fill" style={{color:'#ff8787'}}></i>
-            </div>
-            <div style={{display:'flex',flexDirection:'column',gap:8,flex:1,overflow:'hidden',alignItems:'flex-end'}}>
-              <span style={{fontSize:'0.65rem',textTransform:'uppercase',letterSpacing:1,color:'#94a3b8',fontWeight:800,whiteSpace:'nowrap'}}>ลูก / หลาน</span>
-              <div className="avatar-row" style={{justifyContent:'flex-end',direction:'rtl'}}>
-                {childLoading ? [1,2,3].map(i=><SkCircle key={i} size={42}/>) :
-                  children.map(c=>(
-                    <button key={c.id} type="button" onClick={()=>setChildId(c.id)}
-                      style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,background:'none',border:'none',padding:0,cursor:'pointer',flexShrink:0,direction:'ltr'}}>
-                      <Avatar src={c.photo_url} name={c.name_th} size={42} active={childId===c.id} accentColor="#6366f1" />
-                      <div style={{width:4,height:4,borderRadius:'50%',background:childId===c.id?'#6366f1':'transparent',transition:'all .2s'}} />
-                    </button>
-                  ))
-                }
-              </div>
-            </div>
-          </div>
-          <div style={{textAlign:'center',marginTop:4}}>
-            <p style={{margin:'0 0 4px',fontSize:'0.78rem',fontWeight:600,color:'#f472b6',transition:'all .2s'}}>
-              {parents.find(p=>p.id===parentId)?.display_name ?? '\u00A0'}
-            </p>
-            {childLoading ? (
-              <div style={{display:'flex',flexDirection:'column',gap:8,alignItems:'center',marginTop:4}}>
-                <SkRow w={160} h={22} /><SkRow w={200} h={14} />
-              </div>
-            ) : (
-              <>
-                <h1 style={{margin:0,fontSize:'1.3rem',fontWeight:800,color:'#0f172a',letterSpacing:'-0.3px'}}>
-                  {selectedChild?.name_th ?? 'เลือกบุตรหลาน'}
-                </h1>
-                {selectedChild && enrollmentPeriod ? (
-                  <div style={{display:'inline-block',marginTop:10,padding:'4px 14px',background:'#f8fafc',border:'1px solid #f1f5f9',borderRadius:100}}>
-                    <p style={{margin:0,fontSize:'0.75rem',color:'#64748b',fontWeight:600,display:'flex',alignItems:'center',gap:6}}>
-                      <i className="bi bi-calendar-range" style={{color:'#6366f1'}}></i>
-                      สรุปตลอดช่วงเรียน
-                    </p>
-                  </div>
-                ) : selectedChild ? (
-                  <p style={{margin:'10px 0 0',fontSize:'0.75rem',color:'#94a3b8',fontWeight:500}}>
-                    กำลังโหลดข้อมูล...
-                  </p>
-                ) : (
-                  <p style={{margin:'10px 0 0',fontSize:'0.75rem',color:'#94a3b8',fontWeight:500}}>
-                    กรุณาเลือกบุตรหลาน
-                  </p>
-                )}
-              </>
-            )}
-          </div>
-        </header>
+        <AppHeader
+          parents={parents}
+          children={children}
+          parentId={parentId}
+          childId={childId}
+          childLoading={childLoading}
+          currentUser={currentUser}
+          onParentSelect={setParentId}
+          onChildSelect={setChildId}
+          subtitle={enrollmentPeriod ? `${parseLocalDate(enrollmentPeriod.start).toLocaleDateString('th-TH')} - ${enrollmentPeriod.end ? parseLocalDate(enrollmentPeriod.end).toLocaleDateString('th-TH') : 'ปัจจุบัน'}` : undefined}
+        />
 
         {/* Content */}
         <div style={{padding:'16px'}}>
-          {enrollmentPeriod && (
-            <div style={{marginBottom:16}}>
-              <span style={{fontSize:'0.6rem',color:'#94a3b8'}}>
-                ตลอดช่วงเรียน: {new Date(enrollmentPeriod.start).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'})}
-                {' - '}
-                {enrollmentPeriod.end ? new Date(enrollmentPeriod.end).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'}) : 'ปัจจุบัน'}
-              </span>
-            </div>
-          )}
-
           <LoadingWrapper
             isLoading={dataLoading}
             hasData={foodSummary.food.length > 0 || foodSummary.fruit.length > 0 || 

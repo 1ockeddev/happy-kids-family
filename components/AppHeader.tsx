@@ -28,8 +28,10 @@ interface AppHeaderProps {
   parentId: string | null;
   childId: string | null;
   childLoading: boolean;
+  currentUser?: AppUser | null;
   onParentSelect: (id: string | null) => void;
   onChildSelect: (id: string) => void;
+  subtitle?: string;
 }
 
 export default function AppHeader({
@@ -38,10 +40,13 @@ export default function AppHeader({
   parentId,
   childId,
   childLoading,
+  currentUser,
   onParentSelect,
-  onChildSelect
+  onChildSelect,
+  subtitle
 }: AppHeaderProps) {
   const selectedChild = children.find(c => c.id === childId);
+  const isTeacher = currentUser?.role === 'teacher';
 
   return (
     <header style={{padding:'30px 24px 20px',background:'white',borderBottom:'1px solid #f1f5f9'}}>
@@ -50,7 +55,30 @@ export default function AppHeader({
         .avatar-row::-webkit-scrollbar{display:none}
       `}</style>
       
+      {/* ─── TEACHER MODE: Child Selector (always show) ─────────────────────────────── */}
+      {isTeacher && (
+        <div style={{marginBottom:20,paddingBottom:20,borderBottom:'1px solid #f1f5f9'}}>
+          <span style={{fontSize:'0.65rem',textTransform:'uppercase',letterSpacing:1,color:'#94a3b8',fontWeight:800,display:'block',marginBottom:12}}>เลือกนักเรียน</span>
+          <div className="avatar-row">
+            {childLoading ? [1,2,3,4].map(i=><SkCircle key={i} size={48}/>) :
+              children.map(c=>(
+                <button key={c.id} type="button" onClick={()=>onChildSelect(c.id)}
+                  style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6,background:'none',border:'none',padding:0,cursor:'pointer',flexShrink:0}}>
+                  <Avatar src={c.photo_url} name={c.name_th} size={48} active={childId===c.id} accentColor="#6366f1" />
+                  <span style={{fontSize:'0.7rem',color:childId===c.id?'#1e293b':'#94a3b8',fontWeight:childId===c.id?700:500,transition:'all .2s',maxWidth:60,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                    {c.nickname_th || c.nickname_en || c.name_th || c.name_en || '?'}
+                  </span>
+                </button>
+              ))
+            }
+          </div>
+        </div>
+      )}
+
+      {/* two-way selector (Parent Mode OR Teacher Mode with selected child) */}
+      {((!isTeacher) || (isTeacher && childId)) && (
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:20,gap:12}}>
+        {/* ฝั่งผู้ปกครอง */}
         <div style={{display:'flex',flexDirection:'column',gap:8,flex:1,overflow:'hidden'}}>
           <span style={{fontSize:'0.65rem',textTransform:'uppercase',letterSpacing:1,color:'#94a3b8',fontWeight:800,whiteSpace:'nowrap'}}>ผู้ปกครอง</span>
           <div className="avatar-row">
@@ -65,36 +93,67 @@ export default function AppHeader({
             }
           </div>
         </div>
+
+        {/* ❤️ connector */}
         <div style={{display:'flex',alignItems:'center',justifyContent:'center',color:'#ff8787',fontSize:'1.1rem',padding:'0 6px',alignSelf:'center',marginTop:10,flexShrink:0}}>
           <i className="bi bi-heart-fill" style={{color:'#ff8787'}}></i>
         </div>
+
+        {/* ฝั่งลูก/นักเรียน */}
         <div style={{display:'flex',flexDirection:'column',gap:8,flex:1,overflow:'hidden',alignItems:'flex-end'}}>
-          <span style={{fontSize:'0.65rem',textTransform:'uppercase',letterSpacing:1,color:'#94a3b8',fontWeight:800,whiteSpace:'nowrap'}}>ลูก / หลาน</span>
+          <span style={{fontSize:'0.65rem',textTransform:'uppercase',letterSpacing:1,color:'#94a3b8',fontWeight:800,whiteSpace:'nowrap'}}>
+            {isTeacher ? 'นักเรียน' : 'ลูก / หลาน'}
+          </span>
           <div className="avatar-row" style={{justifyContent:'flex-end',direction:'rtl'}}>
             {childLoading ? [1,2,3].map(i=><SkCircle key={i} size={42}/>) :
-              children.map(c=>(
-                <button key={c.id} type="button" onClick={()=>onChildSelect(c.id)}
-                  style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,background:'none',border:'none',padding:0,cursor:'pointer',flexShrink:0,direction:'ltr'}}>
-                  <Avatar src={c.photo_url} name={c.name_th} size={42} active={childId===c.id} accentColor="#6366f1" />
-                  <div style={{width:4,height:4,borderRadius:'50%',background:childId===c.id?'#6366f1':'transparent',transition:'all .2s'}} />
-                </button>
-              ))
+              (isTeacher && childId ? 
+                // Teacher mode: แสดงแค่นักเรียนที่เลือก
+                children.filter(c => c.id === childId).map(c=>(
+                  <button key={c.id} type="button" onClick={()=>onChildSelect(c.id)}
+                    style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,background:'none',border:'none',padding:0,cursor:'pointer',flexShrink:0,direction:'ltr'}}>
+                    <Avatar src={c.photo_url} name={c.name_th} size={42} active={true} accentColor="#6366f1" />
+                    <div style={{width:4,height:4,borderRadius:'50%',background:'#6366f1',transition:'all .2s'}} />
+                  </button>
+                ))
+                :
+                // Parent mode: แสดงลูกทั้งหมด
+                children.map(c=>(
+                  <button key={c.id} type="button" onClick={()=>onChildSelect(c.id)}
+                    style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,background:'none',border:'none',padding:0,cursor:'pointer',flexShrink:0,direction:'ltr'}}>
+                    <Avatar src={c.photo_url} name={c.name_th} size={42} active={childId===c.id} accentColor="#6366f1" />
+                    <div style={{width:4,height:4,borderRadius:'50%',background:childId===c.id?'#6366f1':'transparent',transition:'all .2s'}} />
+                  </button>
+                ))
+              )
             }
           </div>
         </div>
       </div>
+      )}
+
+      {/* title zone — center */}
       <div style={{textAlign:'center',marginTop:4}}>
-        <p style={{margin:'0 0 4px',fontSize:'0.78rem',fontWeight:600,color:'#f472b6',transition:'all .2s'}}>
-          {parents.find(p=>p.id===parentId)?.display_name ?? '\u00A0'}
-        </p>
+        {/* แสดงชื่อผู้ปกครองเมื่อมีการเลือก (ทั้ง parent และ teacher mode) */}
+        {((!isTeacher) || (isTeacher && childId)) && (
+          <p style={{margin:'0 0 4px',fontSize:'0.78rem',fontWeight:600,color:'#f472b6',transition:'all .2s'}}>
+            {parents.find(p=>p.id===parentId)?.display_name ?? '\u00A0'}
+          </p>
+        )}
         {childLoading ? (
           <div style={{display:'flex',flexDirection:'column',gap:8,alignItems:'center',marginTop:4}}>
             <SkRow w={160} h={22} /><SkRow w={200} h={14} />
           </div>
         ) : (
-          <h1 style={{margin:0,fontSize:'1.3rem',fontWeight:800,color:'#0f172a',letterSpacing:'-0.3px'}}>
-            {selectedChild?.name_th ?? 'เลือกบุตรหลาน'}
-          </h1>
+          <>
+            <h1 style={{margin:0,fontSize:'1.3rem',fontWeight:800,color:'#0f172a',letterSpacing:'-0.3px'}}>
+              {selectedChild?.name_th ?? (isTeacher ? selectedChild?.name_en || 'เลือกนักเรียน' : 'เลือกบุตรหลาน')}
+            </h1>
+            {subtitle && selectedChild && (
+              <p style={{margin:'10px 0 0',fontSize:'0.75rem',color:'#94a3b8',fontWeight:500}}>
+                {subtitle}
+              </p>
+            )}
+          </>
         )}
       </div>
     </header>

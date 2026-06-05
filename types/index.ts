@@ -10,8 +10,19 @@ export interface AppUser {
   display_name: string | null; line_display_name: string | null; picture_url: string | null; created_at: string;
 }
 export interface Child {
-  id: string; name_en: string | null; name_th: string | null;
-  photo_url: string | null; deleted_at: string | null; created_at: string;
+  id: string; 
+  name_en: string | null; 
+  name_th: string | null;
+  firstname_en: string | null;
+  lastname_en: string | null;
+  firstname_th: string | null;
+  lastname_th: string | null;
+  nickname_en: string | null;
+  nickname_th: string | null;
+  birthdate: string | null;
+  photo_url: string | null; 
+  deleted_at: string | null; 
+  created_at: string;
 }
 export interface Cohort {
   id: string; name: string | null; level: string | null;

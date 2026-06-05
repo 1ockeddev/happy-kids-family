@@ -56,6 +56,18 @@ export default function DatabasePage() {
     try {
       const tables = Array.from(selectedExportTables).join(',');
       const res  = await fetch(`/api/db-export?format=${exportFormat}&tables=${tables}`);
+      
+      // Check if response is OK
+      if (!res.ok) {
+        const errorText = await res.text();
+        try {
+          const errorJson = JSON.parse(errorText);
+          throw new Error(errorJson.error || `Export failed with status ${res.status}`);
+        } catch (parseError) {
+          throw new Error(`Export failed: ${errorText.substring(0, 100)}`);
+        }
+      }
+      
       const blob = await res.blob();
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement('a');
@@ -66,7 +78,10 @@ export default function DatabasePage() {
       URL.revokeObjectURL(url);
       setExportDone(true);
       setTimeout(() => setExportDone(false), 3000);
-    } catch (e) { alert(e instanceof Error ? e.message : 'export ไม่สำเร็จ'); }
+    } catch (e) { 
+      console.error('Export error:', e);
+      alert(e instanceof Error ? e.message : 'export ไม่สำเร็จ'); 
+    }
     finally { setExporting(false); }
   };
 

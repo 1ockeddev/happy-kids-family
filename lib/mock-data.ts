@@ -1,12 +1,12 @@
 import { AppUser, Child, Cohort, Enrollment, Daily, Attendance, DailyReport, BehaviorCategory, BehaviorItem } from '@/types';
 
 export const mockChildren: Child[] = [
-  { id: '1', name_en: 'Emma Johnson', name_th: 'เอมมา จอห์นสัน', photo_url: null, deleted_at: null, created_at: '2024-05-01' },
-  { id: '2', name_en: 'Liam Smith', name_th: 'เลียม สมิธ', photo_url: null, deleted_at: null, created_at: '2024-05-01' },
-  { id: '3', name_en: 'Olivia Brown', name_th: 'โอลิเวีย บราวน์', photo_url: null, deleted_at: null, created_at: '2024-05-01' },
-  { id: '4', name_en: 'Noah Davis', name_th: 'โนอาห์ เดวิส', photo_url: null, deleted_at: null, created_at: '2024-05-01' },
-  { id: '5', name_en: 'Ava Wilson', name_th: 'อาวา วิลสัน', photo_url: null, deleted_at: null, created_at: '2024-05-02' },
-  { id: '6', name_en: 'Elijah Moore', name_th: 'อีไลจา มัวร์', photo_url: null, deleted_at: null, created_at: '2024-05-02' },
+  { id: '1', name_en: 'Emma Johnson', name_th: 'เอมมา จอห์นสัน', firstname_en: null, lastname_en: null, firstname_th: null, lastname_th: null, nickname_en: null, nickname_th: null, birthdate: null, photo_url: null, deleted_at: null, created_at: '2024-05-01' },
+  { id: '2', name_en: 'Liam Smith', name_th: 'เลียม สมิธ', firstname_en: null, lastname_en: null, firstname_th: null, lastname_th: null, nickname_en: null, nickname_th: null, birthdate: null, photo_url: null, deleted_at: null, created_at: '2024-05-01' },
+  { id: '3', name_en: 'Olivia Brown', name_th: 'โอลิเวีย บราวน์', firstname_en: null, lastname_en: null, firstname_th: null, lastname_th: null, nickname_en: null, nickname_th: null, birthdate: null, photo_url: null, deleted_at: null, created_at: '2024-05-01' },
+  { id: '4', name_en: 'Noah Davis', name_th: 'โนอาห์ เดวิส', firstname_en: null, lastname_en: null, firstname_th: null, lastname_th: null, nickname_en: null, nickname_th: null, birthdate: null, photo_url: null, deleted_at: null, created_at: '2024-05-01' },
+  { id: '5', name_en: 'Ava Wilson', name_th: 'อาวา วิลสัน', firstname_en: null, lastname_en: null, firstname_th: null, lastname_th: null, nickname_en: null, nickname_th: null, birthdate: null, photo_url: null, deleted_at: null, created_at: '2024-05-02' },
+  { id: '6', name_en: 'Elijah Moore', name_th: 'อีไลจา มัวร์', firstname_en: null, lastname_en: null, firstname_th: null, lastname_th: null, nickname_en: null, nickname_th: null, birthdate: null, photo_url: null, deleted_at: null, created_at: '2024-05-02' },
 ];
 
 export const mockCohorts: Cohort[] = [
@@ -16,10 +16,26 @@ export const mockCohorts: Cohort[] = [
 ];
 
 export const mockEnrollments: Enrollment[] = [
-  { id: '1', child_id: '1', cohort_id: '1', start_date: '2024-05-16', end_date: null, graduated: false, created_at: '2024-05-01', child: mockChildren[0], cohort: mockCohorts[0] },
-  { id: '2', child_id: '2', cohort_id: '1', start_date: '2024-05-16', end_date: null, graduated: false, created_at: '2024-05-01', child: mockChildren[1], cohort: mockCohorts[0] },
-  { id: '3', child_id: '3', cohort_id: '2', start_date: '2024-05-16', end_date: null, graduated: false, created_at: '2024-05-01', child: mockChildren[2], cohort: mockCohorts[1] },
-  { id: '4', child_id: '4', cohort_id: '2', start_date: '2024-05-16', end_date: null, graduated: false, created_at: '2024-05-01', child: mockChildren[3], cohort: mockCohorts[1] },
+  { 
+    id: '1', child_id: '1', cohort_id: '1', start_date: '2024-05-16', end_date: null, graduated: false, created_at: '2024-05-01',
+    child: { id: '1', name_en: 'Emma Johnson', name_th: 'เอมมา จอห์นสัน', firstname_en: null, lastname_en: null, firstname_th: null, lastname_th: null, nickname_en: null, nickname_th: null, birthdate: null, photo_url: null, deleted_at: null, created_at: '2024-05-01' },
+    cohort: mockCohorts[0]
+  },
+  { 
+    id: '2', child_id: '2', cohort_id: '1', start_date: '2024-05-16', end_date: null, graduated: false, created_at: '2024-05-01',
+    child: { id: '2', name_en: 'Liam Smith', name_th: 'เลียม สมิธ', firstname_en: null, lastname_en: null, firstname_th: null, lastname_th: null, nickname_en: null, nickname_th: null, birthdate: null, photo_url: null, deleted_at: null, created_at: '2024-05-01' },
+    cohort: mockCohorts[0]
+  },
+  { 
+    id: '3', child_id: '3', cohort_id: '2', start_date: '2024-05-16', end_date: null, graduated: false, created_at: '2024-05-01',
+    child: { id: '3', name_en: 'Olivia Brown', name_th: 'โอลิเวีย บราวน์', firstname_en: null, lastname_en: null, firstname_th: null, lastname_th: null, nickname_en: null, nickname_th: null, birthdate: null, photo_url: null, deleted_at: null, created_at: '2024-05-01' },
+    cohort: mockCohorts[1]
+  },
+  { 
+    id: '4', child_id: '4', cohort_id: '2', start_date: '2024-05-16', end_date: null, graduated: false, created_at: '2024-05-01',
+    child: { id: '4', name_en: 'Noah Davis', name_th: 'โนอาห์ เดวิส', firstname_en: null, lastname_en: null, firstname_th: null, lastname_th: null, nickname_en: null, nickname_th: null, birthdate: null, photo_url: null, deleted_at: null, created_at: '2024-05-01' },
+    cohort: mockCohorts[1]
+  },
 ];
 
 export const mockUsers: AppUser[] = [
@@ -35,10 +51,22 @@ export const mockDailies: Daily[] = [
 ];
 
 export const mockAttendances: Attendance[] = [
-  { id: 'a1', daily_id: 'd1', child_id: '1', status: 'present', note: null, created_by: '1', updated_by: null, updated_at: null, created_at: '2025-05-09', child: mockChildren[0] },
-  { id: 'a2', daily_id: 'd1', child_id: '2', status: 'absent', note: 'Family trip', created_by: '1', updated_by: null, updated_at: null, created_at: '2025-05-09', child: mockChildren[1] },
-  { id: 'a3', daily_id: 'd2', child_id: '3', status: 'present', note: null, created_by: '2', updated_by: null, updated_at: null, created_at: '2025-05-09', child: mockChildren[2] },
-  { id: 'a4', daily_id: 'd2', child_id: '4', status: 'sick', note: 'Fever', created_by: '2', updated_by: null, updated_at: null, created_at: '2025-05-09', child: mockChildren[3] },
+  { 
+    id: 'a1', daily_id: 'd1', child_id: '1', status: 'present', note: null, created_by: '1', updated_by: null, updated_at: null, created_at: '2025-05-09',
+    child: { id: '1', name_en: 'Emma Johnson', name_th: 'เอมมา จอห์นสัน', firstname_en: null, lastname_en: null, firstname_th: null, lastname_th: null, nickname_en: null, nickname_th: null, birthdate: null, photo_url: null, deleted_at: null, created_at: '2024-05-01' }
+  },
+  { 
+    id: 'a2', daily_id: 'd1', child_id: '2', status: 'absent', note: 'Family trip', created_by: '1', updated_by: null, updated_at: null, created_at: '2025-05-09',
+    child: { id: '2', name_en: 'Liam Smith', name_th: 'เลียม สมิธ', firstname_en: null, lastname_en: null, firstname_th: null, lastname_th: null, nickname_en: null, nickname_th: null, birthdate: null, photo_url: null, deleted_at: null, created_at: '2024-05-01' }
+  },
+  { 
+    id: 'a3', daily_id: 'd2', child_id: '3', status: 'present', note: null, created_by: '2', updated_by: null, updated_at: null, created_at: '2025-05-09',
+    child: { id: '3', name_en: 'Olivia Brown', name_th: 'โอลิเวีย บราวน์', firstname_en: null, lastname_en: null, firstname_th: null, lastname_th: null, nickname_en: null, nickname_th: null, birthdate: null, photo_url: null, deleted_at: null, created_at: '2024-05-01' }
+  },
+  { 
+    id: 'a4', daily_id: 'd2', child_id: '4', status: 'sick', note: 'Fever', created_by: '2', updated_by: null, updated_at: null, created_at: '2025-05-09',
+    child: { id: '4', name_en: 'Noah Davis', name_th: 'โนอาห์ เดวิส', firstname_en: null, lastname_en: null, firstname_th: null, lastname_th: null, nickname_en: null, nickname_th: null, birthdate: null, photo_url: null, deleted_at: null, created_at: '2024-05-01' }
+  },
 ];
 
 export const mockBehaviorCategories: BehaviorCategory[] = [
@@ -55,6 +83,12 @@ export const mockBehaviorItems: BehaviorItem[] = [
 ];
 
 export const mockDailyReports: DailyReport[] = [
-  { id: 'dr1', daily_id: 'd1', child_id: '1', nap_from: '13:00', nap_to: '14:30', milk1: 'all', milk1_note: null, milk2: 'some', milk2_note: null, food_amount: 'all', food_note: null, fruit_amount: 'some', fruit_note: null, note: 'Good mood all day', created_by: '1', updated_by: null, updated_at: null, created_at: '2025-05-09', child: mockChildren[0] },
-  { id: 'dr2', daily_id: 'd1', child_id: '2', nap_from: '13:15', nap_to: '14:00', milk1: 'skip', milk1_note: null, milk2: 'skip', milk2_note: null, food_amount: 'some', food_note: null, fruit_amount: 'skip', fruit_note: null, note: null, created_by: '1', updated_by: null, updated_at: null, created_at: '2025-05-09', child: mockChildren[1] },
+  { 
+    id: 'dr1', daily_id: 'd1', child_id: '1', nap_from: '13:00', nap_to: '14:30', milk1: 'all', milk1_note: null, milk2: 'some', milk2_note: null, food_amount: 'all', food_note: null, fruit_amount: 'some', fruit_note: null, note: 'Good mood all day', created_by: '1', updated_by: null, updated_at: null, created_at: '2025-05-09',
+    child: { id: '1', name_en: 'Emma Johnson', name_th: 'เอมมา จอห์นสัน', firstname_en: null, lastname_en: null, firstname_th: null, lastname_th: null, nickname_en: null, nickname_th: null, birthdate: null, photo_url: null, deleted_at: null, created_at: '2024-05-01' }
+  },
+  { 
+    id: 'dr2', daily_id: 'd1', child_id: '2', nap_from: '13:15', nap_to: '14:00', milk1: 'skip', milk1_note: null, milk2: 'skip', milk2_note: null, food_amount: 'some', food_note: null, fruit_amount: 'skip', fruit_note: null, note: null, created_by: '1', updated_by: null, updated_at: null, created_at: '2025-05-09',
+    child: { id: '2', name_en: 'Liam Smith', name_th: 'เลียม สมิธ', firstname_en: null, lastname_en: null, firstname_th: null, lastname_th: null, nickname_en: null, nickname_th: null, birthdate: null, photo_url: null, deleted_at: null, created_at: '2024-05-01' }
+  },
 ];

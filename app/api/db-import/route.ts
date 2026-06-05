@@ -12,7 +12,7 @@ const TABLES_ORDER = [
 
 const TABLE_COLUMNS: Record<string, string[]> = {
   app_user:             ['id','line_user_id','role','status','display_name','picture_url','created_at'],
-  child:                ['id','name_en','name_th','photo_url','deleted_at','created_at'],
+  child:                ['id','name_en','name_th','firstname_en','lastname_en','firstname_th','lastname_th','nickname_en','nickname_th','birthdate','photo_url','deleted_at','created_at'],
   cohort:               ['id','name','level','academic_year','start_date','end_date','created_at'],
   parent_child:         ['parent_id','child_id'],
   teacher_permission:   ['user_id','can_manage_daily','can_manage_attendance','can_manage_report'],
