@@ -6,6 +6,8 @@ import { useLiff } from '@/lib/useLiff';
 import { Child, DailyReport, Attendance, MilkStatus, ExcretionType, ExcretionAction, AppUser } from '@/types';
 import LoadingWrapper from '@/components/loading/LoadingWrapper';
 import BehaviorCardSkeleton from '@/components/loading/skeletons/BehaviorCardSkeleton';
+import AppHeader from '@/components/AppHeader';
+import BottomNavigation from '@/components/BottomNavigation';
 
 /* ── label maps ─────────────────────────────── */
 const amtL: Record<MilkStatus,string> = { all:'ทานหมด', some:'ทานครึ่งเดียว', not_must:'ไม่จำเป็น', skip:'ไม่ทาน' };
@@ -942,124 +944,17 @@ export default function LiffPage() {
       <div style={{width:'100%',maxWidth:480,background:'white',minHeight:'100dvh',paddingBottom:'calc(88px + env(safe-area-inset-bottom,0px))'}}>
 
         {/* ─── HEADER ─────────────────────────────── */}
-        <header style={{padding:'30px 24px 20px',background:'white',borderBottom:'1px solid #f1f5f9'}}>
-
-          {/* ─── TEACHER MODE: Child Selector (always show) ─────────────────────────────── */}
-          {currentUser?.role === 'teacher' && (
-            <div style={{marginBottom:20,paddingBottom:20,borderBottom:'1px solid #f1f5f9'}}>
-              <span style={{fontSize:'0.65rem',textTransform:'uppercase',letterSpacing:1,color:'#94a3b8',fontWeight:800,display:'block',marginBottom:12}}>เลือกนักเรียน</span>
-              <div className="avatar-row">
-                {childLoading ? [1,2,3,4].map(i=><SkCircle key={i} size={48}/>) :
-                  children.map(c=>(
-                    <button key={c.id} type="button" onClick={()=>setChildId(c.id)}
-                      style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6,background:'none',border:'none',padding:0,cursor:'pointer',flexShrink:0}}>
-                      <Avatar src={c.photo_url} name={c.name_th} size={48} active={childId===c.id} accentColor="#6366f1" />
-                      <span style={{fontSize:'0.7rem',color:childId===c.id?'#1e293b':'#94a3b8',fontWeight:childId===c.id?700:500,transition:'all .2s',maxWidth:60,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                        {c.nickname_th || c.nickname_en || c.name_th || c.name_en || '?'}
-                      </span>
-                    </button>
-                  ))
-                }
-              </div>
-            </div>
-          )}
-
-          {/* two-way selector (Parent Mode OR Teacher Mode with selected child) */}
-          {((currentUser?.role !== 'teacher') || (currentUser?.role === 'teacher' && childId)) && (
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:20,gap:12}}>
-
-            {/* ฝั่งผู้ปกครอง */}
-            <div style={{display:'flex',flexDirection:'column',gap:8,flex:1,overflow:'hidden'}}>
-              <span style={{fontSize:'0.65rem',textTransform:'uppercase',letterSpacing:1,color:'#94a3b8',fontWeight:800,whiteSpace:'nowrap'}}>ผู้ปกครอง</span>
-              <div className="avatar-row">
-                {childLoading ? [1,2].map(i=><SkCircle key={i} size={42}/>) :
-                  parents.map(p=>(
-                    <button key={p.id} type="button" onClick={()=>setParentId(parentId===p.id?null:p.id)}
-                      style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,background:'none',border:'none',padding:0,cursor:'pointer',flexShrink:0}}>
-                      <Avatar src={p.picture_url} name={p.display_name} size={42} active={parentId===p.id} accentColor="#f472b6" />
-                      <div style={{width:4,height:4,borderRadius:'50%',background:parentId===p.id?'#f472b6':'transparent',transition:'all .2s'}} />
-                    </button>
-                  ))
-                }
-              </div>
-            </div>
-
-            {/* ❤️ connector */}
-            <div style={{display:'flex',alignItems:'center',justifyContent:'center',color:'#ff8787',fontSize:'1.1rem',padding:'0 6px',alignSelf:'center',marginTop:10,flexShrink:0}}>
-              <i className="bi bi-heart-fill" style={{color:'#ff8787'}}></i>
-            </div>
-
-            {/* ฝั่งลูก/นักเรียน */}
-            <div style={{display:'flex',flexDirection:'column',gap:8,flex:1,overflow:'hidden',alignItems:'flex-end'}}>
-              <span style={{fontSize:'0.65rem',textTransform:'uppercase',letterSpacing:1,color:'#94a3b8',fontWeight:800,whiteSpace:'nowrap'}}>
-                {currentUser?.role === 'teacher' ? 'นักเรียน' : 'ลูก / หลาน'}
-              </span>
-              <div className="avatar-row" style={{justifyContent:'flex-end',direction:'rtl'}}>
-                {childLoading ? [1,2,3].map(i=><SkCircle key={i} size={42}/>) :
-                  (currentUser?.role === 'teacher' && childId ? 
-                    // Teacher mode: แสดงแค่นักเรียนที่เลือก
-                    children.filter(c => c.id === childId).map(c=>(
-                      <button key={c.id} type="button" onClick={()=>setChildId(c.id)}
-                        style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,background:'none',border:'none',padding:0,cursor:'pointer',flexShrink:0,direction:'ltr'}}>
-                        <Avatar src={c.photo_url} name={c.name_th} size={42} active={true} accentColor="#6366f1" />
-                        <div style={{width:4,height:4,borderRadius:'50%',background:'#6366f1',transition:'all .2s'}} />
-                      </button>
-                    ))
-                    :
-                    // Parent mode: แสดงลูกทั้งหมด
-                    children.map(c=>(
-                      <button key={c.id} type="button" onClick={()=>setChildId(c.id)}
-                        style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,background:'none',border:'none',padding:0,cursor:'pointer',flexShrink:0,direction:'ltr'}}>
-                        <Avatar src={c.photo_url} name={c.name_th} size={42} active={childId===c.id} accentColor="#6366f1" />
-                        <div style={{width:4,height:4,borderRadius:'50%',background:childId===c.id?'#6366f1':'transparent',transition:'all .2s'}} />
-                      </button>
-                    ))
-                  )
-                }
-              </div>
-            </div>
-          </div>
-          )}
-
-          {/* title zone — center */}
-          <div style={{textAlign:'center',marginTop:4}}>
-            {/* แสดงชื่อผู้ปกครองเมื่อมีการเลือก (ทั้ง parent และ teacher mode) */}
-            {(currentUser?.role !== 'teacher' || (currentUser?.role === 'teacher' && childId)) && (
-              <p style={{margin:'0 0 4px',fontSize:'0.78rem',fontWeight:600,color:'#f472b6',transition:'all .2s'}}>
-                {parents.find(p=>p.id===parentId)?.display_name ?? '\u00A0'}
-              </p>
-            )}
-            {childLoading ? (
-              <div style={{display:'flex',flexDirection:'column',gap:8,alignItems:'center',marginTop:4}}>
-                <SkRow w={160} h={22} /><SkRow w={200} h={14} />
-              </div>
-            ) : (
-              <>
-                <h1 style={{margin:0,fontSize:'1.3rem',fontWeight:800,color:'#0f172a',letterSpacing:'-0.3px'}}>
-                  {selectedChild?.name_th ?? (currentUser?.role === 'teacher' ? selectedChild?.nickname_en || 'เลือกนักเรียน' : 'เลือกบุตรหลาน')}
-                </h1>
-                {selectedChild && currentEntry ? (
-                  <div style={{display:'inline-block',marginTop:10,padding:'4px 14px',background:'#f8fafc',border:'1px solid #f1f5f9',borderRadius:100}}>
-                    <p style={{margin:0,fontSize:'0.8rem',color:'#64748b',fontWeight:600,display:'flex',alignItems:'center',gap:6}}>
-                      <i className="bi bi-calendar3" style={{color:'#6366f1'}}></i>
-                      {thDate(currentEntry.date)}
-                    </p>
-                  </div>
-                ) : selectedChild ? (
-                  <div style={{display:'inline-block',marginTop:10,padding:'4px 14px',background:'#f8fafc',border:'1px solid #f1f5f9',borderRadius:100}}>
-                    <p style={{margin:0,fontSize:'0.8rem',color:'#64748b',fontWeight:600,display:'flex',alignItems:'center',gap:6}}>
-                      รอลงข้อมูล
-                    </p>
-                  </div>
-                ) : (
-                  <p style={{margin:'10px 0 0',fontSize:'0.75rem',color:'#94a3b8',fontWeight:500}}>
-                    {currentUser?.role === 'teacher' ? 'กรุณาเลือกนักเรียน' : 'กรุณาเลือกบุตรหลาน'}
-                  </p>
-                )}
-              </>
-            )}
-          </div>
-        </header>
+        <AppHeader
+          parents={parents}
+          children={children}
+          parentId={parentId}
+          childId={childId}
+          childLoading={childLoading}
+          currentUser={currentUser}
+          onParentSelect={setParentId}
+          onChildSelect={setChildId}
+          subtitle={selectedChild && currentEntry ? thDate(currentEntry.date) : selectedChild ? 'รอลงข้อมูล' : undefined}
+        />
 
         {/* ─── CONTRIBUTION GRAPH (แทน DATE STRIP) ─────────────────── */}
         {!childLoading && childId && activeTab === 'daily' && enrollmentPeriod && (
@@ -1982,201 +1877,7 @@ export default function LiffPage() {
         )}
 
         {/* ─── BOTTOM NAVIGATION BAR ─────────────────────────────── */}
-        {!childLoading && childId && (
-          <div style={{
-            position: 'fixed',
-            bottom: 0,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: '100%',
-            maxWidth: 480,
-            background: 'rgba(255, 255, 255, 0.7)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            borderTop: '1px solid rgba(255, 255, 255, 0.3)',
-            boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.1)',
-            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-            zIndex: 1000
-          }}>
-            <div style={{display: 'flex', height: 64}}>
-              <button
-                onClick={() => router.push('/')}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 2,
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  color: activeTab === 'daily' ? '#6366f1' : '#94a3b8',
-                  position: 'relative'
-                }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                  <polyline points="9 22 9 12 15 12 15 22"/>
-                </svg>
-                <span style={{fontSize: '0.6rem', fontWeight: activeTab === 'daily' ? 700 : 500}}>หน้าแรก</span>
-                {activeTab === 'daily' && (
-                  <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: 30,
-                    height: 3,
-                    background: '#6366f1',
-                    borderRadius: '0 0 3px 3px'
-                  }} />
-                )}
-              </button>
-              <button
-                onClick={() => router.push('/summary-behavior')}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 2,
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  color: pathname === '/summary-behavior' ? '#6366f1' : '#94a3b8',
-                  position: 'relative'
-                }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill={pathname === '/summary-behavior' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                </svg>
-                <span style={{fontSize: '0.6rem', fontWeight: pathname === '/summary-behavior' ? 700 : 500}}>อุปนิสัย</span>
-                {pathname === '/summary-behavior' && (
-                  <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: 30,
-                    height: 3,
-                    background: '#6366f1',
-                    borderRadius: '0 0 3px 3px'
-                  }} />
-                )}
-              </button>
-              <button
-                onClick={() => router.push('/summary-food-milk')}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 2,
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  color: pathname === '/summary-food-milk' ? '#6366f1' : '#94a3b8',
-                  position: 'relative'
-                }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
-                  <path d="M7 2v20"/>
-                  <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
-                </svg>
-                <span style={{fontSize: '0.6rem', fontWeight: pathname === '/summary-food-milk' ? 700 : 500}}>อาหาร นม</span>
-                {pathname === '/summary-food-milk' && (
-                  <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: 30,
-                    height: 3,
-                    background: '#6366f1',
-                    borderRadius: '0 0 3px 3px'
-                  }} />
-                )}
-              </button>
-              <button
-                onClick={() => router.push('/summary-nap')}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 2,
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  color: pathname === '/summary-nap' ? '#6366f1' : '#94a3b8',
-                  position: 'relative'
-                }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M2 12h1.5M8 6v1.5M18 6v1.5M22 12h-1.5"/>
-                  <path d="M19 17a7 7 0 1 1-14 0"/>
-                </svg>
-                <span style={{fontSize: '0.6rem', fontWeight: pathname === '/summary-nap' ? 700 : 500}}>การนอน</span>
-                {pathname === '/summary-nap' && (
-                  <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: 30,
-                    height: 3,
-                    background: '#6366f1',
-                    borderRadius: '0 0 3px 3px'
-                  }} />
-                )}
-              </button>
-              <button
-                onClick={() => router.push('/summary-excretion')}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 2,
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  color: pathname === '/summary-excretion' ? '#6366f1' : '#94a3b8',
-                  position: 'relative'
-                }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M7 11h10M7 15h6"/>
-                  <rect x="3" y="3" width="18" height="18" rx="2"/>
-                </svg>
-                <span style={{fontSize: '0.6rem', fontWeight: pathname === '/summary-excretion' ? 700 : 500}}>ขับถ่าย</span>
-                {pathname === '/summary-excretion' && (
-                  <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: 30,
-                    height: 3,
-                    background: '#6366f1',
-                    borderRadius: '0 0 3px 3px'
-                  }} />
-                )}
-              </button>
-            </div>
-          </div>
-        )}
+        {!childLoading && childId && <BottomNavigation />}
       </div>
       
       {/* Development Mode Toggle */}

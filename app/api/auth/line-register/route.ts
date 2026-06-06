@@ -21,14 +21,13 @@ export async function POST(req: NextRequest) {
     );
 
     if (user) {
-      // มีอยู่แล้ว → อัพเดท line_display_name + picture_url เท่านั้น (ไม่แก้ display_name)
+      // มีอยู่แล้ว → อัพเดท picture_url เท่านั้น (ถ้ามี line_display_name column)
       user = await queryOne(
         `UPDATE app_user SET
-           line_display_name = $2,
-           picture_url = $3
+           picture_url = $2
          WHERE line_user_id = $1
          RETURNING *`,
-        [line_user_id, display_name ?? null, picture_url ?? null]
+        [line_user_id, picture_url ?? null]
       );
     } else {
       // 2. ไม่มี → หา user ที่ยังไม่มี line_user_id และ display_name ตรงกัน
@@ -42,21 +41,20 @@ export async function POST(req: NextRequest) {
       );
 
       if (existingUser) {
-        // เจอ user ที่รอผูก → ผูก LINE ID เข้าไป พร้อมบันทึก line_display_name
+        // เจอ user ที่รอผูก → ผูก LINE ID เข้าไป
         user = await queryOne(
           `UPDATE app_user SET
              line_user_id = $1,
-             line_display_name = $2,
-             picture_url = $3
-           WHERE id = $4
+             picture_url = $2
+           WHERE id = $3
            RETURNING *`,
-          [line_user_id, display_name ?? null, picture_url ?? null, existingUser.id]
+          [line_user_id, picture_url ?? null, existingUser.id]
         );
       } else {
-        // 3. ไม่เจอทั้ง 2 กรณี → สร้างใหม่ (display_name และ line_display_name ใช้ค่าเดียวกัน)
+        // 3. ไม่เจอทั้ง 2 กรณี → สร้างใหม่
         user = await queryOne(
-          `INSERT INTO app_user (id, line_user_id, role, status, display_name, line_display_name, picture_url)
-           VALUES (gen_random_uuid(), $1, 'parent', 'active', $2, $2, $3)
+          `INSERT INTO app_user (id, line_user_id, role, status, display_name, picture_url)
+           VALUES (gen_random_uuid(), $1, 'parent', 'active', $2, $3)
            RETURNING *`,
           [line_user_id, display_name ?? null, picture_url ?? null]
         );
