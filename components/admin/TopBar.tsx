@@ -21,30 +21,30 @@ export default function AdminTopBar({ onMenuClick }: Props) {
   };
 
   return (
-    <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'white', borderBottom: '1px solid #E5E7EB', height: 'var(--topbar-h)', display: 'flex', alignItems: 'center', padding: '0 14px', gap: 8 }}>
+    <div style={{ position: 'sticky', top: 0, zIndex: 50, background: 'white', borderBottom: '1px solid #E5E7EB', height: 'var(--topbar-h)', display: 'flex', alignItems: 'center', padding: '0 16px', gap: 10 }}>
       {/* hamburger — visible on mobile */}
       <button onClick={onMenuClick} className="mobile-menu-btn"
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, border: 'none', background: 'none', cursor: 'pointer', color: '#6B7280', borderRadius: 8, flexShrink: 0 }}>
-        <Menu size={20} />
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 42, height: 42, border: 'none', background: 'none', cursor: 'pointer', color: '#6B7280', borderRadius: 10, flexShrink: 0, WebkitTapHighlightColor: 'transparent' }}>
+        <Menu size={22} />
       </button>
 
       {/* Logo pill — shown on mobile when sidebar hidden */}
-      <div className="mobile-menu-btn" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 18 }}>🌻</span>
-        <span style={{ fontWeight: 700, fontSize: 14, fontFamily: 'Prompt, sans-serif', color: '#1A1A2E' }}>KinderCare</span>
+      <div className="mobile-menu-btn" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 22 }}>🌻</span>
+        <span style={{ fontWeight: 700, fontSize: 16, fontFamily: 'Prompt, sans-serif', color: '#1A1A2E' }}>KinderCare</span>
       </div>
 
       <div style={{ flex: 1 }} />
 
       {username && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: '#F0EEFF', borderRadius: 99 }}>
-          <User size={12} style={{ color: '#6C5CE7' }} />
-          <span style={{ fontSize: 12, fontWeight: 600, color: '#6C5CE7' }}>{username}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: '#F0EEFF', borderRadius: 99 }}>
+          <User size={14} style={{ color: '#6C5CE7' }} />
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#6C5CE7' }}>{username}</span>
         </div>
       )}
       <button onClick={logout} disabled={loggingOut}
-        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 10px', borderRadius: 99, border: '1px solid #E5E7EB', background: 'transparent', cursor: loggingOut ? 'default' : 'pointer', fontSize: 12, fontWeight: 500, color: '#6B7280', fontFamily: 'Sarabun, sans-serif' }}>
-        <LogOut size={13} />
+        style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 12px', borderRadius: 99, border: '1px solid #E5E7EB', background: 'transparent', cursor: loggingOut ? 'default' : 'pointer', fontSize: 13, fontWeight: 500, color: '#6B7280', fontFamily: 'Sarabun, sans-serif', WebkitTapHighlightColor: 'transparent', minHeight: 38 }}>
+        <LogOut size={15} />
         <span style={{ display: 'none' }} className="md-show">ออกจากระบบ</span>
       </button>
     </div>

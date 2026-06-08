@@ -1,155 +1,23 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useLiff } from '@/lib/useLiff';
-import { Child, AppUser, MilkStatus } from '@/types';
+import { useState, useEffect } from 'react';
+import UserLayout from '@/components/UserLayout';
+import { useUserApp } from '@/components/UserAppProvider';
+import { MilkStatus } from '@/types';
 import LoadingWrapper from '@/components/loading/LoadingWrapper';
 import FoodSummarySkeleton from '@/components/loading/skeletons/FoodSummarySkeleton';
-import AppHeader from '@/components/AppHeader';
-import BottomNavigation from '@/components/BottomNavigation';
 
 const amtL: Record<MilkStatus,string> = { all:'ทานหมด', some:'ทานครึ่งเดียว', not_must:'ไม่จำเป็น', skip:'ไม่ทาน' };
 
-const parseLocalDate = (str: string) => {
-  const [y, m, d] = str.split('-').map(Number);
-  return new Date(y, m - 1, d);
-};
-
 export default function FoodMilkSummaryPage() {
-  const liff = useLiff();
-  const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
-  const [parents, setParents] = useState<AppUser[]>([]);
-  const [children, setChildren] = useState<Child[]>([]);
-  const [parentId, setParentId] = useState<string|null>(null);
-  const [childId, setChildId] = useState<string|null>(null);
-  const hasInitialized = React.useRef(false);
-  const [childLoading, setChildLoading] = useState(false);
+  const { childId, enrollmentPeriod } = useUserApp();
   const [dataLoading, setDataLoading] = useState(false);
   const [showShimmer, setShowShimmer] = useState(false);
-  const [notRegistered, setNotRegistered] = useState(false);
-  const [enrollmentPeriod, setEnrollmentPeriod] = useState<{start:string;end:string|null}|null>(null);
   const [foodSummary, setFoodSummary] = useState<{
     food: { food_amount: MilkStatus; count: number }[];
     fruit: { fruit_amount: MilkStatus; count: number }[];
     milk1: { milk_amount: MilkStatus; count: number }[];
     milk2: { milk_amount: MilkStatus; count: number }[];
   }>({ food: [], fruit: [], milk1: [], milk2: [] });
-
-  /* ── LIFF ready ── */
-  useEffect(() => {
-    if (!liff.ready) return;
-    
-    if (!liff.profile?.userId) {
-      fetch('/api/report/children').then(r=>r.json()).then(j=>{
-        setChildren(j.data??[]);
-      });
-      return;
-    }
-    
-    setChildLoading(true);
-    fetch('/api/auth/line-register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({line_user_id:liff.profile.userId,display_name:liff.profile.displayName,picture_url:liff.profile.pictureUrl??null})})
-    .then(r=>r.json())
-    .then(async regJson => {
-      if (regJson.status === 403) {
-        setNotRegistered(true);
-        return;
-      }
-      const user = regJson.data;
-      setCurrentUser(user);
-      
-      if (user?.role === 'teacher') {
-        const childRes = await fetch('/api/children');
-        const childJson = await childRes.json();
-        setChildren(childJson.data ?? []);
-      } else {
-        const childRes = await fetch(`/api/report/line-children?line_user_id=${liff.profile!.userId}`);
-        const childJson = await childRes.json();
-        const kids:Child[] = childJson.data??[];
-        setChildren(kids);
-        if (kids.length===0) setNotRegistered(true);
-      }
-    })
-    .catch(()=>setNotRegistered(true))
-    .finally(()=>setChildLoading(false));
-  },[liff.ready,liff.profile?.userId]);
-
-  useEffect(()=>{
-    if (children.length > 0 && !childId) {
-      const savedChildId = localStorage.getItem('selectedChildId');
-      if (savedChildId && children.find(c => c.id === savedChildId)) {
-        setChildId(savedChildId);
-      } else {
-        setChildId(children[0].id);
-      }
-    }
-  },[children, childId]);
-
-  useEffect(() => {
-    if (childId) {
-      localStorage.setItem('selectedChildId', childId);
-    }
-  }, [childId]);
-
-  /* ── child → parents ── */
-  useEffect(()=>{
-    if (currentUser?.role === 'teacher' && !childId) {
-      setParents([]);
-      setParentId(null);
-      return;
-    }
-    
-    if (!childId) { 
-      setParents([]); 
-      setParentId(null); 
-      hasInitialized.current = false;
-      return; 
-    }
-    let cancelled = false;
-    fetch(`/api/report/child-parents?child_id=${childId}`).then(r=>r.json())
-      .then(j=>{
-        if (!cancelled) {
-          const parentsList = j.data ?? [];
-          setParents(parentsList);
-          
-          const savedParentId = localStorage.getItem('selectedParentId');
-          if (savedParentId && parentsList.find((p: AppUser) => p.id === savedParentId)) {
-            setParentId(savedParentId);
-          }
-          
-          hasInitialized.current = true;
-        }
-      });
-    return () => { cancelled = true; };
-  },[childId, currentUser]);
-
-  useEffect(() => {
-    if (!hasInitialized.current) return;
-    
-    if (parentId) {
-      localStorage.setItem('selectedParentId', parentId);
-    } else {
-      localStorage.removeItem('selectedParentId');
-    }
-  }, [parentId]);
-
-  /* ── child → enrollment & data ── */
-  useEffect(()=>{
-    if (!childId) return;
-    let cancelled = false;
-    
-    fetch(`/api/report/enrollment-period?child_id=${childId}`).then(r=>r.json())
-      .then(j=>{
-        if (!cancelled && j.data?.start_date) {
-          setEnrollmentPeriod({
-            start: j.data.start_date,
-            end: j.data.end_date
-          });
-        }
-      });
-    
-    return () => { cancelled = true; };
-  },[childId]);
 
   /* ── Load food summary ── */
   useEffect(() => {
@@ -191,58 +59,11 @@ export default function FoodMilkSummaryPage() {
     return () => { cancelled = true; };
   }, [childId, enrollmentPeriod]);
 
-  const selectedChild = children.find(c=>c.id===childId);
-
-  if (!liff.ready) return (
-    <div style={{minHeight:'100dvh',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:12,background:'#f8fafc'}}>
-      <div style={{width:40,height:40,border:'3px solid #6366f1',borderTopColor:'transparent',borderRadius:'50%',animation:'spin .8s linear infinite'}} />
-      <style>{`@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}`}</style>
-    </div>
-  );
-
-  if (notRegistered&&!childLoading) {
-    return (
-      <div style={{minHeight:'100dvh',display:'flex',alignItems:'center',justifyContent:'center',padding:24,background:'#f8fafc'}}>
-        <div style={{background:'white',borderRadius:20,padding:28,textAlign:'center',maxWidth:340,border:'1px solid #e2e8f0',boxShadow:'0 4px 12px rgba(0,0,0,0.05)'}}>
-          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{margin:'0 auto 12px'}}>
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-            <polyline points="9 22 9 12 15 12 15 22"/>
-          </svg>
-          <h2 style={{fontWeight:800,color:'#0f172a',marginBottom:8}}>ยังไม่มีข้อมูล</h2>
-          <p style={{fontSize:14,color:'#64748b',lineHeight:1.6}}>
-            LINE บัญชีนี้ยังไม่ได้ผูกกับนักเรียน
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div style={{background:'#f8fafc',minHeight:'100dvh',display:'flex',justifyContent:'center'}}>
-      <style>{`
-        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-        .avatar-row{display:flex;gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}
-        .avatar-row::-webkit-scrollbar{display:none}
-      `}</style>
-
-      <div style={{width:'100%',maxWidth:480,background:'white',minHeight:'100dvh',paddingBottom:'calc(88px + env(safe-area-inset-bottom,0px))'}}>
-
-        {/* ─── HEADER ─────────────────────────────── */}
-        <AppHeader
-          parents={parents}
-          children={children}
-          parentId={parentId}
-          childId={childId}
-          childLoading={childLoading}
-          currentUser={currentUser}
-          onParentSelect={setParentId}
-          onChildSelect={setChildId}
-          subtitle={enrollmentPeriod ? `${parseLocalDate(enrollmentPeriod.start).toLocaleDateString('th-TH')} - ${enrollmentPeriod.end ? parseLocalDate(enrollmentPeriod.end).toLocaleDateString('th-TH') : 'ปัจจุบัน'}` : undefined}
-        />
-
-        {/* Content */}
-        <div style={{padding:'16px'}}>
-          <LoadingWrapper
+    <UserLayout>
+      {/* Content */}
+      <div style={{padding:'16px'}}>
+        <LoadingWrapper
             isLoading={dataLoading}
             hasData={foodSummary.food.length > 0 || foodSummary.fruit.length > 0 || 
                      foodSummary.milk1.length > 0 || foodSummary.milk2.length > 0}
@@ -375,10 +196,6 @@ export default function FoodMilkSummaryPage() {
             </div>
           </LoadingWrapper>
         </div>
-
-        {/* Bottom Navigation */}
-        <BottomNavigation />
-      </div>
-    </div>
-  );
+      </UserLayout>
+    );
 }

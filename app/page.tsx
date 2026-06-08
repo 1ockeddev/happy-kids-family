@@ -6,6 +6,8 @@ import { useLiff } from '@/lib/useLiff';
 import { Child, DailyReport, Attendance, MilkStatus, ExcretionType, ExcretionAction, AppUser } from '@/types';
 import LoadingWrapper from '@/components/loading/LoadingWrapper';
 import BehaviorCardSkeleton from '@/components/loading/skeletons/BehaviorCardSkeleton';
+import UserLayout from '@/components/UserLayout';
+import { useUserApp } from '@/components/UserAppProvider';
 import AppHeader from '@/components/AppHeader';
 import BottomNavigation from '@/components/BottomNavigation';
 
@@ -46,6 +48,14 @@ interface MonthSpan {
   startWeekIdx: number;
   weekCount: number;
 }
+
+/* ── Icon Components ─────────────────────────────── */
+const BookIcon = ({size=14,color='#6366f1'}:{size?:number;color?:string}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+  </svg>
+);
 
 /* ── Helper Functions ─────────────────────────────── */
 // Parse YYYY-MM-DD string as local date (not UTC to avoid timezone shift)
@@ -262,7 +272,7 @@ function Avatar({src,name,size=42,active,accentColor='#6366f1'}:{src?:string|nul
 }
 
 /* ── Custom Tooltip ─────────────────────────────────*/
-function CustomTooltip({children,text}:{children:React.ReactNode;text:string}) {
+function CustomTooltip({children,text}:{children:React.ReactNode;text:string|React.ReactNode}) {
   const [show, setShow] = useState(false);
   const [pos, setPos] = useState({x:0,y:0,align:'center'});
   const tooltipRef = React.useRef<HTMLDivElement>(null);
@@ -382,29 +392,39 @@ export default function LiffPage() {
   const pathname = usePathname();
   const activeTab = pathname === '/summary-behavior' ? 'summary' : 'daily';
 
-  const [parents,  setParents]  = useState<AppUser[]>([]);
-  const [children, setChildren] = useState<Child[]>([]);
-  const [parentId, setParentId] = useState<string|null>(null);
-  const [childId,  setChildId]  = useState<string|null>(null);
-  const [currentUser, setCurrentUser] = useState<AppUser|null>(null);
-  const hasRestoredParent = React.useRef(false);
-  const hasInitialized = React.useRef(false);
+  // Get shared state from context
+  const {
+    currentUser,
+    children,
+    parents,
+    childId,
+    parentId,
+    childLoading,
+    enrollmentPeriod,
+    liffReady,
+    notRegistered,
+    cohorts,
+    cohortId,
+    setCohortId,
+    setChildId,
+    setParentId
+  } = useUserApp();
 
+  // Page-specific state
   const [dayEntries,  setDayEntries]  = useState<DayEntry[]>([]);
   const [dayIdx,      setDayIdx]      = useState(0);
   const [report,      setReport]      = useState<DailyReport|null>(null);
   const [attendance,  setAttendance]  = useState<Attendance|null>(null);
   const [scores,      setScores]      = useState<BehaviorScore[]>([]);
   const [teacher,     setTeacher]     = useState<AppUser|null>(null);
+  const [copied,      setCopied]      = useState(false); // For copy LINE ID button
+  const [childEnrollmentCohortId, setChildEnrollmentCohortId] = useState<string|null>(null); // Track child's enrollment cohort for holidays
 
-  const [childLoading,  setChildLoading]  = useState(false);
   const [daysLoading,   setDaysLoading]   = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [showSummaryShimmer, setShowSummaryShimmer] = useState(false);
-  const [notRegistered, setNotRegistered] = useState(false);
   const [attendanceSummary, setAttendanceSummary] = useState<{date:string;status:string}[]>([]);
-  const [enrollmentPeriod, setEnrollmentPeriod] = useState<{start:string;end:string|null}|null>(null);
   const [holidays, setHolidays] = useState<{date:string;name_th:string}[]>([]);
   const [activities, setActivities] = useState<{date:string;activity:string}[]>([]);
   const [behaviorSummary, setBehaviorSummary] = useState<{
@@ -429,8 +449,6 @@ export default function LiffPage() {
     category_name_th:string;
     category_name_en:string;
   }[]>([]);
-  const [cohortId, setCohortId] = useState<string|null>(null); // Store cohort_id from enrollment
-  const [copied, setCopied] = useState(false); // For copy LINE ID button
   const [foodSummary, setFoodSummary] = useState<{
     food: { food_amount: MilkStatus; count: number }[];
     fruit: { fruit_amount: MilkStatus; count: number }[];
@@ -439,143 +457,6 @@ export default function LiffPage() {
     nap: { total_days: number; nap_days: number; avg_hours: number | null };
     excretions: { type: ExcretionType; action: ExcretionAction; count: number }[];
   }>({ food: [], fruit: [], milk1: [], milk2: [], nap: { total_days: 0, nap_days: 0, avg_hours: null }, excretions: [] });
-
-  /* ── LIFF ready ── */
-  useEffect(() => {
-    console.log('🚀 LIFF ready:', liff.ready, 'profile:', liff.profile);
-    if (!liff.ready) return;
-    
-    // Development mode: No LINE profile (local testing)
-    if (!liff.profile?.userId) {
-      console.log('⚠️ Development mode - No LINE profile');
-      
-      // Check localStorage for mock role
-      const mockRole = localStorage.getItem('mockRole') as 'teacher' | 'parent' | null;
-      console.log('🔧 Mock role from localStorage:', mockRole);
-      
-      if (mockRole === 'teacher') {
-        console.log('👨‍🏫 Dev mode: Teacher - Loading all children');
-        const mockUser: AppUser = {
-          id: 'dev-teacher-id',
-          line_user_id: null,
-          role: 'teacher',
-          status: 'active',
-          display_name: 'Dev Teacher',
-          line_display_name: null,
-          picture_url: null,
-          created_at: new Date().toISOString()
-        };
-        setCurrentUser(mockUser);
-        
-        fetch('/api/children').then(r=>r.json()).then(j=>{
-          const kids: Child[] = j.data ?? [];
-          setChildren(kids);
-        });
-      } else {
-        // Default: load children with reports (parent view)
-        fetch('/api/report/children').then(r=>r.json()).then(j=>{
-          setChildren(j.data??[]);
-        });
-      }
-      return;
-    }
-    
-    setChildLoading(true);
-    fetch('/api/auth/line-register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({line_user_id:liff.profile.userId,display_name:liff.profile.displayName,picture_url:liff.profile.pictureUrl??null})})
-    .then(r=>r.json())
-    .then(async regJson => {
-      if (regJson.status === 403) {
-        setNotRegistered(true);
-        return;
-      }
-      const user = regJson.data;
-      setCurrentUser(user);
-      
-      // ถ้าเป็น teacher → โหลดเด็กทั้งหมด
-      if (user?.role === 'teacher') {
-        const childRes = await fetch('/api/children');
-        const childJson = await childRes.json();
-        const kids: Child[] = childJson.data ?? [];
-        setChildren(kids);
-        if (kids.length === 0) setNotRegistered(true);
-      } else {
-        // parent → โหลดลูก
-        const childRes = await fetch(`/api/report/line-children?line_user_id=${liff.profile!.userId}`);
-        const childJson = await childRes.json();
-        const kids:Child[] = childJson.data??[];
-        setChildren(kids);
-        if (kids.length===0) setNotRegistered(true);
-      }
-    })
-    .catch(()=>setNotRegistered(true))
-    .finally(()=>setChildLoading(false));
-  },[liff.ready,liff.profile?.userId]);
-
-  useEffect(()=>{
-    if (children.length > 0 && !childId) {
-      // Try to restore from localStorage first
-      const savedChildId = localStorage.getItem('selectedChildId');
-      if (savedChildId && children.find(c => c.id === savedChildId)) {
-        setChildId(savedChildId);
-      } else {
-        setChildId(children[0].id);
-      }
-    }
-  },[children, childId]);
-
-  // Save childId to localStorage whenever it changes
-  useEffect(() => {
-    if (childId) {
-      localStorage.setItem('selectedChildId', childId);
-    }
-  }, [childId]);
-
-  /* ── child → parents ── */
-  useEffect(()=>{
-    // Teachers don't need to load parents
-    if (currentUser?.role === 'teacher') {
-      setParents([]);
-      setParentId(null);
-      return;
-    }
-    
-    if (!childId) { 
-      setParents([]); 
-      setParentId(null); 
-      hasRestoredParent.current = false;
-      return; 
-    }
-    let cancelled = false;
-    fetch(`/api/report/child-parents?child_id=${childId}`).then(r=>r.json())
-      .then(j=>{
-        if (!cancelled) {
-          const parentsList = j.data ?? [];
-          setParents(parentsList);
-          
-          // Always try to restore parentId from localStorage when parents list is loaded
-          const savedParentId = localStorage.getItem('selectedParentId');
-          if (savedParentId && parentsList.find((p: AppUser) => p.id === savedParentId)) {
-            setParentId(savedParentId);
-          }
-          
-          // Mark as initialized after first restore attempt
-          hasInitialized.current = true;
-        }
-      });
-    return () => { cancelled = true; };
-  },[childId, currentUser]);
-
-  // Save parentId to localStorage whenever it changes
-  useEffect(() => {
-    // Don't save until we've tried to restore at least once
-    if (!hasInitialized.current) return;
-    
-    if (parentId) {
-      localStorage.setItem('selectedParentId', parentId);
-    } else {
-      localStorage.removeItem('selectedParentId');
-    }
-  }, [parentId]);
 
   /* ── child → days ── */
   useEffect(()=>{
@@ -586,19 +467,16 @@ export default function LiffPage() {
     setReport(null); 
     setAttendance(null); 
     setScores([]);
-    setEnrollmentPeriod(null);
     setAttendanceSummary([]);
     setHolidays([]);
     setActivities([]);
-    setCohortId(null);
+    setChildEnrollmentCohortId(null);
     let cancelled = false;
     
     // Load days
     fetch(`/api/report/dates?child_id=${childId}`).then(r=>r.json())
       .then(j=>{
         if (!cancelled) {
-          const withReports = (j.data ?? []).filter((e: any) => e.report_id);
-          const withoutReports = (j.data ?? []).filter((e: any) => !e.report_id);
           setDayEntries(j.data??[]);
         }
       })
@@ -610,8 +488,6 @@ export default function LiffPage() {
     fetch(`/api/report/attendance-summary?child_id=${childId}`).then(r=>r.json())
       .then(j=>{
         if (!cancelled) {
-          const present = (j.data ?? []).filter((d: any) => d.status === 'present');
-          const others = (j.data ?? []).filter((d: any) => d.status !== 'present');
           setAttendanceSummary(j.data??[]);
         }
       })
@@ -619,61 +495,50 @@ export default function LiffPage() {
         if (!cancelled) setAttendanceSummary([]);
       });
     
-    // Load enrollment period
+    return () => { cancelled = true; };
+  },[childId]);
+
+  /* ── Load holidays and activities based on enrollment period ── */
+  useEffect(() => {
+    if (!childId || !enrollmentPeriod) return;
+    
+    let cancelled = false;
+    
+    const endDateStr = enrollmentPeriod.end || (() => {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    })();
+    
+    // Get cohort_id for holidays
     fetch(`/api/report/enrollment-period?child_id=${childId}`).then(r=>r.json())
       .then(j=>{
         if (!cancelled) {
-          if (j.data?.start_date) {
-            const period = {
-              start: j.data.start_date,
-              end: j.data.end_date
-            };
-            setEnrollmentPeriod(period);
-            
-            // Store cohort_id for holidays API
-            const enrollmentCohortId = j.data.cohort_id || null;
-            setCohortId(enrollmentCohortId);
-            
-            // Load holidays for this period
-            const endDateStr = period.end || (() => {
-              const now = new Date();
-              return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-            })();
-            let holidaysUrl = `/api/holidays?start_date=${period.start}&end_date=${endDateStr}`;
-            if (enrollmentCohortId) {
-              holidaysUrl += `&cohort_id=${enrollmentCohortId}`;
-            }
-            fetch(holidaysUrl).then(r=>r.json())
-              .then(j=>{
-                if (!cancelled) setHolidays(j.data??[]);
-              });
-            
-            // Load activities for this period
-            fetch(`/api/report/activities?child_id=${childId}&start_date=${period.start}&end_date=${endDateStr}`)
-              .then(r=>r.json())
-              .then(j=>{
-                if (!cancelled) setActivities(j.data??[]);
-              });
-          } else {
-            // ไม่มี enrollment period - reset ทุกอย่าง
-            setEnrollmentPeriod(null);
-            setCohortId(null);
-            setHolidays([]);
-            setActivities([]);
+          const enrollmentCohortId = j.data?.cohort_id;
+          if (enrollmentCohortId) {
+            setChildEnrollmentCohortId(enrollmentCohortId);
           }
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setEnrollmentPeriod(null);
-          setCohortId(null);
-          setHolidays([]);
-          setActivities([]);
+          
+          // Load holidays for this period (with or without cohort_id)
+          let holidaysUrl = `/api/holidays?start_date=${enrollmentPeriod.start}&end_date=${endDateStr}`;
+          if (enrollmentCohortId) {
+            holidaysUrl += `&cohort_id=${enrollmentCohortId}`;
+          }
+          fetch(holidaysUrl).then(r=>r.json())
+            .then(j=>{
+              if (!cancelled) setHolidays(j.data??[]);
+            });
         }
       });
     
+    // Load activities for this period
+    fetch(`/api/report/activities?child_id=${childId}&start_date=${enrollmentPeriod.start}&end_date=${endDateStr}`)
+      .then(r=>r.json())
+      .then(j=>{
+        if (!cancelled) setActivities(j.data??[]);
+      });
+    
     return () => { cancelled = true; };
-  },[childId]);
+  }, [childId, enrollmentPeriod]);
 
   /* ── Load behavior summary for entire enrollment period ── */
   useEffect(() => {
@@ -798,7 +663,7 @@ export default function LiffPage() {
     if (!currentEntry || dayEntries.length === 0) return;
     
     let attempts = 0;
-    const maxAttempts = 15;
+    const maxAttempts = 20;
     let timerId: NodeJS.Timeout;
     
     const scrollToSelectedDate = () => {
@@ -815,12 +680,15 @@ export default function LiffPage() {
       }
       
       try {
-        const containerRect = container.getBoundingClientRect();
-        const elementRect = selectedElement.getBoundingClientRect();
+        // Get parent week column to calculate correct offset
+        const weekColumn = selectedElement.parentElement;
+        if (!weekColumn) return;
         
-        // Calculate scroll position to center the selected element
-        const elementOffsetLeft = selectedElement.offsetLeft;
-        const scrollLeft = elementOffsetLeft - (containerRect.width / 2) + (elementRect.width / 2);
+        const containerRect = container.getBoundingClientRect();
+        const weekColumnOffsetLeft = weekColumn.offsetLeft;
+        
+        // Calculate scroll position to center the week column
+        const scrollLeft = weekColumnOffsetLeft - (containerRect.width / 2) + (weekColumn.offsetWidth / 2);
         
         // Use scrollTo for better mobile support
         container.scrollTo({
@@ -830,28 +698,30 @@ export default function LiffPage() {
       } catch (error) {
         // Fallback for older browsers
         try {
-          const elementOffsetLeft = selectedElement.offsetLeft;
-          container.scrollLeft = elementOffsetLeft - (container.clientWidth / 2);
+          const weekColumn = selectedElement.parentElement;
+          if (weekColumn) {
+            container.scrollLeft = weekColumn.offsetLeft - (container.clientWidth / 2);
+          }
         } catch (e) {
           // Silent fail
         }
       }
     };
     
-    // Start scrolling attempt immediately
+    // Start scrolling attempt with delay to ensure DOM is ready
     timerId = setTimeout(() => {
       requestAnimationFrame(() => {
         requestAnimationFrame(scrollToSelectedDate);
       });
-    }, 100);
+    }, 250);
     
     return () => {
       if (timerId) clearTimeout(timerId);
     };
-  }, [dayIdx, currentEntry, dayEntries, childId, enrollmentPeriod, attendanceSummary]);
+  }, [dayIdx, currentEntry?.date]); // เปลี่ยนเป็น currentEntry?.date แทน เพื่อป้องกัน re-render บ่อย
 
   /* ── loading ── */
-  if (!liff.ready) return (
+  if (!liffReady) return (
     <div style={{minHeight:'100dvh',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:12,background:'#f8fafc'}}>
       <div style={{width:40,height:40,border:'3px solid #6366f1',borderTopColor:'transparent',borderRadius:'50%',animation:'spin .8s linear infinite'}} />
       <style>{`@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}`}</style>
@@ -953,6 +823,9 @@ export default function LiffPage() {
           currentUser={currentUser}
           onParentSelect={setParentId}
           onChildSelect={setChildId}
+          cohorts={cohorts}
+          cohortId={cohortId}
+          onCohortSelect={setCohortId}
           subtitle={selectedChild && currentEntry ? thDate(currentEntry.date) : selectedChild ? 'รอลงข้อมูล' : undefined}
         />
 
@@ -977,7 +850,7 @@ export default function LiffPage() {
                 <div style={{display:'flex',alignItems:'center',gap:3}}><div style={{width:8,height:8,borderRadius:2,background:'#c084fc'}} /><span style={{color:'#64748b'}}>หยุด</span></div>
               </div>
             </div>
-            <div id="calendar-scroll-container" style={{overflowX:'auto',scrollbarWidth:'none',WebkitOverflowScrolling:'touch',overflowY:'visible'}}>
+            <div id="calendar-scroll-container" style={{overflowX:'auto',scrollbarWidth:'none',WebkitOverflowScrolling:'touch',overflowY:'visible',padding:'4px 8px'}}>
               {(() => {
                 // Generate weeks with report mapping
                 const weeks = generateWeeksWithReportMapping(attendanceSummary, dayEntries, enrollmentPeriod, holidays, activities);
@@ -1026,31 +899,43 @@ export default function LiffPage() {
                           <div key={weekIdx} style={{display:'flex',flexDirection:'column',gap:2}}>
                             {week.days.map((day, dayIdxInWeek) => {
                               const isSelected = day.dayIdx === dayIdx;
-                              // If holiday, use purple color, otherwise use status color
-                              const color = day.isHoliday ? '#c084fc' : getStatusColor(day.status);
+                              // Report มีความสำคัญกว่าวันหยุด - ถ้ามี report ให้แสดงสีตาม status แทน
+                              const color = day.hasReport ? getStatusColor(day.status) : (day.isHoliday ? '#c084fc' : getStatusColor(day.status));
                               
-                              // Build tooltip text
-                              let tooltipText = day.date.toLocaleDateString('th-TH',{weekday:'short',day:'numeric',month:'short',year:'2-digit'});
-                              if (day.isHoliday && day.holidayName) {
-                                tooltipText += ` - 🏖️ ${day.holidayName}`;
-                              } else {
-                                const statusLabel = day.status === 'present' ? 'มาเรียน' :
-                                                  day.status === 'leave' ? 'ลา' :
-                                                  day.status === 'sick' ? 'ป่วย' :
-                                                  day.status === 'absent' ? 'ขาดเรียน' : 'ไม่มีข้อมูล';
-                                tooltipText += ` - ${statusLabel}`;
-                                if (day.activity) {
-                                  tooltipText += `\n📚 ${day.activity}`;
-                                }
+                              // Build tooltip content (JSX)
+                              const dateLabel = day.date.toLocaleDateString('th-TH',{weekday:'short',day:'numeric',month:'short',year:'2-digit'});
+                              let statusLabel = '';
+                              
+                              if (day.hasReport) {
+                                // มี report - แสดง status
+                                statusLabel = day.status === 'present' ? 'มาเรียน' :
+                                              day.status === 'leave' ? 'ลา' :
+                                              day.status === 'sick' ? 'ป่วย' :
+                                              day.status === 'absent' ? 'ขาดเรียน' : 'ไม่มีข้อมูล';
+                              } else if (day.isHoliday && day.holidayName) {
+                                // วันหยุดที่ไม่มี report
+                                statusLabel = `🏖️ ${day.holidayName}`;
                               }
+                              
+                              const tooltipContent = (
+                                <div style={{display:'flex',flexDirection:'column',gap:4,alignItems:'center'}}>
+                                  <div>{dateLabel}{statusLabel ? ` - ${statusLabel}` : ''}</div>
+                                  {day.activity && (
+                                    <div style={{display:'flex',alignItems:'center',gap:4}}>
+                                      <BookIcon size={12} color="white" />
+                                      <span>{day.activity}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              );
 
                               return (
-                                <CustomTooltip key={dayIdxInWeek} text={tooltipText}>
+                                <CustomTooltip key={dayIdxInWeek} text={tooltipContent}>
                                   <div
                                     data-day-date={day.dateStr}
                                     onClick={() => {
-                                      // Don't allow clicking on holidays
-                                      if (!day.isHoliday && day.hasReport && day.dayIdx !== null) {
+                                      // อนุญาตให้คลิกได้ถ้ามี report (แม้จะเป็นวันหยุด)
+                                      if (day.hasReport && day.dayIdx !== null) {
                                         setDayIdx(day.dayIdx);
                                       }
                                     }}
@@ -1059,15 +944,15 @@ export default function LiffPage() {
                                       height: 10,
                                       borderRadius: 2,
                                       background: color,
-                                      opacity: day.isHoliday ? 0.8 : (day.hasReport ? 1.0 : 0.5),
+                                      opacity: day.hasReport ? 1.0 : (day.isHoliday ? 0.8 : 0.5),
                                       border: isSelected ? '2px solid #6366f1' : 'none',
-                                      cursor: day.isHoliday ? 'default' : (day.hasReport ? 'pointer' : 'default'),
+                                      cursor: day.hasReport ? 'pointer' : 'default',
                                       flexShrink: 0,
                                       transition: 'all .15s',
                                       boxSizing: 'border-box'
                                     }}
                                     onMouseEnter={e => {
-                                      if (!day.isHoliday && day.hasReport) {
+                                      if (day.hasReport) {
                                         e.currentTarget.style.transform = 'scale(1.3)';
                                       }
                                     }}

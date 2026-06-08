@@ -141,6 +141,16 @@ export async function POST(req: NextRequest) {
               conflict = true;
               existingId = existing.rows[0].id;
             }
+          } else if (table === 'child_excretion' && cols.includes('daily_id') && cols.includes('child_id') && cols.includes('time') && cols.includes('type') && cols.includes('action')) {
+            // Check for duplicate excretion entries
+            const existing = await client.query(
+              `SELECT id FROM child_excretion WHERE daily_id = $1 AND child_id = $2 AND time = $3 AND type = $4 AND action = $5 LIMIT 1`,
+              [row['daily_id'], row['child_id'], row['time'], row['type'], row['action']]
+            );
+            if (existing.rows.length > 0) {
+              conflict = true;
+              existingId = existing.rows[0].id;
+            }
           } else if (isEnrollment && cols.includes('child_id') && cols.includes('cohort_id') && cols.includes('start_date')) {
             const existing = await client.query(
               `SELECT id FROM enrollment WHERE child_id = $1 AND cohort_id = $2 AND start_date = $3 LIMIT 1`,

@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { line_user_id, role, status, display_name, picture_url } = body;
+    const { line_user_id, role, status, display_name, picture_url, can_select_cohort, default_cohort_id } = body;
     if (!role) return badRequest('role จำเป็น');
 
     // ถ้าไม่มี line_user_id → generate placeholder ที่ unique
@@ -46,10 +46,18 @@ export async function POST(req: NextRequest) {
     }
 
     const row = await queryOne(
-      `INSERT INTO app_user (id, line_user_id, role, status, display_name, picture_url)
-       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)
+      `INSERT INTO app_user (id, line_user_id, role, status, display_name, picture_url, can_select_cohort, default_cohort_id)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [finalLineId, role, status ?? 'active', display_name ?? null, picture_url ?? null]
+      [
+        finalLineId, 
+        role, 
+        status ?? 'active', 
+        display_name ?? null, 
+        picture_url ?? null,
+        can_select_cohort ?? true,
+        default_cohort_id ?? null
+      ]
     );
     return created(row);
   } catch (err) {

@@ -821,29 +821,46 @@ export default function ReportsPage() {
       const daily_id = form.daily_id || selected!.daily_id;
       const child_id = form.child_id || selected!.child_id;
       
-      // Delete all existing excretions (for edit mode)
+      // Handle excretions more intelligently to avoid duplicates
       if (modal === 'edit' && selected) {
-        const existingExcretions = selected.excretions ?? [];
-        await Promise.all(existingExcretions.map(ex => 
+        // Delete only excretions marked for deletion
+        const toDelete = excretions.filter(ex => ex._del && ex.id && !ex.id.startsWith('_n_'));
+        await Promise.all(toDelete.map(ex => 
           fetch(`/api/excretions/${ex.id}`, { method: 'DELETE' })
         ));
+        
+        // Create only new excretions (with _new flag)
+        const toCreate = excretions.filter(ex => ex._new && !ex._del);
+        await Promise.all(toCreate.map(ex => 
+          fetch('/api/excretions', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ 
+              daily_id, 
+              child_id, 
+              time: ex.time || null, 
+              type: ex.type, 
+              action: ex.action 
+            }) 
+          })
+        ));
+      } else {
+        // Add mode: create all visible excretions
+        const visibleExcretions = excretions.filter(ex => !ex._del);
+        await Promise.all(visibleExcretions.map(ex => 
+          fetch('/api/excretions', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ 
+              daily_id, 
+              child_id, 
+              time: ex.time || null, 
+              type: ex.type, 
+              action: ex.action 
+            }) 
+          })
+        ));
       }
-      
-      // Create all visible excretions
-      const visibleExcretions = excretions.filter(ex => !ex._del);
-      await Promise.all(visibleExcretions.map(ex => 
-        fetch('/api/excretions', { 
-          method: 'POST', 
-          headers: { 'Content-Type': 'application/json' }, 
-          body: JSON.stringify({ 
-            daily_id, 
-            child_id, 
-            time: ex.time || null, 
-            type: ex.type, 
-            action: ex.action 
-          }) 
-        })
-      ));
       
       if (scores.length > 0) {
         await Promise.all(scores.filter(s => s.score !== null).map(s => fetch('/api/behavior-scores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ daily_id, child_id, item_id: s.item_id, score: s.score, note: s.note || null }) })));

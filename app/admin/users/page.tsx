@@ -10,11 +10,25 @@ interface UserWithChildren extends AppUser {
   children?: Child[];
 }
 
-const EMPTY_FORM = { line_user_id: '', display_name: '', role: 'parent' as UserRole, status: 'active' as UserStatus };
+interface Cohort {
+  id: string;
+  name: string;
+  level: string;
+}
+
+const EMPTY_FORM = { 
+  line_user_id: '', 
+  display_name: '', 
+  role: 'parent' as UserRole, 
+  status: 'active' as UserStatus,
+  can_select_cohort: true,
+  default_cohort_id: null as string | null
+};
 
 export default function UsersPage() {
   const [data, setData]         = useState<UserWithChildren[]>([]);
   const [allChildren, setAllChildren] = useState<Child[]>([]);
+  const [cohorts, setCohorts]   = useState<Cohort[]>([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState<string | null>(null);
   const [search, setSearch]     = useState('');
@@ -48,6 +62,7 @@ export default function UsersPage() {
   // โหลดนักเรียนทั้งหมดสำหรับ dropdown ผูก
   useEffect(() => {
     fetch('/api/children').then(r => r.json()).then(j => setAllChildren(j.data ?? []));
+    fetch('/api/cohorts').then(r => r.json()).then(j => setCohorts(j.data ?? []));
   }, []);
 
   // ── open link modal ─────────────────────────────────────
@@ -77,11 +92,18 @@ export default function UsersPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const payload = {
+      const payload: any = {
         display_name: form.display_name || null,
         role: form.role, status: form.status,
         line_user_id: form.line_user_id || null,
       };
+      
+      // เพิ่ม cohort settings สำหรับ teacher
+      if (form.role === 'teacher') {
+        payload.can_select_cohort = form.can_select_cohort;
+        payload.default_cohort_id = form.default_cohort_id || null;
+      }
+      
       const roleChanged = modal === 'edit' && selected && selected.role !== form.role;
       
       modal === 'add'
@@ -180,7 +202,18 @@ export default function UsersPage() {
                 <Link2 size={13} /> ผูกลูก
               </button>
             )}
-            <button className="btn btn-ghost btn-sm" onClick={() => { setSelected(row); setForm({ line_user_id: row.line_user_id ?? '', display_name: row.display_name ?? '', role: row.role, status: row.status }); setModal('edit'); }}>
+            <button className="btn btn-ghost btn-sm" onClick={() => { 
+              setSelected(row); 
+              setForm({ 
+                line_user_id: row.line_user_id ?? '', 
+                display_name: row.display_name ?? '', 
+                role: row.role, 
+                status: row.status,
+                can_select_cohort: row.can_select_cohort ?? true,
+                default_cohort_id: row.default_cohort_id ?? null
+              }); 
+              setModal('edit'); 
+            }}>
               <Pencil size={13} />
             </button>
             <button className="btn btn-danger btn-sm" onClick={() => { setSelected(row); setModal('delete'); }}>
@@ -306,6 +339,68 @@ export default function UsersPage() {
               2. คลิก "ผูกลูก" เพื่อเชื่อมโยงกับนักเรียน<br/>
               3. แจ้งผู้ปกครองให้เปิด Mini App เพื่อผูก LINE ID
             </p>
+          </div>
+        )}
+
+        {/* ตั้งค่า Cohort สำหรับครู */}
+        {form.role === 'teacher' && (
+          <div style={{ marginTop: 16, padding: '14px 16px', background: '#F0EEFF', border: '1px solid #DDD6FE', borderRadius: 12 }}>
+            <h4 style={{ fontSize: 14, fontWeight: 700, color: '#5B21B6', margin: '0 0 12px' }}>
+              🏫 ตั้งค่าห้องเรียน (Teacher Mode)
+            </h4>
+            
+            <div className="form-group" style={{ marginBottom: 12 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={form.can_select_cohort}
+                  onChange={e => setForm(f => ({ ...f, can_select_cohort: e.target.checked }))}
+                  style={{ width: 18, height: 18, cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#1A1A2E' }}>
+                  อนุญาตให้เลือกห้องเรียนใน User Side
+                </span>
+              </label>
+              <p style={{ fontSize: 12, color: '#6B7280', marginTop: 4, marginLeft: 26, lineHeight: 1.5 }}>
+                {form.can_select_cohort 
+                  ? '✅ ครูสามารถเลือกห้องเรียนได้เองผ่าน dropdown'
+                  : '🔒 ครูจะถูกบังคับให้ใช้ห้องเรียนที่กำหนดด้านล่าง'
+                }
+              </p>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">
+                ห้องเรียน Default
+                {!form.can_select_cohort && <span style={{ color: '#E85C5C' }}> *</span>}
+              </label>
+              <select 
+                className="form-input" 
+                value={form.default_cohort_id || ''}
+                onChange={e => setForm(f => ({ ...f, default_cohort_id: e.target.value || null }))}
+              >
+                <option value="">-- เลือกห้องเรียน --</option>
+                {cohorts.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} {c.level ? `(${c.level})` : ''}
+                  </option>
+                ))}
+              </select>
+              <p style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>
+                {form.can_select_cohort
+                  ? 'ห้องที่จะถูกเลือกอัตโนมัติเมื่อเปิดครั้งแรก'
+                  : 'ห้องเรียนเดียวที่ครูสามารถเข้าถึงได้'
+                }
+              </p>
+            </div>
+
+            {!form.can_select_cohort && !form.default_cohort_id && (
+              <div style={{ padding: '8px 12px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8 }}>
+                <p style={{ fontSize: 11, color: '#991B1B', margin: 0 }}>
+                  ⚠️ กรุณาเลือกห้องเรียน Default เมื่อปิดการเลือกห้อง
+                </p>
+              </div>
+            )}
           </div>
         )}
       </Modal>

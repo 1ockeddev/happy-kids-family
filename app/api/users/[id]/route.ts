@@ -19,7 +19,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
     const body = await req.json();
-    const { display_name, role, status, line_user_id } = body;
+    const { display_name, role, status, line_user_id, can_select_cohort, default_cohort_id } = body;
 
     // ถ้าส่ง line_user_id มา → ตรวจซ้ำ (ยกเว้น user ตัวเอง)
     if (line_user_id) {
@@ -35,9 +35,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         display_name = COALESCE($1, display_name),
         role         = COALESCE($2::user_role, role),
         status       = COALESCE($3::user_status, status),
-        line_user_id = CASE WHEN $4::text IS NULL THEN line_user_id ELSE $4 END
-       WHERE id = $5 RETURNING *`,
-      [display_name ?? null, role ?? null, status ?? null, line_user_id ?? null, id]
+        line_user_id = CASE WHEN $4::text IS NULL THEN line_user_id ELSE $4 END,
+        can_select_cohort = COALESCE($5, can_select_cohort),
+        default_cohort_id = CASE WHEN $6 = 'null' THEN NULL ELSE COALESCE($6::uuid, default_cohort_id) END
+       WHERE id = $7 RETURNING *`,
+      [display_name ?? null, role ?? null, status ?? null, line_user_id ?? null, can_select_cohort ?? null, default_cohort_id ?? 'null', id]
     );
     if (!row) return notFound('ไม่พบผู้ใช้');
     return ok(row);

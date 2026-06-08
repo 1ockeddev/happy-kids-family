@@ -13,6 +13,7 @@ interface CrudTableProps<T> {
   searchValue?: string; onSearchChange?: (v: string) => void; searchPlaceholder?: string;
   actions?: (row: T) => ReactNode;
   extraHeaderActions?: ReactNode;
+  customFilters?: ReactNode; // New: custom filter components
 }
 
 export default function CrudTable<T extends { id: string }>({
@@ -22,6 +23,7 @@ export default function CrudTable<T extends { id: string }>({
   searchValue: externalSearchValue, onSearchChange: externalOnSearchChange, searchPlaceholder = 'ค้นหา...',
   actions,
   extraHeaderActions,
+  customFilters, // New
 }: CrudTableProps<T>) {
   // Internal search state (used when no external search props provided)
   const [internalSearchValue, setInternalSearchValue] = useState('');
@@ -113,11 +115,14 @@ export default function CrudTable<T extends { id: string }>({
 
       {/* ── Body ── */}
       <div className="page-body">
-        {/* Search - Always show (not conditional on data.length) */}
-        <div style={{ position: 'relative', marginBottom: 12 }}>
-          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} />
-          <input type="text" className="form-input" placeholder={searchPlaceholder} value={searchValue}
-            onChange={e => onSearchChange(e.target.value)} style={{ paddingLeft: 36 }} />
+        {/* Search & Filters */}
+        <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+            <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} />
+            <input type="text" className="form-input" placeholder={searchPlaceholder} value={searchValue}
+              onChange={e => onSearchChange(e.target.value)} style={{ paddingLeft: 36, height: 40 }} />
+          </div>
+          {customFilters && customFilters}
         </div>
 
         {/* Error */}

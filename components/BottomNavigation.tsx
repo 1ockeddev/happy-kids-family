@@ -1,8 +1,8 @@
 'use client';
-import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 export default function BottomNavigation() {
-  const router = useRouter();
   const pathname = usePathname();
 
   const navItems = [
@@ -79,18 +79,16 @@ export default function BottomNavigation() {
       {navItems.map((item) => {
         const isActive = pathname === item.path;
         return (
-          <button
+          <Link
             key={item.path}
-            onClick={() => router.push(item.path)}
+            href={item.path}
             style={{
               flex: 1,
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               gap: 2,
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
+              textDecoration: 'none',
               padding: '6px 4px',
               transition: 'all 0.2s',
               color: isActive ? '#6366f1' : '#94a3b8',
@@ -116,7 +114,7 @@ export default function BottomNavigation() {
                 borderRadius: '0 0 3px 3px'
               }} />
             )}
-          </button>
+          </Link>
         );
       })}
     </nav>

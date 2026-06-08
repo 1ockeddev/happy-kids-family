@@ -1,15 +1,10 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import ReactDOM from 'react-dom';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useLiff } from '@/lib/useLiff';
-import { Child, AppUser, MilkStatus, DailyReport } from '@/types';
+import UserLayout from '@/components/UserLayout';
+import { useUserApp } from '@/components/UserAppProvider';
 import LoadingWrapper from '@/components/loading/LoadingWrapper';
 import BehaviorCardSkeleton from '@/components/loading/skeletons/BehaviorCardSkeleton';
-import AppHeader from '@/components/AppHeader';
-import BottomNavigation from '@/components/BottomNavigation';
-
-const amtL: Record<MilkStatus,string> = { all:'ทานหมด', some:'ทานครึ่งเดียว', not_must:'ไม่จำเป็น', skip:'ไม่ทาน' };
 
 interface BehaviorSummaryItem {
   item_id:string;
@@ -21,156 +16,98 @@ interface BehaviorSummaryItem {
   days_recorded:number;
 }
 
-interface DayEntry { date:string; daily_id:string; report_id:string|null }
+interface DayEntry { date:string; daily_id:string; report_id:string|null; activity?:string }
 
-const parseLocalDate = (str: string) => {
-  const [y, m, d] = str.split('-').map(Number);
-  return new Date(y, m - 1, d);
-};
+/* ── Face icons ─────────────────────────────*/
+const FaceHappy = ({size=22,color='#10b981'}:{size?:number;color?:string}) => (
+  <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
+    <circle cx="50" cy="50" r="42" stroke={color} strokeWidth="4"/>
+    <path d="M28 38 Q34 28 40 38" stroke={color} strokeWidth="4" strokeLinecap="round"/>
+    <path d="M60 38 Q66 28 72 38" stroke={color} strokeWidth="4" strokeLinecap="round"/>
+    <path d="M28 58 Q50 82 72 58" stroke={color} strokeWidth="5" strokeLinecap="round"/>
+  </svg>
+);
+const FaceSmile = ({size=22,color='#facc15'}:{size?:number;color?:string}) => (
+  <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
+    <circle cx="50" cy="50" r="42" stroke={color} strokeWidth="4"/>
+    <circle cx="35" cy="38" r="4" fill={color}/><circle cx="65" cy="38" r="4" fill={color}/>
+    <path d="M35 58 Q50 72 65 58" stroke={color} strokeWidth="5" strokeLinecap="round"/>
+  </svg>
+);
+const FaceNeutral = ({size=22,color='#f97316'}:{size?:number;color?:string}) => (
+  <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
+    <circle cx="50" cy="50" r="42" stroke={color} strokeWidth="4"/>
+    <circle cx="35" cy="38" r="4" fill={color}/><circle cx="65" cy="38" r="4" fill={color}/>
+    <line x1="35" y1="62" x2="65" y2="62" stroke={color} strokeWidth="5" strokeLinecap="round"/>
+  </svg>
+);
+
+/* ── Icon components ─────────────────────────────*/
+const CalendarIcon = ({size=16,color='#64748b'}:{size?:number;color?:string}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+    <line x1="16" y1="2" x2="16" y2="6"/>
+    <line x1="8" y1="2" x2="8" y2="6"/>
+    <line x1="3" y1="10" x2="21" y2="10"/>
+  </svg>
+);
+
+const BookIcon = ({size=16,color='#6366f1'}:{size?:number;color?:string}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+  </svg>
+);
 
 export default function SummaryPage() {
-  const liff = useLiff();
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
-  const [parents,  setParents]  = useState<AppUser[]>([]);
-  const [children, setChildren] = useState<Child[]>([]);
-  const [parentId, setParentId] = useState<string|null>(null);
-  const [childId,  setChildId]  = useState<string|null>(null);
-  const hasRestoredParent = React.useRef(false);
-  const hasInitialized = React.useRef(false);
-  const [childLoading,  setChildLoading]  = useState(false);
+  const { childId, enrollmentPeriod } = useUserApp();
   const [dataLoading, setDataLoading] = useState(false);
   const [showShimmer, setShowShimmer] = useState(false);
-  const [notRegistered, setNotRegistered] = useState(false);
-  const [enrollmentPeriod, setEnrollmentPeriod] = useState<{start:string;end:string|null}|null>(null);
   const [behaviorSummary, setBehaviorSummary] = useState<BehaviorSummaryItem[]>([]);
   const [dayEntries,  setDayEntries]  = useState<DayEntry[]>([]);
-  const [foodSummary, setFoodSummary] = useState<{
-    food: { food_amount: MilkStatus; count: number }[];
-    fruit: { fruit_amount: MilkStatus; count: number }[];
-  }>({ food: [], fruit: [] });
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set()); // Track expanded items
+  const [faceFilters, setFaceFilters] = useState<Record<string, 'all' | 'happy' | 'smile' | 'neutral'>>({}); // Track face filter per item
 
-  /* ── LIFF ready ── */
-  useEffect(() => {
-    if (!liff.ready) return;
-    
-    if (!liff.profile?.userId) {
-      fetch('/api/report/children').then(r=>r.json()).then(j=>{
-        setChildren(j.data??[]);
-      });
-      return;
-    }
-    
-    setChildLoading(true);
-    fetch('/api/auth/line-register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({line_user_id:liff.profile.userId,display_name:liff.profile.displayName,picture_url:liff.profile.pictureUrl??null})})
-    .then(r=>r.json())
-    .then(async regJson => {
-      if (regJson.status === 403) {
-        setNotRegistered(true);
-        return;
-      }
-      const user = regJson.data;
-      setCurrentUser(user);
-      
-      if (user?.role === 'teacher') {
-        const childRes = await fetch('/api/children');
-        const childJson = await childRes.json();
-        setChildren(childJson.data ?? []);
-      } else {
-        const childRes = await fetch(`/api/report/line-children?line_user_id=${liff.profile!.userId}`);
-        const childJson = await childRes.json();
-        const kids:Child[] = childJson.data??[];
-        setChildren(kids);
-        if (kids.length===0) setNotRegistered(true);
-      }
-    })
-    .catch(()=>setNotRegistered(true))
-    .finally(()=>setChildLoading(false));
-  },[liff.ready,liff.profile?.userId]);
-
+  /* ── child → days with activities ── */
   useEffect(()=>{
-    if (children.length > 0 && !childId) {
-      const savedChildId = localStorage.getItem('selectedChildId');
-      if (savedChildId && children.find(c => c.id === savedChildId)) {
-        setChildId(savedChildId);
-      } else {
-        setChildId(children[0].id);
-      }
-    }
-  },[children, childId]);
-
-  useEffect(() => {
-    if (childId) {
-      localStorage.setItem('selectedChildId', childId);
-    }
-  }, [childId]);
-
-  /* ── child → parents ── */
-  useEffect(()=>{
-    if (currentUser?.role === 'teacher' && !childId) {
-      setParents([]);
-      setParentId(null);
-      return;
-    }
-    
-    if (!childId) { 
-      setParents([]); 
-      setParentId(null); 
-      hasRestoredParent.current = false;
-      return; 
-    }
-    let cancelled = false;
-    fetch(`/api/report/child-parents?child_id=${childId}`).then(r=>r.json())
-      .then(j=>{
-        if (!cancelled) {
-          const parentsList = j.data ?? [];
-          setParents(parentsList);
-          
-          const savedParentId = localStorage.getItem('selectedParentId');
-          if (savedParentId && parentsList.find((p: AppUser) => p.id === savedParentId)) {
-            setParentId(savedParentId);
-          }
-          
-          hasInitialized.current = true;
-        }
-      });
-    return () => { cancelled = true; };
-  },[childId, currentUser]);
-
-  useEffect(() => {
-    if (!hasInitialized.current) return;
-    
-    if (parentId) {
-      localStorage.setItem('selectedParentId', parentId);
-    } else {
-      localStorage.removeItem('selectedParentId');
-    }
-  }, [parentId]);
-
-  /* ── child → days ── */
-  useEffect(()=>{
-    if (!childId) return;
+    if (!childId || !enrollmentPeriod) return;
     let cancelled = false;
     
+    // Load days
     fetch(`/api/report/dates?child_id=${childId}`).then(r=>r.json())
-      .then(j=>{
-        if (!cancelled) setDayEntries(j.data??[]);
-      });
-    
-    fetch(`/api/report/enrollment-period?child_id=${childId}`).then(r=>r.json())
-      .then(j=>{
-        if (!cancelled && j.data?.start_date) {
-          setEnrollmentPeriod({
-            start: j.data.start_date,
-            end: j.data.end_date
+      .then(datesJson=>{
+        if (cancelled) return;
+        const dates = datesJson.data ?? [];
+        
+        // Load activities
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const endDateStr = enrollmentPeriod.end || todayStr;
+        
+        fetch(`/api/report/activities?child_id=${childId}&start_date=${enrollmentPeriod.start}&end_date=${endDateStr}`)
+          .then(r=>r.json())
+          .then(actJson=>{
+            if (cancelled) return;
+            const activities = actJson.data ?? [];
+            
+            // Merge activities into dates
+            const datesWithActivity = dates.map((entry: DayEntry) => {
+              const activity = activities.find((a: any) => a.date === entry.date);
+              return {
+                ...entry,
+                activity: activity?.activity || null
+              };
+            });
+            
+            setDayEntries(datesWithActivity);
           });
-        }
       });
     
     return () => { cancelled = true; };
-  },[childId]);
+  },[childId, enrollmentPeriod]);
 
-  /* ── Load behavior and food summary ── */
+  /* ── Load behavior summary ── */
   useEffect(() => {
     if (!childId || !enrollmentPeriod) return;
     
@@ -208,78 +145,39 @@ export default function SummaryPage() {
         if (!cancelled) setDataLoading(false);
       });
     
-    fetch(`/api/report/food-summary?child_id=${childId}&date_from=${dateFrom}&date_to=${dateTo}`)
-      .then(r=>r.json())
-      .then(j=>{
-        if (!cancelled) {
-          setFoodSummary({
-            food: j.data?.food || [],
-            fruit: j.data?.fruit || []
-          });
-        }
-      });
-    
     return () => { cancelled = true; };
   }, [childId, enrollmentPeriod]);
 
-  const selectedChild = children.find(c=>c.id===childId);
+  const toggleItem = (itemId: string) => {
+    setExpandedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
+  };
 
-  if (!liff.ready) return (
-    <div style={{minHeight:'100dvh',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:12,background:'#f8fafc'}}>
-      <div style={{width:40,height:40,border:'3px solid #6366f1',borderTopColor:'transparent',borderRadius:'50%',animation:'spin .8s linear infinite'}} />
-      <style>{`@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}`}</style>
-    </div>
-  );
-
-  if (notRegistered&&!childLoading) {
-    return (
-      <div style={{minHeight:'100dvh',display:'flex',alignItems:'center',justifyContent:'center',padding:24,background:'#f8fafc'}}>
-        <div style={{background:'white',borderRadius:20,padding:28,textAlign:'center',maxWidth:340,border:'1px solid #e2e8f0',boxShadow:'0 4px 12px rgba(0,0,0,0.05)'}}>
-          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{margin:'0 auto 12px'}}>
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-            <polyline points="9 22 9 12 15 12 15 22"/>
-          </svg>
-          <h2 style={{fontWeight:800,color:'#0f172a',marginBottom:8}}>ยังไม่มีข้อมูล</h2>
-          <p style={{fontSize:14,color:'#64748b',lineHeight:1.6}}>
-            LINE บัญชีนี้ยังไม่ได้ผูกกับนักเรียน
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const setFaceFilter = (itemId: string, filter: 'all' | 'happy' | 'smile' | 'neutral') => {
+    setFaceFilters(prev => ({
+      ...prev,
+      [itemId]: filter
+    }));
+  };
 
   return (
-    <div style={{background:'#f8fafc',minHeight:'100dvh',display:'flex',justifyContent:'center'}}>
-      <style>{`
-        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-        .avatar-row{display:flex;gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}
-        .avatar-row::-webkit-scrollbar{display:none}
-      `}</style>
-
-      <div style={{width:'100%',maxWidth:480,background:'white',minHeight:'100dvh',paddingBottom:'calc(88px + env(safe-area-inset-bottom,0px))'}}>
-
-        {/* ─── HEADER ─────────────────────────────── */}
-        <AppHeader
-          parents={parents}
-          children={children}
-          parentId={parentId}
-          childId={childId}
-          childLoading={childLoading}
-          currentUser={currentUser}
-          onParentSelect={setParentId}
-          onChildSelect={setChildId}
-          subtitle={enrollmentPeriod ? `${parseLocalDate(enrollmentPeriod.start).toLocaleDateString('th-TH')} - ${enrollmentPeriod.end ? parseLocalDate(enrollmentPeriod.end).toLocaleDateString('th-TH') : 'ปัจจุบัน'}` : undefined}
-        />
-
-        {/* ─── BEHAVIOR SUMMARY ─────────────────────────────── */}
-        {!childLoading && childId && (
-          <LoadingWrapper
-            isLoading={dataLoading}
-            hasData={behaviorSummary.length > 0}
-            showShimmer={showShimmer}
-            showEmptyState={!!childId && !!enrollmentPeriod}
-            shimmerComponent={<BehaviorCardSkeleton />}
-          >
+    <UserLayout>
+      {/* ─── BEHAVIOR SUMMARY ─────────────────────────────── */}
+      {childId && (
+        <LoadingWrapper
+          isLoading={dataLoading}
+          hasData={behaviorSummary.length > 0}
+          showShimmer={showShimmer}
+          showEmptyState={!!childId && !!enrollmentPeriod}
+          shimmerComponent={<BehaviorCardSkeleton />}
+        >
             <div style={{padding:'16px',background:'white',borderBottom:'1px solid #f1f5f9'}}>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
               <div style={{display:'flex',flexDirection:'column',gap:2}}>
@@ -308,46 +206,246 @@ export default function SummaryPage() {
                       {categoryName}
                     </div>
                     {items.map((item) => {
-                      const percentage = (item.avg_score / item.max_score) * 100;
-                      const color = percentage >= 80 ? '#10b981' : percentage >= 60 ? '#f59e0b' : '#ef4444';
+                      const isExpanded = expandedItems.has(item.item_id);
+                      
+                      // นับจำนวนแต่ละ Face
+                      const faceCount = {
+                        happy: 0,
+                        smile: 0,
+                        neutral: 0
+                      };
+                      
+                      item.daily_scores.forEach(day => {
+                        const percent = (day.score / item.max_score) * 100;
+                        if (percent >= 80) faceCount.happy++;
+                        else if (percent >= 60) faceCount.smile++;
+                        else faceCount.neutral++;
+                      });
                       
                       return (
-                        <div key={item.item_id} style={{display:'flex',flexDirection:'column',gap:6,paddingLeft:8,background:'#fafafa',padding:12,borderRadius:10}}>
-                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                            <span style={{fontSize:'0.75rem',fontWeight:600,color:'#475569'}}>{item.name_th}</span>
+                        <div key={item.item_id} style={{display:'flex',flexDirection:'column',gap:0,background:'white',borderRadius:12,overflow:'hidden',border:'1px solid #e2e8f0'}}>
+                          {/* Header - คลิกเพื่อขยาย/ยุบ */}
+                          <div 
+                            onClick={() => toggleItem(item.item_id)}
+                            style={{
+                              display:'flex',
+                              justifyContent:'space-between',
+                              alignItems:'center',
+                              padding:'14px 16px',
+                              cursor:'pointer',
+                              transition:'all 0.15s',
+                              background: isExpanded ? '#f8fafc' : 'white'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                            onMouseLeave={e => e.currentTarget.style.background = isExpanded ? '#f8fafc' : 'white'}
+                          >
+                            <div style={{display:'flex',alignItems:'center',gap:12,flex:1}}>
+                              <span style={{
+                                fontSize:'0.75rem',
+                                transition:'transform 0.2s',
+                                transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                                display:'inline-block',
+                                color:'#94a3b8'
+                              }}>▶</span>
+                              <span style={{fontSize:'0.9rem',fontWeight:600,color:'#1e293b',flex:1}}>{item.name_th}</span>
+                            </div>
+                            <div style={{display:'flex',alignItems:'center',gap:10}}>
+                              {/* สรุปจำนวนแต่ละ Face - คลิกเพื่อกรอง */}
+                              <div style={{display:'flex',alignItems:'center',gap:6}}>
+                                {faceCount.happy > 0 && (
+                                  <div 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const currentFilter = faceFilters[item.item_id] || 'all';
+                                      setFaceFilter(item.item_id, currentFilter === 'happy' ? 'all' : 'happy');
+                                      if (!isExpanded) toggleItem(item.item_id);
+                                    }}
+                                    style={{
+                                      display:'flex',
+                                      alignItems:'center',
+                                      gap:3,
+                                      background: (faceFilters[item.item_id] === 'happy') ? '#10b981' : '#d1fae5',
+                                      padding:'4px 8px',
+                                      borderRadius:6,
+                                      cursor:'pointer',
+                                      transition:'all 0.15s',
+                                      border: (faceFilters[item.item_id] === 'happy') ? '2px solid #10b981' : '2px solid transparent'
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                                  >
+                                    <FaceHappy size={16} color={(faceFilters[item.item_id] === 'happy') ? 'white' : '#10b981'} />
+                                    <span style={{fontSize:'0.7rem',fontWeight:700,color:(faceFilters[item.item_id] === 'happy') ? 'white' : '#10b981'}}>{faceCount.happy}</span>
+                                  </div>
+                                )}
+                                {faceCount.smile > 0 && (
+                                  <div 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const currentFilter = faceFilters[item.item_id] || 'all';
+                                      setFaceFilter(item.item_id, currentFilter === 'smile' ? 'all' : 'smile');
+                                      if (!isExpanded) toggleItem(item.item_id);
+                                    }}
+                                    style={{
+                                      display:'flex',
+                                      alignItems:'center',
+                                      gap:3,
+                                      background: (faceFilters[item.item_id] === 'smile') ? '#facc15' : '#fef3c7',
+                                      padding:'4px 8px',
+                                      borderRadius:6,
+                                      cursor:'pointer',
+                                      transition:'all 0.15s',
+                                      border: (faceFilters[item.item_id] === 'smile') ? '2px solid #facc15' : '2px solid transparent'
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                                  >
+                                    <FaceSmile size={16} color={(faceFilters[item.item_id] === 'smile') ? 'white' : '#facc15'} />
+                                    <span style={{fontSize:'0.7rem',fontWeight:700,color:(faceFilters[item.item_id] === 'smile') ? 'white' : '#ca8a04'}}>{faceCount.smile}</span>
+                                  </div>
+                                )}
+                                {faceCount.neutral > 0 && (
+                                  <div 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const currentFilter = faceFilters[item.item_id] || 'all';
+                                      setFaceFilter(item.item_id, currentFilter === 'neutral' ? 'all' : 'neutral');
+                                      if (!isExpanded) toggleItem(item.item_id);
+                                    }}
+                                    style={{
+                                      display:'flex',
+                                      alignItems:'center',
+                                      gap:3,
+                                      background: (faceFilters[item.item_id] === 'neutral') ? '#f97316' : '#fed7aa',
+                                      padding:'4px 8px',
+                                      borderRadius:6,
+                                      cursor:'pointer',
+                                      transition:'all 0.15s',
+                                      border: (faceFilters[item.item_id] === 'neutral') ? '2px solid #f97316' : '2px solid transparent'
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                                  >
+                                    <FaceNeutral size={16} color={(faceFilters[item.item_id] === 'neutral') ? 'white' : '#f97316'} />
+                                    <span style={{fontSize:'0.7rem',fontWeight:700,color:(faceFilters[item.item_id] === 'neutral') ? 'white' : '#c2410c'}}>{faceCount.neutral}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
                           
-                          <div style={{display:'flex',alignItems:'flex-end',gap:1,height:24}}>
-                            {item.daily_scores.slice(-14).map((day, idx) => {
-                              const barHeight = (day.score / item.max_score) * 100;
-                              const barColor = (day.score / item.max_score) >= 0.8 ? '#10b981' : 
-                                             (day.score / item.max_score) >= 0.6 ? '#f59e0b' : '#ef4444';
-                              return (
-                                <div
-                                  key={idx}
-                                  title={`${day.date}: ${day.score}/${item.max_score}`}
-                                  onClick={() => {
-                                    const foundIdx = dayEntries.findIndex(entry => entry.date === day.date);
-                                    if (foundIdx >= 0) {
-                                      router.push('/');
-                                    }
-                                  }}
-                                  style={{
-                                    flex: 1,
-                                    height: `${barHeight}%`,
-                                    minHeight: 2,
-                                    background: barColor,
-                                    borderRadius: 1,
-                                    opacity: 0.7,
-                                    transition: 'opacity 0.2s',
-                                    cursor: 'pointer'
-                                  }}
-                                  onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                                  onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}
-                                />
-                              );
-                            })}
-                          </div>
+                          {/* รายละเอียด - แสดงเมื่อขยาย */}
+                          {isExpanded && (
+                            <div style={{display:'flex',flexDirection:'column',gap:4,padding:'0 16px 14px',background:'#f8fafc'}}>
+                              <div style={{height:1,background:'#e2e8f0',margin:'0 0 8px'}} />
+                              {(() => {
+                                // Apply filter
+                                const currentFilter = faceFilters[item.item_id] || 'all';
+                                const filteredDays = item.daily_scores.filter(day => {
+                                  if (currentFilter === 'all') return true;
+                                  const percent = (day.score / item.max_score) * 100;
+                                  if (currentFilter === 'happy') return percent >= 80;
+                                  if (currentFilter === 'smile') return percent >= 60 && percent < 80;
+                                  if (currentFilter === 'neutral') return percent < 60;
+                                  return true;
+                                });
+                                
+                                return filteredDays.length > 0 ? (
+                                  filteredDays.map((day, idx) => {
+                                  const dayScorePercent = (day.score / item.max_score) * 100;
+                                  
+                                  // Face icon สำหรับแต่ละวัน
+                                  let dayFaceIcon;
+                                  if (dayScorePercent >= 80) {
+                                    dayFaceIcon = <FaceHappy size={20} color="#10b981" />;
+                                  } else if (dayScorePercent >= 60) {
+                                    dayFaceIcon = <FaceSmile size={20} color="#facc15" />;
+                                  } else {
+                                    dayFaceIcon = <FaceNeutral size={20} color="#f97316" />;
+                                  }
+                                  
+                                  // Format date
+                                  const dateObj = new Date(day.date + 'T00:00:00');
+                                  const thaiDate = dateObj.toLocaleDateString('th-TH', { 
+                                    day: 'numeric', 
+                                    month: 'short', 
+                                    year: 'numeric' 
+                                  });
+                                  
+                                  // หา activity ของวันนั้น
+                                  const dayEntry = dayEntries.find(e => e.date === day.date);
+                                  const activity = dayEntry?.activity;
+                                  
+                                  return (
+                                    <div
+                                      key={idx}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const foundIdx = dayEntries.findIndex(entry => entry.date === day.date);
+                                        if (foundIdx >= 0) {
+                                          router.push('/');
+                                        }
+                                      }}
+                                      style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: 6,
+                                        padding: '10px 14px',
+                                        background: 'white',
+                                        borderRadius: 10,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s',
+                                        border: '1px solid #e2e8f0'
+                                      }}
+                                      onMouseEnter={e => {
+                                        e.currentTarget.style.transform = 'translateX(3px)';
+                                        e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.08)';
+                                        e.currentTarget.style.borderColor = '#cbd5e1';
+                                      }}
+                                      onMouseLeave={e => {
+                                        e.currentTarget.style.transform = 'translateX(0)';
+                                        e.currentTarget.style.boxShadow = 'none';
+                                        e.currentTarget.style.borderColor = '#e2e8f0';
+                                      }}
+                                    >
+                                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                                        <div style={{display:'flex',alignItems:'center',gap:6}}>
+                                          <CalendarIcon size={14} color="#94a3b8" />
+                                          <span style={{fontSize:'0.8rem',color:'#64748b',fontWeight:500}}>
+                                            {thaiDate}
+                                          </span>
+                                        </div>
+                                        <div style={{display:'flex',alignItems:'center',gap:8}}>
+                                          {dayFaceIcon}
+                                        </div>
+                                      </div>
+                                      {/* แสดงกิจกรรม */}
+                                      {activity && (
+                                        <div style={{
+                                          fontSize:'0.75rem',
+                                          color:'#6366f1',
+                                          background:'#f0f9ff',
+                                          padding:'6px 10px',
+                                          borderRadius:6,
+                                          display:'flex',
+                                          alignItems:'center',
+                                          gap:6
+                                        }}>
+                                          <BookIcon size={14} color="#6366f1" />
+                                          <span>{activity}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })
+                                ) : (
+                                  <div style={{padding:'12px',textAlign:'center',color:'#94a3b8',fontSize:'0.75rem',background:'white',borderRadius:8}}>
+                                    {currentFilter === 'all' ? 'ยังไม่มีคะแนน' : `ไม่มีวันที่ตรงกับเงื่อนไข`}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -358,10 +456,6 @@ export default function SummaryPage() {
           </div>
           </LoadingWrapper>
         )}
-
-        {/* ─── BOTTOM NAVIGATION ─────────────────────────────── */}
-        <BottomNavigation />
-      </div>
-    </div>
-  );
+      </UserLayout>
+    );
 }

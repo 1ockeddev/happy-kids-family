@@ -7,6 +7,7 @@ import {
 } from '@/types';
 import CrudTable from '@/components/admin/CrudTable';
 import Modal from '@/components/ui/Modal';
+import AutocompleteInput from '@/components/ui/AutocompleteInput';
 import { Pencil, Trash2, Plus, X, MessageSquare, FileText } from 'lucide-react';
 import ReportModalContent from '@/components/admin/ReportModalContent';
 
@@ -169,10 +170,15 @@ export default function DailyPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [cohortFilter, setCohortFilter] = useState<string>(''); // New: cohort filter
   const [modal, setModal] = useState<'add' | 'edit' | 'delete' | 'add-report' | null>(null);
   const [selected, setSelected] = useState<Daily | null>(null);
   const [form, setForm] = useState({ cohort_id: '', date: '', activity: '', food: '', fruit: '', note: '' });
   const [saving, setSaving] = useState(false);
+  
+  // Autocomplete suggestions
+  const [foodSuggestions, setFoodSuggestions] = useState<string[]>([]);
+  const [fruitSuggestions, setFruitSuggestions] = useState<string[]>([]);
 
   // Report-related states
   const [reportForm, setReportForm] = useState(EMPTY_REPORT_FORM);
@@ -188,12 +194,18 @@ export default function DailyPage() {
     setLoading(true); setError(null);
     try {
       const dailyData = await dailyApi.list(search ? { search } : {}) as Daily[];
-      setData(dailyData);
+      
+      // Filter by cohort if selected
+      const filteredData = cohortFilter 
+        ? dailyData.filter(d => d.cohort_id === cohortFilter)
+        : dailyData;
+      
+      setData(filteredData);
       
       // Load report counts for each daily record
       const counts: Record<string, number> = {};
       await Promise.all(
-        dailyData.map(async (d) => {
+        filteredData.map(async (d) => {
           try {
             const res = await fetch(`/api/daily-reports?daily_id=${d.id}`);
             const json = await res.json();
@@ -204,10 +216,20 @@ export default function DailyPage() {
         })
       );
       setReportCounts(counts);
+      
+      // Collect unique food and fruit suggestions from existing data
+      const foods = new Set<string>();
+      const fruits = new Set<string>();
+      dailyData.forEach(d => {
+        if (d.food) foods.add(d.food);
+        if (d.fruit) fruits.add(d.fruit);
+      });
+      setFoodSuggestions(Array.from(foods).sort());
+      setFruitSuggestions(Array.from(fruits).sort());
     }
     catch (e) { setError(e instanceof Error ? e.message : 'เกิดข้อผิดพลาด'); }
     finally { setLoading(false); }
-  }, [search]);
+  }, [search, cohortFilter]);
 
   useEffect(() => {
     cohortsApi.list().then(r => setCohorts(r as Cohort[])).catch(() => {});
@@ -669,7 +691,25 @@ export default function DailyPage() {
           setExcretions([]);
           setModal('add');
         }}
-        addLabel="เพิ่มบันทึก" searchValue={search} onSearchChange={setSearch} searchPlaceholder="ค้นหา..."
+        addLabel="เพิ่มบันทึก" 
+        searchValue={search} 
+        onSearchChange={setSearch} 
+        searchPlaceholder="ค้นหา..."
+        customFilters={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <select 
+              className="form-input" 
+              value={cohortFilter} 
+              onChange={e => setCohortFilter(e.target.value)}
+              style={{ width: 200, height: 40 }}
+            >
+              <option value="">ทุกห้องเรียน</option>
+              {cohorts.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+        }
         actions={(row) => (
           <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
             <button className="btn btn-primary btn-sm" onClick={() => openAddReport(row)}>
@@ -707,8 +747,24 @@ export default function DailyPage() {
             </div>
             <div className="form-group"><label className="form-label">กิจกรรมวันนี้</label><input className="form-input" value={form.activity} onChange={e => setForm({ ...form, activity: e.target.value })} /></div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div className="form-group"><label className="form-label">อาหารกลางวัน</label><input className="form-input" value={form.food} onChange={e => setForm({ ...form, food: e.target.value })} /></div>
-              <div className="form-group"><label className="form-label">ผลไม้</label><input className="form-input" value={form.fruit} onChange={e => setForm({ ...form, fruit: e.target.value })} /></div>
+              <div className="form-group">
+                <label className="form-label">อาหารกลางวัน</label>
+                <AutocompleteInput 
+                  value={form.food} 
+                  onChange={v => setForm({ ...form, food: v })}
+                  suggestions={foodSuggestions}
+                  placeholder="พิมพ์เพื่อค้นหาหรือเพิ่มใหม่..."
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">ผลไม้</label>
+                <AutocompleteInput 
+                  value={form.fruit} 
+                  onChange={v => setForm({ ...form, fruit: v })}
+                  suggestions={fruitSuggestions}
+                  placeholder="พิมพ์เพื่อค้นหาหรือเพิ่มใหม่..."
+                />
+              </div>
             </div>
             <div className="form-group"><label className="form-label">หมายเหตุ</label><textarea className="form-input" rows={2} value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} style={{ resize: 'vertical' }} /></div>
           </div>
@@ -731,7 +787,7 @@ export default function DailyPage() {
                 }}
                 style={{ width: '100%' }}
               >
-                <Plus size={14} /> {showReportInModal ? 'ซ่อนส่วน Report' : 'เพิ่ม Report สำหรับนักเรียน 1 คน'}
+                <Plus size={14} /> {showReportInModal ? 'ซ่อนส่วน Report' : 'เพิ่ม Report สำหรับหลายคน (แยกกันอิสระ)'}
               </button>
             </div>
           )}
@@ -739,94 +795,153 @@ export default function DailyPage() {
           {/* Report Section */}
           {showReportInModal && form.cohort_id && (
             <div style={{ borderTop: '2px solid #E5E7EB', paddingTop: '16px' }}>
-              {/* Student Selection - Add Multiple */}
+              {/* Progress indicator */}
+              {childrenReports.length > 0 && (
+                <div style={{ background: '#F0EEFF', borderRadius: 8, padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: '#6C5CE7', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+                      📋 ความคืบหน้า
+                    </p>
+                    <p style={{ fontSize: 13, color: '#6B7280', margin: 0 }}>
+                      กำลังบันทึก: <strong>{activeChildIndex + 1}</strong> / {childrenReports.length} คน
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {childrenReports.map((cr, index) => {
+                      const child = childrenForCohort.find(c => c.id === cr.child_id);
+                      const displayName = child?.nickname_en || child?.nickname_th || child?.name_en || child?.name_th || '?';
+                      const isActive = activeChildIndex === index;
+                      const isPast = index < activeChildIndex;
+                      return (
+                        <div
+                          key={cr.child_id}
+                          title={displayName}
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: '50%',
+                            background: isActive ? '#6C5CE7' : isPast ? '#10B981' : '#E5E7EB',
+                            color: 'white',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            transition: 'all .2s',
+                            border: isActive ? '2px solid #4F46E5' : '2px solid transparent'
+                          }}
+                          onClick={() => setActiveChildIndex(index)}
+                        >
+                          {isPast ? '✓' : index + 1}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Student Selection */}
               <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
-                <Sec emoji="👧" label={`เลือกนักเรียน (เพิ่มแล้ว ${childrenReports.length} คน)`} color="#9CA3AF" />
+                <Sec emoji="👧" label="เลือกนักเรียน" color="#9CA3AF" />
                 
-                {/* Add student buttons */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: childrenReports.length > 0 ? 12 : 0 }}>
-                  {childrenForCohort.map(c => {
-                    const isAdded = childrenReports.some(cr => cr.child_id === c.id);
-                    return (
+                {childrenReports.length === 0 ? (
+                  // Initial selection - show all students
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {childrenForCohort.map(c => (
                       <button 
                         key={c.id} 
                         type="button" 
                         onClick={() => addChildReport(c.id)}
-                        disabled={isAdded}
                         style={{ 
-                          padding: '7px 14px', 
-                          borderRadius: 99, 
+                          padding: '8px 16px', 
+                          borderRadius: 8, 
                           border: 'none', 
-                          cursor: isAdded ? 'not-allowed' : 'pointer', 
+                          cursor: 'pointer', 
                           fontSize: 14, 
                           fontFamily: 'Sarabun,sans-serif', 
-                          background: isAdded ? '#E5E7EB' : '#FFFFFF', 
-                          color: isAdded ? '#9CA3AF' : '#6B7280', 
-                          fontWeight: 400, 
+                          background: '#FFFFFF', 
+                          color: '#1A1A2E', 
+                          fontWeight: 500, 
                           boxShadow: '0 0 0 1px #E5E7EB', 
-                          transition: 'all .15s',
-                          opacity: isAdded ? 0.6 : 1
+                          transition: 'all .15s'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#6C5CE7'}
+                        onMouseLeave={e => e.currentTarget.style.background = '#FFFFFF'}
+                      >
+                        {c.nickname_en || c.nickname_th || c.name_en || c.name_th || c.id}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  // Show current student and add more button
+                  <div>
+                    <div style={{ background: 'white', borderRadius: 8, padding: '12px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div>
+                        <p style={{ fontSize: 15, fontWeight: 700, color: '#1A1A2E', margin: 0 }}>
+                          {(() => {
+                            const child = childrenForCohort.find(c => c.id === activeChildReport?.child_id);
+                            return child?.nickname_en || child?.nickname_th || child?.name_en || child?.name_th || 'ไม่ระบุชื่อ';
+                          })()}
+                        </p>
+                        <p style={{ fontSize: 12, color: '#9CA3AF', margin: 0 }}>
+                          นักเรียนคนที่ {activeChildIndex + 1}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const confirm = window.confirm('ต้องการลบข้อมูลของนักเรียนคนนี้?');
+                          if (confirm) removeChildReport(activeChildReport!.child_id);
+                        }}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: 6,
+                          border: 'none',
+                          background: '#FEE2E2',
+                          color: '#EF4444',
+                          cursor: 'pointer',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          fontFamily: 'Sarabun,sans-serif'
                         }}
                       >
-                        <Plus size={12} style={{ marginRight: 4, display: 'inline' }} />
-                        {c.name_th}
+                        <X size={14} style={{ marginRight: 4, display: 'inline' }} />
+                        ลบ
                       </button>
-                    );
-                  })}
-                </div>
-
-                {/* Tabs for added children */}
-                {childrenReports.length > 0 && (
-                  <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 12 }}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {childrenReports.map((cr, index) => {
-                        const child = childrenForCohort.find(c => c.id === cr.child_id);
-                        const isActive = activeChildIndex === index;
-                        return (
-                          <div key={cr.child_id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <button
-                              type="button"
-                              onClick={() => setActiveChildIndex(index)}
-                              style={{
-                                padding: '6px 12px',
-                                borderRadius: 8,
-                                border: 'none',
-                                cursor: 'pointer',
-                                fontSize: 13,
-                                fontFamily: 'Sarabun,sans-serif',
-                                background: isActive ? '#6C5CE7' : '#F3F4F6',
-                                color: isActive ? 'white' : '#6B7280',
-                                fontWeight: isActive ? 600 : 400,
-                                transition: 'all .15s'
-                              }}
-                            >
-                              {child?.name_th}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => removeChildReport(cr.child_id)}
-                              style={{
-                                width: 20,
-                                height: 20,
-                                borderRadius: '50%',
-                                border: 'none',
-                                background: '#EF4444',
-                                color: 'white',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: 12,
-                                fontWeight: 700,
-                                padding: 0
-                              }}
-                            >
-                              ×
-                            </button>
-                          </div>
-                        );
-                      })}
                     </div>
+                    
+                    {/* Add more student */}
+                    <details style={{ fontSize: 13 }}>
+                      <summary style={{ cursor: 'pointer', color: '#6C5CE7', fontWeight: 600, padding: '8px 0' }}>
+                        <Plus size={14} style={{ marginRight: 4, display: 'inline' }} />
+                        เพิ่มนักเรียนอีกคน
+                      </summary>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8, paddingLeft: 20 }}>
+                        {childrenForCohort
+                          .filter(c => !childrenReports.some(cr => cr.child_id === c.id))
+                          .map(c => (
+                            <button 
+                              key={c.id} 
+                              type="button" 
+                              onClick={() => addChildReport(c.id)}
+                              style={{ 
+                                padding: '6px 12px', 
+                                borderRadius: 6, 
+                                border: 'none', 
+                                cursor: 'pointer', 
+                                fontSize: 13, 
+                                fontFamily: 'Sarabun,sans-serif', 
+                                background: '#F3F4F6', 
+                                color: '#6B7280', 
+                                fontWeight: 400
+                              }}
+                            >
+                              {c.nickname_en || c.nickname_th || c.name_en || c.name_th || c.id}
+                            </button>
+                          ))}
+                      </div>
+                    </details>
                   </div>
                 )}
               </div>
