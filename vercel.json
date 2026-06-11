@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "app/api/db-export/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/db-import/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/db-import-batch/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}

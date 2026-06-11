@@ -2,6 +2,10 @@ import { getPool } from '@/lib/db';
 import { ok, badRequest, serverError } from '@/lib/api-helpers';
 import { NextRequest } from 'next/server';
 
+// Vercel timeout configuration - extend to 60 seconds for import operations
+export const maxDuration = 60; // Maximum execution time in seconds
+export const dynamic = 'force-dynamic'; // Disable caching
+
 const TABLES_ORDER = [
   'app_user', 'child', 'cohort',
   'parent_child', 'teacher_permission', 'enrollment',

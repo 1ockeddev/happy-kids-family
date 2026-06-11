@@ -2,6 +2,10 @@ import { query } from '@/lib/db';
 import { serverError } from '@/lib/api-helpers';
 import { NextRequest, NextResponse } from 'next/server';
 
+// Vercel timeout configuration - extend to 60 seconds for export operations
+export const maxDuration = 60; // Maximum execution time in seconds
+export const dynamic = 'force-dynamic'; // Disable caching
+
 const ALL_TABLES = [
   'app_user', 'child', 'cohort',
   'parent_child', 'teacher_permission', 'enrollment',

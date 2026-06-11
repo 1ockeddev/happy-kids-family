@@ -44,6 +44,10 @@ export default function DatabasePage() {
   const [importing, setImporting]         = useState(false);
   const [importResult, setImportResult]   = useState<{ ok: boolean; stats?: StatsMap; error?: string } | null>(null);
   const [expandedTable, setExpandedTable] = useState<string | null>(null);
+  
+  // batch import
+  const [batchImporting, setBatchImporting] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<{ current: number; total: number; table: string } | null>(null);
 
   // ── Export ──────────────────────────────────────────────────
   const handleExport = async () => {
@@ -55,7 +59,16 @@ export default function DatabasePage() {
     setExporting(true); setExportDone(false);
     try {
       const tables = Array.from(selectedExportTables).join(',');
-      const res  = await fetch(`/api/db-export?format=${exportFormat}&tables=${tables}`);
+      
+      // Add timeout to fetch request (60 seconds)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+      
+      const res  = await fetch(`/api/db-export?format=${exportFormat}&tables=${tables}`, {
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
       
       // Check if response is OK
       if (!res.ok) {
@@ -86,9 +99,13 @@ export default function DatabasePage() {
       URL.revokeObjectURL(url);
       setExportDone(true);
       setTimeout(() => setExportDone(false), 3000);
-    } catch (e) { 
+    } catch (e) {
       console.error('Export error:', e);
-      alert(e instanceof Error ? e.message : 'export ไม่สำเร็จ'); 
+      if (e instanceof Error && e.name === 'AbortError') {
+        alert('การ export ใช้เวลานานเกินไป (timeout 60 วินาที)\nลองเลือกตารางน้อยลง หรือ export ทีละส่วน');
+      } else {
+        alert(e instanceof Error ? e.message : 'export ไม่สำเร็จ');
+      }
     }
     finally { setExporting(false); }
   };
@@ -136,11 +153,20 @@ export default function DatabasePage() {
     try {
       const text = await file.text();
       const json = JSON.parse(text);
+      
+      // Add timeout to fetch request (60 seconds)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+      
       const res  = await fetch('/api/db-import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...json, dry_run: true }),
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
+      
       const data = await res.json();
       if (!res.ok) {
         console.error('Analyze API error:', data);
@@ -150,8 +176,12 @@ export default function DatabasePage() {
       setDryStats(data.data.stats as StatsMap);
     } catch (e) {
       console.error('Analyze error:', e);
-      const errorMsg = e instanceof Error ? e.message : typeof e === 'string' ? e : 'วิเคราะห์ไม่สำเร็จ';
-      alert(errorMsg); 
+      if (e instanceof Error && e.name === 'AbortError') {
+        alert('การวิเคราะห์ใช้เวลานานเกินไป (timeout 60 วินาที)\nไฟล์อาจมีข้อมูลมากเกินไป');
+      } else {
+        const errorMsg = e instanceof Error ? e.message : typeof e === 'string' ? e : 'วิเคราะห์ไม่สำเร็จ';
+        alert(errorMsg);
+      }
     }
     finally { setAnalyzing(false); }
   };
@@ -163,6 +193,11 @@ export default function DatabasePage() {
     try {
       const text = await file.text();
       const json = JSON.parse(text);
+      
+      // Add timeout to fetch request (60 seconds)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+      
       const res  = await fetch('/api/db-import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -171,7 +206,11 @@ export default function DatabasePage() {
           dry_run: false,
           overwrite_tables: [...overwriteTables],
         }),
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
+      
       const data = await res.json();
       if (!res.ok) {
         console.error('Import API error:', data);
@@ -182,10 +221,92 @@ export default function DatabasePage() {
       setDryStats(null);
     } catch (e) {
       console.error('Import error:', e);
-      const errorMsg = e instanceof Error ? e.message : typeof e === 'string' ? e : 'เกิดข้อผิดพลาด';
+      let errorMsg: string;
+      if (e instanceof Error && e.name === 'AbortError') {
+        errorMsg = 'การ import ใช้เวลานานเกินไป (timeout 60 วินาที)\nไฟล์อาจมีข้อมูลมากเกินไป';
+      } else {
+        errorMsg = e instanceof Error ? e.message : typeof e === 'string' ? e : 'เกิดข้อผิดพลาด';
+      }
       setImportResult({ ok: false, error: errorMsg }); 
     }
     finally { setImporting(false); }
+  };
+
+  // ── Step 3: Batch Import (สำหรับไฟล์ขนาดใหญ่) ───────────────
+  const handleBatchImport = async () => {
+    if (!file) return;
+    setBatchImporting(true);
+    setBatchProgress(null);
+    setImportResult(null);
+    
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+      const tables = Object.keys(json.tables || {}).filter(t => (json.tables[t] as any[])?.length > 0);
+      
+      if (tables.length === 0) {
+        throw new Error('ไม่พบตารางที่มีข้อมูล');
+      }
+
+      const allStats: StatsMap = {};
+      const hasOverwriteConfig = overwriteTables.size > 0;
+      
+      // Import table by table
+      for (let i = 0; i < tables.length; i++) {
+        const table = tables[i];
+        const rows = json.tables[table];
+        
+        setBatchProgress({ current: i + 1, total: tables.length, table });
+        
+        try {
+          const res = await fetch('/api/db-import-batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              table,
+              rows,
+              // ถ้าไม่ผ่าน analyze จะไม่เขียนทับ (skip conflicts)
+              overwrite: hasOverwriteConfig ? overwriteTables.has(table) : false,
+            }),
+          });
+          
+          const data = await res.json();
+          
+          if (!res.ok) {
+            console.error(`Batch import error for ${table}:`, data);
+            allStats[table] = {
+              inserted: 0,
+              skipped: 0,
+              overwritten: 0,
+              conflicts: [],
+              errors: [data.error || 'Import failed'],
+            } as any;
+            continue;
+          }
+          
+          allStats[table] = data.data.stats;
+        } catch (err) {
+          console.error(`Batch import error for ${table}:`, err);
+          allStats[table] = {
+            inserted: 0,
+            skipped: 0,
+            overwritten: 0,
+            conflicts: [],
+            errors: [err instanceof Error ? err.message : 'Import failed'],
+          } as any;
+        }
+      }
+      
+      setImportResult({ ok: true, stats: allStats });
+      setDryStats(null);
+      setBatchProgress(null);
+    } catch (e) {
+      console.error('Batch import error:', e);
+      const errorMsg = e instanceof Error ? e.message : typeof e === 'string' ? e : 'เกิดข้อผิดพลาด';
+      setImportResult({ ok: false, error: errorMsg });
+      setBatchProgress(null);
+    }
+    finally { setBatchImporting(false); }
   };
 
   const totalConflicts = dryStats
@@ -353,14 +474,35 @@ export default function DatabasePage() {
               </div>
             )}
 
-            {/* Step 1: Analyze button */}
-            {file && !dryStats && !importResult && (
-              <button className="btn btn-primary" onClick={handleAnalyze} disabled={analyzing}
-                style={{ width: '100%', justifyContent: 'center', background: '#4A90B8' }}>
-                {analyzing
-                  ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> กำลังวิเคราะห์...</>
-                  : <><AlertTriangle size={15} /> วิเคราะห์ Conflict ก่อน import</>}
-              </button>
+            {/* Step 1: Analyze or Batch Import buttons */}
+            {file && !dryStats && !importResult && !batchImporting && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <button className="btn btn-primary" onClick={handleAnalyze} disabled={analyzing}
+                  style={{ width: '100%', justifyContent: 'center', background: '#4A90B8' }}>
+                  {analyzing
+                    ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> กำลังวิเคราะห์...</>
+                    : <><AlertTriangle size={15} /> วิเคราะห์ Conflict ก่อน import</>}
+                </button>
+                
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', margin: '8px 0' }}>
+                  <div style={{ flex: 1, height: 1, background: '#E5E7EB' }} />
+                  <span style={{ padding: '0 12px', fontSize: 11, color: '#9CA3AF', fontWeight: 600 }}>หรือ</span>
+                  <div style={{ flex: 1, height: 1, background: '#E5E7EB' }} />
+                </div>
+                
+                <button className="btn btn-primary" onClick={handleBatchImport} disabled={analyzing}
+                  style={{ width: '100%', justifyContent: 'center', background: '#6C5CE7' }}>
+                  <Database size={15} /> Batch Import โดยตรง (ไฟล์ใหญ่)
+                </button>
+                <div style={{ background: '#F0EEFF', borderRadius: 8, padding: 10, border: '1px solid #E9D5FF' }}>
+                  <p style={{ fontSize: 11, color: '#7C3AED', margin: 0, lineHeight: 1.4 }}>
+                    💡 <strong>Batch Import:</strong> ใช้สำหรับไฟล์ใหญ่ที่อาจ timeout<br/>
+                    • ข้ามขั้นตอนวิเคราะห์<br/>
+                    • Import ทีละ table พร้อม progress bar<br/>
+                    • ข้อมูลซ้ำจะถูกข้าม (ไม่เขียนทับ)
+                  </p>
+                </div>
+              </div>
             )}
 
             {/* ── Conflict report (dry_run result) ── */}
@@ -458,14 +600,46 @@ export default function DatabasePage() {
               </div>
             )}
 
-            {/* Step 2: Import button */}
-            {dryStats && !importResult && (
-              <button className="btn btn-primary" onClick={handleImport} disabled={importing}
-                style={{ width: '100%', justifyContent: 'center', background: '#059669' }}>
-                {importing
-                  ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> กำลัง import...</>
-                  : <><Upload size={15} /> ยืนยัน Import {overwriteTables.size > 0 ? `(เขียนทับ ${overwriteTables.size} table)` : ''}</>}
-              </button>
+            {/* Step 2: Import buttons */}
+            {dryStats && !importResult && !batchImporting && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <button className="btn btn-primary" onClick={handleImport} disabled={importing}
+                  style={{ width: '100%', justifyContent: 'center', background: '#059669' }}>
+                  {importing
+                    ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> กำลัง import...</>
+                    : <><Upload size={15} /> ยืนยัน Import {overwriteTables.size > 0 ? `(เขียนทับ ${overwriteTables.size} table)` : ''}</>}
+                </button>
+                <button className="btn btn-ghost" onClick={handleBatchImport} disabled={importing}
+                  style={{ width: '100%', justifyContent: 'center', fontSize: 12 }}>
+                  <Database size={13} /> Batch Import (สำหรับไฟล์ใหญ่)
+                </button>
+                <p style={{ fontSize: 11, color: '#9CA3AF', textAlign: 'center' }}>
+                  ใช้ Batch Import ถ้าไฟล์ใหญ่เกิน 60 วินาที
+                </p>
+              </div>
+            )}
+
+            {/* Batch Progress */}
+            {batchProgress && (
+              <div style={{ background: '#F0EEFF', borderRadius: 12, padding: 16, border: '1px solid #E9D5FF' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                  <Loader2 size={16} style={{ color: '#6C5CE7', animation: 'spin 1s linear infinite' }} />
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#4C1D95' }}>
+                    กำลัง import ตารางที่ {batchProgress.current} / {batchProgress.total}
+                  </p>
+                </div>
+                <p style={{ fontSize: 12, color: '#7C3AED', marginBottom: 10 }}>
+                  {TABLE_LABELS[batchProgress.table] ?? batchProgress.table}
+                </p>
+                <div style={{ height: 6, background: '#E9D5FF', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ 
+                    height: '100%', 
+                    background: '#6C5CE7', 
+                    width: `${(batchProgress.current / batchProgress.total) * 100}%`,
+                    transition: 'width 0.3s'
+                  }} />
+                </div>
+              </div>
             )}
 
             {/* Result */}
