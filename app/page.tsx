@@ -10,7 +10,7 @@ import UserLayout from '@/components/UserLayout';
 import { useUserApp } from '@/components/UserAppProvider';
 import AppHeader from '@/components/AppHeader';
 import BottomNavigation from '@/components/BottomNavigation';
-import { FaceHappy, FaceSmile, FaceNeutral, Book, Diaper, Toilet, Building, User, CheckCircle, XCircle, AlertCircle, Calendar } from '@/components/icons';
+import { FaceHappy, FaceSmile, FaceNeutral, Book, Diaper, Toilet, Building, User } from '@/components/icons';
 
 /* ── label maps ─────────────────────────────── */
 const amtL: Record<MilkStatus,string> = { all:'ทานหมด', some:'บางส่วน', not_must:'นิดหน่อย', skip:'ข้าม' };
@@ -816,7 +816,7 @@ export default function LiffPage() {
               </div>
               <div style={{display:'flex',gap:8,fontSize:'0.65rem',flexWrap:'wrap'}}>
                 <div style={{display:'flex',alignItems:'center',gap:4}}>
-                  <CheckCircle size={12} color="#10b981" />
+                  <div style={{width:10,height:10,borderRadius:2,background:'#10b981',border:'2px solid #10b981'}} />
                   <span style={{color:'#64748b'}}>มา</span>
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:4}}>
@@ -824,7 +824,7 @@ export default function LiffPage() {
                   <span style={{color:'#64748b'}}>ลา</span>
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:4}}>
-                  <XCircle size={12} color="#ef4444" />
+                  <div style={{width:10,height:10,borderRadius:2,background:'#ef4444',border:'2px solid #ef4444'}} />
                   <span style={{color:'#64748b'}}>ขาด</span>
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:4}}>
@@ -1289,16 +1289,7 @@ export default function LiffPage() {
               {/* Attendance */}
               {attendance && (
                 <div style={{background:attBg[attendance.status],borderRadius:16,padding:'14px 18px',marginBottom:14,display:'flex',alignItems:'center',gap:12,border:`1px solid ${attC[attendance.status]}22`}}>
-                  <div style={{width:44,height:44,borderRadius:'50%',background:'white',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                    {attendance.status==='present' ? (
-                      <CheckCircle size={24} color="#10b981" strokeWidth={2.5} />
-                    ) : attendance.status==='sick' ? (
-                      <AlertCircle size={24} color="#f59e0b" strokeWidth={2.5} />
-                    ) : attendance.status==='absent' ? (
-                      <XCircle size={24} color="#ef4444" strokeWidth={2.5} />
-                    ) : (
-                      <Calendar size={24} color="#3b82f6" strokeWidth={2.5} />
-                    )}
+                  <div style={{width:44,height:44,borderRadius:8,background:attC[attendance.status],display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                   </div>
                   <div>
                     <p style={{fontSize:10,color:attC[attendance.status],fontWeight:800,marginBottom:3,textTransform:'uppercase',letterSpacing:'0.06em'}}>สถานะวันนี้</p>

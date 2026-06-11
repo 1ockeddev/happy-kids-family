@@ -142,9 +142,17 @@ export default function DatabasePage() {
         body: JSON.stringify({ ...json, dry_run: true }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        console.error('Analyze API error:', data);
+        const errorMsg = typeof data.error === 'string' ? data.error : JSON.stringify(data.error) || 'วิเคราะห์ไม่สำเร็จ';
+        throw new Error(errorMsg);
+      }
       setDryStats(data.data.stats as StatsMap);
-    } catch (e) { alert(e instanceof Error ? e.message : 'วิเคราะห์ไม่สำเร็จ'); }
+    } catch (e) {
+      console.error('Analyze error:', e);
+      const errorMsg = e instanceof Error ? e.message : typeof e === 'string' ? e : 'วิเคราะห์ไม่สำเร็จ';
+      alert(errorMsg); 
+    }
     finally { setAnalyzing(false); }
   };
 
@@ -165,10 +173,18 @@ export default function DatabasePage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        console.error('Import API error:', data);
+        const errorMsg = typeof data.error === 'string' ? data.error : JSON.stringify(data.error) || 'เกิดข้อผิดพลาด';
+        throw new Error(errorMsg);
+      }
       setImportResult({ ok: true, stats: data.data.stats });
       setDryStats(null);
-    } catch (e) { setImportResult({ ok: false, error: e instanceof Error ? e.message : 'เกิดข้อผิดพลาด' }); }
+    } catch (e) {
+      console.error('Import error:', e);
+      const errorMsg = e instanceof Error ? e.message : typeof e === 'string' ? e : 'เกิดข้อผิดพลาด';
+      setImportResult({ ok: false, error: errorMsg }); 
+    }
     finally { setImporting(false); }
   };
 
