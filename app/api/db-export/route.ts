@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
       : ALL_TABLES;
     
     if (selectedTables.length === 0) {
-      return new NextResponse('No valid tables selected', { status: 400 });
+      return NextResponse.json({ error: 'No valid tables selected' }, { status: 400 });
     }
 
     // ดึง column list จริงจาก DB
@@ -139,6 +139,7 @@ export async function GET(req: NextRequest) {
     }
   } catch (err) {
     console.error('Export error:', err);
-    return serverError(err);
+    const errorMessage = err instanceof Error ? err.message : 'An error occurred during export';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

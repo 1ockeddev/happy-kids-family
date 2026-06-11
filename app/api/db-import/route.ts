@@ -19,7 +19,7 @@ const TABLE_COLUMNS: Record<string, string[]> = {
   enrollment:           ['id','child_id','cohort_id','start_date','end_date','graduated','created_at'],
   daily:                ['id','cohort_id','date','activity','food','fruit','note','created_by','updated_by','updated_at','created_at'],
   attendance:           ['id','daily_id','child_id','status','note','created_by','updated_by','updated_at','created_at'],
-  daily_report:         ['id','daily_id','child_id','nap_from','nap_to','milk1','milk1_note','milk2','milk2_note','food_amount','food_note','fruit_amount','fruit_note','note','created_by','updated_by','updated_at','created_at'],
+  daily_report:         ['id','daily_id','child_id','nap_from','nap_to','nap_note','milk1','milk1_note','milk2','milk2_note','food_amount','food_note','fruit_amount','fruit_note','note','created_by','updated_by','updated_at','created_at'],
   behavior_category:    ['id','name_en','name_th','sort_order','is_active','cohort_ids','created_at'],
   behavior_item:        ['id','category_id','name_en','name_th','max_score','sort_order','is_active','created_at'],
   child_behavior_score: ['id','daily_id','child_id','item_id','score','note','created_at'],

@@ -59,13 +59,21 @@ export default function DatabasePage() {
       
       // Check if response is OK
       if (!res.ok) {
-        const errorText = await res.text();
-        try {
-          const errorJson = JSON.parse(errorText);
-          throw new Error(errorJson.error || `Export failed with status ${res.status}`);
-        } catch (parseError) {
-          throw new Error(`Export failed: ${errorText.substring(0, 100)}`);
+        const contentType = res.headers.get('content-type') || '';
+        let errorMessage = `Export failed with status ${res.status}`;
+        
+        if (contentType.includes('application/json')) {
+          try {
+            const errorJson = await res.json();
+            errorMessage = errorJson.error || errorMessage;
+          } catch {
+            errorMessage = await res.text();
+          }
+        } else {
+          errorMessage = await res.text();
         }
+        
+        throw new Error(errorMessage.substring(0, 200));
       }
       
       const blob = await res.blob();
