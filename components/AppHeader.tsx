@@ -1,16 +1,7 @@
 'use client';
 import React from 'react';
 import { AppUser, Child } from '@/types';
-
-/* ── Icon Components ─────────────────────────────── */
-const CalendarIcon = ({size=14,color='#94a3b8'}:{size?:number;color?:string}) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-    <line x1="16" y1="2" x2="16" y2="6"/>
-    <line x1="8" y1="2" x2="8" y2="6"/>
-    <line x1="3" y1="10" x2="21" y2="10"/>
-  </svg>
-);
+import { Calendar } from '@/components/icons';
 
 const shimmer: React.CSSProperties = {
   background:'linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%)',
@@ -229,7 +220,7 @@ export default function AppHeader({
             </h1>
             {subtitle && selectedChild && (
               <p style={{margin:'10px 0 0',fontSize:'0.75rem',color:'#94a3b8',fontWeight:500,display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
-                <CalendarIcon size={14} color="#94a3b8" />
+                <Calendar size={14} color="#94a3b8" />
                 <span>{subtitle}</span>
               </p>
             )}

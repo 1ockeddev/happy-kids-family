@@ -4,7 +4,8 @@ import { usersApi } from '@/lib/api-client';
 import { AppUser, UserRole, UserStatus, Child } from '@/types';
 import CrudTable from '@/components/admin/CrudTable';
 import Modal from '@/components/ui/Modal';
-import { Pencil, Trash2, Link2, Plus, X } from 'lucide-react';
+import { Pencil, Trash2, Link2, X } from 'lucide-react';
+import { Plus as PlusIcon, PencilSquare, User, AlertCircle, CheckCircle, Building } from '@/components/icons';
 
 interface UserWithChildren extends AppUser {
   children?: Child[];
@@ -115,7 +116,7 @@ export default function UsersPage() {
       
       // แจ้งเตือนถ้าเปลี่ยน role
       if (roleChanged) {
-        alert(`✅ บันทึกสำเร็จ!\n\n⚠️ สำคัญ: ผู้ใช้ "${form.display_name}" ต้องรีเฟรชหน้า Mini App\nเพื่อให้เห็นบทบาทใหม่ (${form.role === 'teacher' ? 'ครู' : 'ผู้ปกครอง'})`);
+        alert(`บันทึกสำเร็จ!\n\nสำคัญ: ผู้ใช้ "${form.display_name}" ต้องรีเฟรชหน้า Mini App\nเพื่อให้เห็นบทบาทใหม่ (${form.role === 'teacher' ? 'ครู' : 'ผู้ปกครอง'})`);
       }
     } catch (e) { alert(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ'); }
     finally { setSaving(false); }
@@ -147,8 +148,8 @@ export default function UsersPage() {
               {r.picture_url ? (
                 <img src={r.picture_url} style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: '2px solid #E5E7EB', flexShrink: 0 }} />
               ) : (
-                <div style={{ width: 34, height: 34, borderRadius: '50%', background: r.role === 'teacher' ? '#F0EEFF' : '#FEF0EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
-                  {r.role === 'teacher' ? '👩‍🏫' : '👨‍👩‍👧'}
+                <div style={{ width: 34, height: 34, borderRadius: '50%', background: r.role === 'teacher' ? '#F0EEFF' : '#FEF0EB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <User size={18} color={r.role === 'teacher' ? '#6C5CE7' : '#E8754A'} />
                 </div>
               )}
               <div>
@@ -160,10 +161,10 @@ export default function UsersPage() {
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'monospace' }}>
+                <div style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
                 {r.line_user_id
-                  ? <span style={{ color: '#10B981' }}>✓ {r.line_user_id}</span>
-                  : <span style={{ color: '#F59E0B', fontSize: 11 }}>⏳ รอผูก LINE</span>
+                  ? <><CheckCircle size={11} color="#10B981" /> <span style={{ color: '#10B981' }}>{r.line_user_id}</span></>
+                  : <><AlertCircle size={11} color="#F59E0B" /> <span style={{ color: '#F59E0B', fontSize: 11 }}>รอผูก LINE</span></>
                 }
               </div>
               </div>
@@ -176,7 +177,9 @@ export default function UsersPage() {
             if (r.role !== 'parent') return <span style={{ color: '#9CA3AF', fontSize: 12 }}>-</span>;
             const kids = r.children ?? [];
             if (kids.length === 0) return (
-              <span style={{ fontSize: 12, color: '#F5A623', background: '#FEF6E6', padding: '2px 8px', borderRadius: 99 }}>⚠️ ยังไม่ผูก</span>
+              <span style={{ fontSize: 12, color: '#F5A623', background: '#FEF6E6', padding: '2px 8px', borderRadius: 99, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <AlertCircle size={11} color="#F5A623" /> ยังไม่ผูก
+              </span>
             );
             return (
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -224,14 +227,24 @@ export default function UsersPage() {
       />
 
       {/* ── Add / Edit Modal ── */}
-      <Modal open={modal === 'add' || modal === 'edit'} title={modal === 'add' ? '➕ เพิ่มผู้ใช้ใหม่' : '✏️ แก้ไขผู้ใช้'}
+      <Modal 
+        open={modal === 'add' || modal === 'edit'} 
+        title={
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            {modal === 'add' ? <PlusIcon size={20} color="#6366f1" /> : <PencilSquare size={20} color="#6366f1" />}
+            <span>{modal === 'add' ? 'เพิ่มผู้ใช้ใหม่' : 'แก้ไขผู้ใช้'}</span>
+          </div>
+        }
         onClose={() => setModal(null)} onConfirm={handleSave} confirmLabel={saving ? 'กำลังบันทึก...' : 'บันทึก'}>
         
         {/* คำอธิบายสำหรับโหมด Add */}
         {modal === 'add' && (
-          <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+          <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 10, padding: '12px 14px', marginBottom: 16, display: 'flex', gap: 10 }}>
+            <div style={{ flexShrink: 0, marginTop: 2 }}>
+              <AlertCircle size={18} color="#3b82f6" />
+            </div>
             <p style={{ fontSize: 13, color: '#1E40AF', margin: 0, lineHeight: 1.6 }}>
-              💡 <strong>วิธีใช้:</strong> เพิ่มผู้ใช้ได้ทันทีโดยไม่ต้องมี LINE ID<br/>
+              <strong>วิธีใช้:</strong> เพิ่มผู้ใช้ได้ทันทีโดยไม่ต้องมี LINE ID<br/>
               เมื่อผู้ใช้เปิด Mini App ครั้งแรก ระบบจะผูก LINE ID อัตโนมัติ
             </p>
           </div>
@@ -255,7 +268,7 @@ export default function UsersPage() {
           />
           <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
             {modal === 'edit' && selected?.line_display_name ? 
-              '✏️ ชื่อนี้แก้ไขได้ และจะไม่ถูกเปลี่ยนแปลงโดยอัตโนมัติ (ชื่อจาก LINE จะอัพเดทแยกต่างหาก)' :
+              'ชื่อนี้แก้ไขได้ และจะไม่ถูกเปลี่ยนแปลงโดยอัตโนมัติ (ชื่อจาก LINE จะอัพเดทแยกต่างหาก)' :
               'ชื่อนี้จะแสดงในระบบและรายงาน'
             }
           </p>
@@ -278,18 +291,24 @@ export default function UsersPage() {
           
           {/* แสดงคำแนะนำตามสถานะ */}
           {modal === 'add' && !form.line_user_id && (
-            <div style={{ marginTop: 8, padding: '8px 12px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8 }}>
+            <div style={{ marginTop: 8, padding: '8px 12px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, display: 'flex', gap: 8 }}>
+              <div style={{ flexShrink: 0, marginTop: 1 }}>
+                <AlertCircle size={14} color="#92400E" />
+              </div>
               <p style={{ fontSize: 11, color: '#92400E', margin: 0, lineHeight: 1.5 }}>
-                <strong>⏳ ผูกภายหลัง:</strong> ปล่อยว่างไว้ได้<br/>
+                <strong>ผูกภายหลัง:</strong> ปล่อยว่างไว้ได้<br/>
                 ระบบจะผูก LINE ID อัตโนมัติเมื่อผู้ใช้เปิด Mini App
               </p>
             </div>
           )}
           
           {modal === 'edit' && !form.line_user_id && (
-            <div style={{ marginTop: 8, padding: '8px 12px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8 }}>
+            <div style={{ marginTop: 8, padding: '8px 12px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, display: 'flex', gap: 8 }}>
+              <div style={{ flexShrink: 0, marginTop: 1 }}>
+                <AlertCircle size={14} color="#991B1B" />
+              </div>
               <p style={{ fontSize: 11, color: '#991B1B', margin: 0, lineHeight: 1.5 }}>
-                <strong>⚠️ ยังไม่ผูก LINE:</strong><br/>
+                <strong>ยังไม่ผูก LINE:</strong><br/>
                 • ผู้ใช้ยังไม่สามารถเข้า Mini App ได้<br/>
                 • จะผูกอัตโนมัติเมื่อเปิด Mini App ครั้งแรก<br/>
                 • หรือคุณสามารถใส่ LINE ID ด้วยตนเองได้
@@ -298,9 +317,10 @@ export default function UsersPage() {
           )}
           
           {form.line_user_id && (
-            <div style={{ marginTop: 8, padding: '8px 12px', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 8 }}>
+            <div style={{ marginTop: 8, padding: '8px 12px', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CheckCircle size={14} color="#065F46" />
               <p style={{ fontSize: 11, color: '#065F46', margin: 0 }}>
-                ✓ ผูก LINE แล้ว — ผู้ใช้สามารถเข้า Mini App ได้
+                ผูก LINE แล้ว — ผู้ใช้สามารถเข้า Mini App ได้
               </p>
             </div>
           )}
@@ -310,13 +330,16 @@ export default function UsersPage() {
           <div className="form-group">
             <label className="form-label">บทบาท <span style={{ color: '#E85C5C' }}>*</span></label>
             <select className="form-input" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as UserRole }))}>
-              <option value="parent">👨‍👩‍👧 ผู้ปกครอง</option>
-              <option value="teacher">👩‍🏫 ครู</option>
+              <option value="parent">ผู้ปกครอง</option>
+              <option value="teacher">ครู</option>
             </select>
             {modal === 'edit' && selected && selected.role !== form.role && (
-              <div style={{ marginTop: 6, padding: '6px 10px', background: '#FEF9C3', border: '1px solid #FDE68A', borderRadius: 6 }}>
+              <div style={{ marginTop: 6, padding: '6px 10px', background: '#FEF9C3', border: '1px solid #FDE68A', borderRadius: 6, display: 'flex', gap: 6 }}>
+                <div style={{ flexShrink: 0, marginTop: 1 }}>
+                  <AlertCircle size={12} color="#92400E" />
+                </div>
                 <p style={{ fontSize: 10, color: '#92400E', margin: 0, lineHeight: 1.4 }}>
-                  ⚠️ <strong>สำคัญ:</strong> หลังเปลี่ยนบทบาท<br/>ผู้ใช้ต้อง <strong>รีเฟรชหน้า Mini App</strong> ถึงจะเห็นการเปลี่ยนแปลง
+                  <strong>สำคัญ:</strong> หลังเปลี่ยนบทบาท<br/>ผู้ใช้ต้อง <strong>รีเฟรชหน้า Mini App</strong> ถึงจะเห็นการเปลี่ยนแปลง
                 </p>
               </div>
             )}
@@ -324,17 +347,20 @@ export default function UsersPage() {
           <div className="form-group">
             <label className="form-label">สถานะ</label>
             <select className="form-input" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value as UserStatus }))}>
-              <option value="active">✓ ใช้งาน</option>
-              <option value="inactive">✕ ปิดใช้งาน</option>
+              <option value="active">ใช้งาน</option>
+              <option value="inactive">ปิดใช้งาน</option>
             </select>
           </div>
         </div>
 
         {/* คำแนะนำเพิ่มเติมสำหรับผู้ปกครอง */}
         {form.role === 'parent' && modal === 'add' && (
-          <div style={{ marginTop: 12, padding: '10px 12px', background: '#F0EEFF', border: '1px solid #DDD6FE', borderRadius: 8 }}>
+          <div style={{ marginTop: 12, padding: '10px 12px', background: '#F0EEFF', border: '1px solid #DDD6FE', borderRadius: 8, display: 'flex', gap: 10 }}>
+            <div style={{ flexShrink: 0, marginTop: 2 }}>
+              <PencilSquare size={16} color="#5B21B6" />
+            </div>
             <p style={{ fontSize: 12, color: '#5B21B6', margin: 0, lineHeight: 1.5 }}>
-              <strong>📝 ขั้นตอนถัดไป:</strong><br/>
+              <strong>ขั้นตอนถัดไป:</strong><br/>
               1. บันทึกผู้ใช้นี้<br/>
               2. คลิก "ผูกลูก" เพื่อเชื่อมโยงกับนักเรียน<br/>
               3. แจ้งผู้ปกครองให้เปิด Mini App เพื่อผูก LINE ID
@@ -345,8 +371,9 @@ export default function UsersPage() {
         {/* ตั้งค่า Cohort สำหรับครู */}
         {form.role === 'teacher' && (
           <div style={{ marginTop: 16, padding: '14px 16px', background: '#F0EEFF', border: '1px solid #DDD6FE', borderRadius: 12 }}>
-            <h4 style={{ fontSize: 14, fontWeight: 700, color: '#5B21B6', margin: '0 0 12px' }}>
-              🏫 ตั้งค่าห้องเรียน (Teacher Mode)
+            <h4 style={{ fontSize: 14, fontWeight: 700, color: '#5B21B6', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Building size={16} color="#5B21B6" />
+              ตั้งค่าห้องเรียน (Teacher Mode)
             </h4>
             
             <div className="form-group" style={{ marginBottom: 12 }}>
@@ -361,10 +388,10 @@ export default function UsersPage() {
                   อนุญาตให้เลือกห้องเรียนใน User Side
                 </span>
               </label>
-              <p style={{ fontSize: 12, color: '#6B7280', marginTop: 4, marginLeft: 26, lineHeight: 1.5 }}>
+              <p style={{ fontSize: 12, color: '#6B7280', marginTop: 4, marginLeft: 26, lineHeight: 1.5, display: 'flex', alignItems: 'center', gap: 6 }}>
                 {form.can_select_cohort 
-                  ? '✅ ครูสามารถเลือกห้องเรียนได้เองผ่าน dropdown'
-                  : '🔒 ครูจะถูกบังคับให้ใช้ห้องเรียนที่กำหนดด้านล่าง'
+                  ? <><CheckCircle size={12} color="#10B981" /> <span>ครูสามารถเลือกห้องเรียนได้เองผ่าน dropdown</span></>
+                  : <><AlertCircle size={12} color="#F59E0B" /> <span>ครูจะถูกบังคับให้ใช้ห้องเรียนที่กำหนดด้านล่าง</span></>
                 }
               </p>
             </div>
@@ -395,9 +422,10 @@ export default function UsersPage() {
             </div>
 
             {!form.can_select_cohort && !form.default_cohort_id && (
-              <div style={{ padding: '8px 12px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8 }}>
+              <div style={{ padding: '8px 12px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <AlertCircle size={12} color="#991B1B" />
                 <p style={{ fontSize: 11, color: '#991B1B', margin: 0 }}>
-                  ⚠️ กรุณาเลือกห้องเรียน Default เมื่อปิดการเลือกห้อง
+                  กรุณาเลือกห้องเรียน Default เมื่อปิดการเลือกห้อง
                 </p>
               </div>
             )}
@@ -415,7 +443,9 @@ export default function UsersPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#F7F5F2', borderRadius: 10 }}>
           {selected?.picture_url
             ? <img src={selected.picture_url} style={{ width: 40, height: 40, borderRadius: '50%' }} />
-            : <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#FEF0EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>👨‍👩‍👧</div>
+            : <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#FEF0EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <User size={20} color="#E8754A" />
+              </div>
           }
           <div>
             <p style={{ fontWeight: 600, fontSize: 14, margin: 0 }}>{selected?.display_name ?? '(ยังไม่มีชื่อ)'}</p>
@@ -432,7 +462,9 @@ export default function UsersPage() {
         {/* ที่ผูกแล้ว */}
         {linkedIds.length > 0 && (
           <div>
-            <p style={{ fontSize: 12, fontWeight: 600, color: '#4CAF76', marginBottom: 6 }}>✅ ผูกแล้ว {linkedIds.length} คน</p>
+            <p style={{ fontSize: 12, fontWeight: 600, color: '#4CAF76', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <CheckCircle size={14} color="#4CAF76" /> ผูกแล้ว {linkedIds.length} คน
+            </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {linkedIds.map(id => {
                 const c = allChildren.find(c => c.id === id);
@@ -455,7 +487,9 @@ export default function UsersPage() {
           {filteredChildren.filter(c => !linkedIds.includes(c.id)).map(c => (
             <button key={c.id} type="button" onClick={() => toggleChild(c.id)}
               style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, border: '1px solid #F3F4F6', background: '#FAFAFA', cursor: 'pointer', textAlign: 'left', transition: 'all .15s' }}>
-              <Plus size={14} style={{ color: '#9CA3AF', flexShrink: 0 }} />
+              <div style={{ flexShrink: 0 }}>
+                <PlusIcon size={14} color="#9CA3AF" />
+              </div>
               <div>
                 <div style={{ fontWeight: 500, fontSize: 14 }}>{c.name_th}</div>
                 {c.name_en && <div style={{ fontSize: 12, color: '#9CA3AF' }}>{c.name_en}</div>}

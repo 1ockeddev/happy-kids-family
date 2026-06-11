@@ -4,7 +4,8 @@ import { enrollmentsApi, childrenApi, cohortsApi } from '@/lib/api-client';
 import { Enrollment, Child, Cohort } from '@/types';
 import CrudTable from '@/components/admin/CrudTable';
 import Modal from '@/components/ui/Modal';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, GraduationCap, BookOpen, User as UserIcon, Building } from 'lucide-react';
+import { User } from '@/components/icons';
 
 /* ─── Helper: Format date as YYYY-MM-DD ── */
 const formatDateForInput = (dateStr: string | Date): string => {
@@ -126,8 +127,8 @@ export default function EnrollmentsPage() {
             ? new Date(r.end_date).toLocaleDateString('th-TH')
             : <span style={{ color: '#9CA3AF' }}>ปัจจุบัน</span> },
           { key: 'graduated', label: 'สถานะ', render: r => (
-            <span className={`badge ${r.graduated ? 'badge-active' : 'badge-leave'}`}>
-              {r.graduated ? '🎓 สำเร็จแล้ว' : '📚 กำลังเรียน'}
+            <span className={`badge ${r.graduated ? 'badge-active' : 'badge-leave'}`} style={{ display: 'flex', alignItems: 'center', gap: 4, width: 'fit-content' }}>
+              {r.graduated ? <><GraduationCap size={12} /> สำเร็จแล้ว</> : <><BookOpen size={12} /> กำลังเรียน</>}
             </span>
           )},
         ]}
@@ -212,9 +213,11 @@ export default function EnrollmentsPage() {
 
         {/* Read-only info for edit */}
         {modal === 'edit' && selected && (
-          <div style={{ padding: '10px 14px', background: '#F7F5F2', borderRadius: 8, fontSize: 14, color: '#6B7280', display: 'flex', gap: 12 }}>
-            <span>👧 <strong style={{ color: '#1A1A2E' }}>{selected.child?.name_th}</strong></span>
-            <span>🏫 <strong style={{ color: '#1A1A2E' }}>{selected.cohort?.name}</strong></span>
+          <div style={{ padding: '10px 14px', background: '#F7F5F2', borderRadius: 8, fontSize: 14, color: '#6B7280', display: 'flex', gap: 12, alignItems: 'center' }}>
+            <User size={16} color="#6B7280" />
+            <span><strong style={{ color: '#1A1A2E' }}>{selected.child?.name_th}</strong></span>
+            <Building size={16} color="#6B7280" />
+            <span><strong style={{ color: '#1A1A2E' }}>{selected.cohort?.name}</strong></span>
           </div>
         )}
 
@@ -239,8 +242,8 @@ export default function EnrollmentsPage() {
           <input type="checkbox" checked={form.graduated} onChange={e => setForm(f => ({ ...f, graduated: e.target.checked }))}
             style={{ width: 18, height: 18, cursor: 'pointer' }} />
           <div>
-            <span style={{ fontWeight: 600, fontSize: 14, color: form.graduated ? '#4CAF76' : '#6B7280' }}>
-              🎓 สำเร็จการศึกษาแล้ว
+            <span style={{ fontWeight: 600, fontSize: 14, color: form.graduated ? '#4CAF76' : '#6B7280', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <GraduationCap size={16} color={form.graduated ? '#4CAF76' : '#6B7280'} /> สำเร็จการศึกษาแล้ว
             </span>
             <p style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>ติ๊กเมื่อนักเรียนจบการศึกษาจากห้องนี้</p>
           </div>

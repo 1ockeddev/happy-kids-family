@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { behaviorCategoriesApi, behaviorItemsApi, cohortsApi } from '@/lib/api-client';
 import { BehaviorCategory, BehaviorItem, Cohort } from '@/types';
 import Modal from '@/components/ui/Modal';
-import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, RefreshCw, AlertCircle } from 'lucide-react';
+import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, RefreshCw, AlertCircle, Brain } from 'lucide-react';
 
 interface CategoryWithItems extends BehaviorCategory { items: BehaviorItem[] }
 
@@ -95,7 +95,9 @@ export default function BehaviorsPage() {
           </div>
         ) : categories.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '48px 24px', color: '#9CA3AF' }}>
-            <p style={{ fontSize: 40, marginBottom: 12 }}>🧠</p>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+              <Brain size={40} color="#9CA3AF" />
+            </div>
             <p>ยังไม่มีหมวดหมู่ กด &ldquo;เพิ่มหมวดหมู่&rdquo; เพื่อเริ่มต้น</p>
           </div>
         ) : (

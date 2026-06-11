@@ -6,7 +6,7 @@ import { MilkStatus } from '@/types';
 import LoadingWrapper from '@/components/loading/LoadingWrapper';
 import FoodSummarySkeleton from '@/components/loading/skeletons/FoodSummarySkeleton';
 
-const amtL: Record<MilkStatus,string> = { all:'ทานหมด', some:'ทานครึ่งเดียว', not_must:'ไม่จำเป็น', skip:'ไม่ทาน' };
+const amtL: Record<MilkStatus,string> = { all:'ทานหมด', some:'บางส่วน', not_must:'นิดหน่อย', skip:'ข้าม' };
 
 export default function FoodMilkSummaryPage() {
   const { childId, enrollmentPeriod } = useUserApp();

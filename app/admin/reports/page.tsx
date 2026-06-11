@@ -7,16 +7,17 @@ import {
 import CrudTable from '@/components/admin/CrudTable';
 import Modal from '@/components/ui/Modal';
 import { Pencil, Trash2, Plus, X, MessageSquare, Printer } from 'lucide-react';
+import { FaceNeutral, FaceSmile, FaceHappy } from '@/components/icons';
 
 /* ─── constants ── */
-const AL: Record<MilkStatus, string> = { all: 'หมด', some: 'บางส่วน', not_must: 'ไม่จำเป็น', skip: 'ข้าม' };
+const AL: Record<MilkStatus, string> = { all: 'ทานหมด', some: 'บางส่วน', not_must: 'นิดหน่อย', skip: 'ข้าม' };
 const AC: Record<MilkStatus, string> = { all: 'badge-active', some: 'badge-leave', not_must: 'badge-inactive', skip: 'badge-inactive' };
-const ET: Record<ExcretionType,   string> = { pee: '💛 ปัสสาวะ', poo: '💩 อุจจาระ' };
-const EA: Record<ExcretionAction, string> = { diaper: '🩲 ผ้าอ้อม', potty: '🚽 กระโถน' };
+const ET: Record<ExcretionType,   string> = { pee: 'ปัสสาวะ', poo: 'อุจจาระ' };
+const EA: Record<ExcretionAction, string> = { diaper: 'ผ้าอ้อม', potty: 'กระโถน' };
 
 const EMPTY_FORM = {
   cohort_id: '', daily_id: '', child_id: '',
-  nap_from: '', nap_to: '',
+  nap_from: '', nap_to: '', nap_note: '',
   milk1: 'all' as MilkStatus, milk1_note: '',
   milk2: 'all' as MilkStatus, milk2_note: '',
   food_amount: 'all' as MilkStatus, food_note: '',
@@ -31,9 +32,9 @@ type ExLocal = ChildExcretion & { _new?: boolean; _del?: boolean };
 
 /* ─── FaceIcon ── */
 const FACES = [
-  { score: 1, emoji: '😐', label: 'ควรส่งเสริม', color: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A' },
-  { score: 2, emoji: '🙂', label: 'ทำได้ดี',     color: '#3B82F6', bg: '#EFF6FF', border: '#BFDBFE' },
-  { score: 3, emoji: '😄', label: 'ดีเยี่ยม',    color: '#10B981', bg: '#ECFDF5', border: '#A7F3D0' },
+  { score: 1, icon: FaceNeutral, label: 'ควรส่งเสริม', color: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A' },
+  { score: 2, icon: FaceSmile, label: 'ทำได้ดี',     color: '#3B82F6', bg: '#EFF6FF', border: '#BFDBFE' },
+  { score: 3, icon: FaceHappy, label: 'ดีเยี่ยม',    color: '#10B981', bg: '#ECFDF5', border: '#A7F3D0' },
 ];
 
 /* ─── AmountSelect with optional note ── */
@@ -96,6 +97,7 @@ function ScoreInput({ item, score, onChange, onNoteChange }: {
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           {FACES.slice(0, max).reverse().map(f => {
             const active = val === f.score;
+            const IconComponent = f.icon;
             return (
               <button key={f.score} type="button"
                 onClick={() => onChange(item.id, active ? null : f.score)}
@@ -103,11 +105,11 @@ function ScoreInput({ item, score, onChange, onNoteChange }: {
                 style={{
                   width: 36, height: 36, borderRadius: '50%', border: active ? `2px solid ${f.color}` : '2px solid transparent',
                   background: active ? f.bg : '#F9FAFB',
-                  cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   transition: 'all 0.15s', transform: active ? 'scale(1.15)' : 'scale(1)',
                   boxShadow: active ? `0 0 0 3px ${f.border}` : 'none',
                 }}>
-                {f.emoji}
+                <IconComponent size={20} color={active ? f.color : '#9CA3AF'} />
               </button>
             );
           })}
@@ -262,7 +264,7 @@ export default function ReportsPage() {
     const cohortId = (r.daily as Daily & { cohort?: { id: string } })?.cohort?.id ?? '';
     setForm({
       cohort_id: cohortId, daily_id: r.daily_id, child_id: r.child_id,
-      nap_from: r.nap_from ?? '', nap_to: r.nap_to ?? '',
+      nap_from: r.nap_from ?? '', nap_to: r.nap_to ?? '', nap_note: r.nap_note ?? '',
       milk1: r.milk1, milk1_note: r.milk1_note ?? '',
       milk2: r.milk2, milk2_note: r.milk2_note ?? '',
       food_amount: r.food_amount, food_note: r.food_note ?? '',
@@ -800,7 +802,7 @@ export default function ReportsPage() {
       let reportId: string;
       const body = {
         ...form,
-        nap_from: form.nap_from || null, nap_to: form.nap_to || null,
+        nap_from: form.nap_from || null, nap_to: form.nap_to || null, nap_note: form.nap_note || null,
         milk1_note: form.milk1_note || null, milk2_note: form.milk2_note || null,
         food_note: form.food_note || null, fruit_note: form.fruit_note || null,
         note: form.note || null,
@@ -931,13 +933,13 @@ export default function ReportsPage() {
           visibleColumns.milk2 ? { key: 'milk2', label: 'นม 2', hideOnMobile: true, render: (r: DailyReport) => <span className={`badge ${AC[r.milk2]}`}>{AL[r.milk2]}</span> } : null,
           visibleColumns.food_amount ? { key: 'food_amount', label: 'อาหาร', hideOnMobile: true, render: (r: DailyReport) => <span className={`badge ${AC[r.food_amount]}`}>{AL[r.food_amount]}</span> } : null,
           visibleColumns.fruit_amount ? { key: 'fruit_amount', label: 'ผลไม้', hideOnMobile: true, render: (r: DailyReport) => <span className={`badge ${AC[r.fruit_amount]}`}>{AL[r.fruit_amount]}</span> } : null,
-          visibleColumns.nap ? { key: 'nap', label: '😴 นอน', hideOnMobile: true, render: (r: DailyReport) => r.nap_from && r.nap_to ? <span style={{ fontSize: 12, color: '#6B7280' }}>{r.nap_from.slice(0,5)} - {r.nap_to.slice(0,5)}</span> : <span style={{ color: '#D1D5DB' }}>—</span> } : null,
-          visibleColumns.excretions ? { key: 'excretions', label: '🚽', hideOnMobile: true, render: (r: DailyReport) => {
+          visibleColumns.nap ? { key: 'nap', label: 'นอน', hideOnMobile: true, render: (r: DailyReport) => r.nap_from && r.nap_to ? <span style={{ fontSize: 12, color: '#6B7280' }}>{r.nap_from.slice(0,5)} - {r.nap_to.slice(0,5)}</span> : <span style={{ color: '#D1D5DB' }}>—</span> } : null,
+          visibleColumns.excretions ? { key: 'excretions', label: 'ขับถ่าย', hideOnMobile: true, render: (r: DailyReport) => {
             const exs = r.excretions ?? [];
             if (!exs.length) return <span style={{ color: '#D1D5DB' }}>—</span>;
-            return <div style={{ display: 'flex', gap: 4 }}>{exs.map((ex: ChildExcretion, i: number) => <span key={i} style={{ fontSize: 11, background: ex.type === 'poo' ? '#FEF6E6' : '#EBF4FA', color: ex.type === 'poo' ? '#F5A623' : '#4A90B8', padding: '2px 6px', borderRadius: 99 }}>{ex.type === 'pee' ? '💛' : '💩'} {ex.time?.slice(0,5)}</span>)}</div>;
+            return <div style={{ display: 'flex', gap: 4 }}>{exs.map((ex: ChildExcretion, i: number) => <span key={i} style={{ fontSize: 11, background: ex.type === 'poo' ? '#FEF6E6' : '#EBF4FA', color: ex.type === 'poo' ? '#F5A623' : '#4A90B8', padding: '2px 6px', borderRadius: 99 }}>{ex.type ? ET[ex.type] : '-'} {ex.time?.slice(0,5)}</span>)}</div>;
           }} : null,
-          visibleColumns.teacher ? { key: 'teacher', label: '👩‍🏫 ครู', hideOnMobile: true, render: (r: DailyReport) => {
+          visibleColumns.teacher ? { key: 'teacher', label: 'ครู', hideOnMobile: true, render: (r: DailyReport) => {
             const teacher = teachers.find(t => t.id === r.created_by);
             if (!teacher) return <span style={{ color: '#D1D5DB', fontSize: 12 }}>—</span>;
             return (
@@ -1023,9 +1025,9 @@ export default function ReportsPage() {
         {/* food/fruit preview */}
         {selectedDaily && (selectedDaily.activity || selectedDaily.food || selectedDaily.fruit) && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {selectedDaily.activity && <div style={{ flex: '1 1 100%', background: '#EBF4FA', borderRadius: 8, padding: '10px 14px' }}><p style={{ fontSize: 11, fontWeight: 700, color: '#4A90B8', marginBottom: 4 }}>🎨 กิจกรรม</p><p style={{ fontSize: 14, fontWeight: 600 }}>{selectedDaily.activity}</p></div>}
-            {selectedDaily.food   && <div style={{ flex: 1, background: '#EBF7F0', borderRadius: 8, padding: '10px 14px' }}><p style={{ fontSize: 11, fontWeight: 700, color: '#4CAF76', marginBottom: 4 }}>🍱 อาหาร</p><p style={{ fontSize: 14, fontWeight: 600 }}>{selectedDaily.food}</p></div>}
-            {selectedDaily.fruit  && <div style={{ flex: 1, background: '#EBF7F0', borderRadius: 8, padding: '10px 14px' }}><p style={{ fontSize: 11, fontWeight: 700, color: '#4CAF76', marginBottom: 4 }}>🍎 ผลไม้</p><p style={{ fontSize: 14, fontWeight: 600 }}>{selectedDaily.fruit}</p></div>}
+            {selectedDaily.activity && <div style={{ flex: '1 1 100%', background: '#EBF4FA', borderRadius: 8, padding: '10px 14px' }}><p style={{ fontSize: 11, fontWeight: 700, color: '#4A90B8', marginBottom: 4 }}>กิจกรรม</p><p style={{ fontSize: 14, fontWeight: 600 }}>{selectedDaily.activity}</p></div>}
+            {selectedDaily.food   && <div style={{ flex: 1, background: '#EBF7F0', borderRadius: 8, padding: '10px 14px' }}><p style={{ fontSize: 11, fontWeight: 700, color: '#4CAF76', marginBottom: 4 }}>อาหาร</p><p style={{ fontSize: 14, fontWeight: 600 }}>{selectedDaily.food}</p></div>}
+            {selectedDaily.fruit  && <div style={{ flex: 1, background: '#EBF7F0', borderRadius: 8, padding: '10px 14px' }}><p style={{ fontSize: 11, fontWeight: 700, color: '#4CAF76', marginBottom: 4 }}>ผลไม้</p><p style={{ fontSize: 14, fontWeight: 600 }}>{selectedDaily.fruit}</p></div>}
           </div>
         )}
 
@@ -1071,6 +1073,30 @@ export default function ReportsPage() {
             <div className="form-group"><label className="form-label">เริ่มนอน</label><input className="form-input" type="time" value={form.nap_from} onChange={e => setForm(f => ({ ...f, nap_from: e.target.value }))} /></div>
             <div className="form-group"><label className="form-label">ตื่นนอน</label><input className="form-input" type="time" value={form.nap_to} onChange={e => setForm(f => ({ ...f, nap_to: e.target.value }))} /></div>
           </div>
+          {/* Nap Note with Toggle */}
+          <div className="form-group" style={{ marginTop: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <label className="form-label" style={{ margin: 0 }}>หมายเหตุ (สำหรับเด็กไม่นอน)</label>
+              <button type="button"
+                onClick={() => {
+                  const napNoteInput = document.getElementById('nap-note-input');
+                  if (napNoteInput) {
+                    (napNoteInput as HTMLElement).style.display = 
+                      (napNoteInput as HTMLElement).style.display === 'none' ? 'block' : 'none';
+                  }
+                }}
+                style={{ display: 'flex', alignItems: 'center', gap: 4, background: form.nap_note ? '#F0EEFF' : 'transparent', border: 'none', borderRadius: 99, padding: '3px 8px', cursor: 'pointer', color: form.nap_note ? '#6C5CE7' : '#9CA3AF', fontSize: 12, fontFamily: 'Sarabun, sans-serif' }}>
+                <MessageSquare size={12} /> {form.nap_note ? 'ซ่อน' : 'หมายเหตุ'}
+              </button>
+            </div>
+            <input 
+              id="nap-note-input"
+              className="form-input" 
+              style={{ display: form.nap_note ? 'block' : 'none' }}
+              placeholder="เช่น ไม่นอน, เล่นตลอด, นอนดึก..."
+              value={form.nap_note}
+              onChange={e => setForm(f => ({ ...f, nap_note: e.target.value }))} />
+          </div>
         </div>
 
         {/* ── Excretions ── */}
@@ -1110,7 +1136,7 @@ export default function ReportsPage() {
         <div style={{ background: '#EBF7F0', borderRadius: 8, padding: '14px 16px' }}>
           <Sec emoji="🍱" label="ปริมาณที่รับประทาน" color="#4CAF76" />
           <AmountSelect 
-            label={selectedDaily?.food ? `🍱 ${selectedDaily.food}` : "ปริมาณอาหาร"} 
+            label={selectedDaily?.food ? selectedDaily.food : "ปริมาณอาหาร"} 
             value={form.food_amount} 
             noteValue={form.food_note}
             onAmountChange={v => setForm(f => ({ ...f, food_amount: v }))}
@@ -1184,7 +1210,7 @@ export default function ReportsPage() {
 
         {/* ── Note ── */}
         <div className="form-group">
-          <label className="form-label">💬 ข้อความถึงผู้ปกครอง</label>
+          <label className="form-label">ข้อความถึงผู้ปกครอง</label>
           <textarea className="form-input" rows={2} value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} style={{ resize: 'vertical' }} placeholder="เพิ่มเติม..." />
         </div>
       </Modal>
@@ -1204,13 +1230,13 @@ export default function ReportsPage() {
           {[
             { key: 'child', label: '👧 นักเรียน', disabled: true },
             { key: 'date', label: '📅 วันที่' },
-            { key: 'milk1', label: '🍼 นม 1' },
-            { key: 'milk2', label: '🍼 นม 2' },
-            { key: 'food_amount', label: '🍱 อาหาร' },
-            { key: 'fruit_amount', label: '🍎 ผลไม้' },
-            { key: 'nap', label: '😴 การนอน' },
-            { key: 'excretions', label: '🚽 การขับถ่าย' },
-            { key: 'teacher', label: '👩‍🏫 ครูผู้บันทึก' },
+            { key: 'milk1', label: 'นม 1' },
+            { key: 'milk2', label: 'นม 2' },
+            { key: 'food_amount', label: 'อาหาร' },
+            { key: 'fruit_amount', label: 'ผลไม้' },
+            { key: 'nap', label: 'การนอน' },
+            { key: 'excretions', label: 'การขับถ่าย' },
+            { key: 'teacher', label: 'ครูผู้บันทึก' },
           ].map(col => (
             <label 
               key={col.key} 

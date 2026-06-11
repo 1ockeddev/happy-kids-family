@@ -42,26 +42,26 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { daily_id, child_id, nap_from, nap_to,
+    const { daily_id, child_id, nap_from, nap_to, nap_note,
             milk1, milk1_note, milk2, milk2_note,
             food_amount, food_note, fruit_amount, fruit_note,
             note, created_by } = body;
     if (!daily_id || !child_id) return badRequest('daily_id และ child_id จำเป็น');
     const row = await queryOne(
       `INSERT INTO daily_report
-         (daily_id, child_id, nap_from, nap_to,
+         (daily_id, child_id, nap_from, nap_to, nap_note,
           milk1, milk1_note, milk2, milk2_note,
           food_amount, food_note, fruit_amount, fruit_note,
           note, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        ON CONFLICT (daily_id, child_id) DO UPDATE SET
-         nap_from=$3, nap_to=$4,
-         milk1=$5, milk1_note=$6, milk2=$7, milk2_note=$8,
-         food_amount=$9, food_note=$10, fruit_amount=$11, fruit_note=$12,
-         note=$13, updated_by=$14, updated_at=NOW()
+         nap_from=$3, nap_to=$4, nap_note=$5,
+         milk1=$6, milk1_note=$7, milk2=$8, milk2_note=$9,
+         food_amount=$10, food_note=$11, fruit_amount=$12, fruit_note=$13,
+         note=$14, updated_by=$15, updated_at=NOW()
        RETURNING *`,
       [daily_id, child_id,
-       nap_from ?? null, nap_to ?? null,
+       nap_from ?? null, nap_to ?? null, nap_note ?? null,
        milk1 ?? 'skip', milk1_note ?? null,
        milk2 ?? 'skip', milk2_note ?? null,
        food_amount ?? 'skip', food_note ?? null,

@@ -5,6 +5,10 @@ import { UserAppProvider } from "@/components/UserAppProvider";
 export const metadata: Metadata = {
   title: "Happy Kids with Kru Beer System",
   description: "Happy Kids with Kru Beer Management System",
+  icons: {
+    icon: '/favicon.png',
+    apple: '/favicon.png',
+  },
 };
 
 export const viewport: Viewport = {

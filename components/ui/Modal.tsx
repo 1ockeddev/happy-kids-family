@@ -3,13 +3,13 @@ import { ReactNode, useEffect } from 'react';
 import { X } from 'lucide-react';
 
 interface ModalProps {
-  open: boolean; title: string; onClose: () => void;
-  onConfirm?: () => void; confirmLabel?: string; confirmDanger?: boolean;
+  open: boolean; title: ReactNode; onClose: () => void;
+  onConfirm?: () => void; confirmLabel?: string; confirmDanger?: boolean; confirmDisabled?: boolean;
   children: ReactNode;
   size?: 'default' | 'large';
 }
 
-export default function Modal({ open, title, onClose, onConfirm, confirmLabel = 'บันทึก', confirmDanger, children, size = 'default' }: ModalProps) {
+export default function Modal({ open, title, onClose, onConfirm, confirmLabel = 'บันทึก', confirmDanger, confirmDisabled, children, size = 'default' }: ModalProps) {
   // lock body scroll when open
   useEffect(() => {
     if (open) document.body.style.overflow = 'hidden';
@@ -44,7 +44,16 @@ export default function Modal({ open, title, onClose, onConfirm, confirmLabel = 
         {onConfirm && (
           <div className="modal-footer">
             <button className="btn btn-ghost" onClick={onClose} style={{ flex: 1 }}>ยกเลิก</button>
-            <button className={`btn ${confirmDanger ? 'btn-danger' : 'btn-primary'}`} onClick={onConfirm} style={{ flex: 2 }}>
+            <button 
+              className={`btn ${confirmDanger ? 'btn-danger' : 'btn-primary'}`} 
+              onClick={onConfirm} 
+              disabled={confirmDisabled}
+              style={{ 
+                flex: 2,
+                opacity: confirmDisabled ? 0.5 : 1,
+                cursor: confirmDisabled ? 'not-allowed' : 'pointer'
+              }}
+            >
               {confirmLabel}
             </button>
           </div>

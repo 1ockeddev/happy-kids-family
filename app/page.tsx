@@ -10,9 +10,10 @@ import UserLayout from '@/components/UserLayout';
 import { useUserApp } from '@/components/UserAppProvider';
 import AppHeader from '@/components/AppHeader';
 import BottomNavigation from '@/components/BottomNavigation';
+import { FaceHappy, FaceSmile, FaceNeutral, Book, Diaper, Toilet, Building, User, CheckCircle, XCircle, AlertCircle, Calendar } from '@/components/icons';
 
 /* ── label maps ─────────────────────────────── */
-const amtL: Record<MilkStatus,string> = { all:'ทานหมด', some:'ทานครึ่งเดียว', not_must:'ไม่จำเป็น', skip:'ไม่ทาน' };
+const amtL: Record<MilkStatus,string> = { all:'ทานหมด', some:'บางส่วน', not_must:'นิดหน่อย', skip:'ข้าม' };
 const amtStyle: Record<MilkStatus,{bg:string;color:string}> = {
   all:      {bg:'#dcfce7',color:'#15803d'},
   some:     {bg:'#fef3c7',color:'#b45309'},
@@ -48,14 +49,6 @@ interface MonthSpan {
   startWeekIdx: number;
   weekCount: number;
 }
-
-/* ── Icon Components ─────────────────────────────── */
-const BookIcon = ({size=14,color='#6366f1'}:{size?:number;color?:string}) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-  </svg>
-);
 
 /* ── Helper Functions ─────────────────────────────── */
 // Parse YYYY-MM-DD string as local date (not UTC to avoid timezone shift)
@@ -227,30 +220,6 @@ const SkRow = ({w='100%',h=14,mb=0}:{w?:string|number;h?:number;mb?:number}) =>
   <div style={{...shimmer,width:w,height:h,marginBottom:mb}} />;
 const SkCircle = ({size=40}:{size?:number}) =>
   <div style={{...shimmer,width:size,height:size,borderRadius:'50%',flexShrink:0}} />;
-
-/* ── face icons ─────────────────────────────*/
-const FaceHappy = ({size=22,color='#10b981'}:{size?:number;color?:string}) => (
-  <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
-    <circle cx="50" cy="50" r="42" stroke={color} strokeWidth="4"/>
-    <path d="M28 38 Q34 28 40 38" stroke={color} strokeWidth="4" strokeLinecap="round"/>
-    <path d="M60 38 Q66 28 72 38" stroke={color} strokeWidth="4" strokeLinecap="round"/>
-    <path d="M28 58 Q50 82 72 58" stroke={color} strokeWidth="5" strokeLinecap="round"/>
-  </svg>
-);
-const FaceSmile = ({size=22,color='#3b82f6'}:{size?:number;color?:string}) => (
-  <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
-    <circle cx="50" cy="50" r="42" stroke={color} strokeWidth="4"/>
-    <circle cx="35" cy="38" r="4" fill={color}/><circle cx="65" cy="38" r="4" fill={color}/>
-    <path d="M35 58 Q50 72 65 58" stroke={color} strokeWidth="5" strokeLinecap="round"/>
-  </svg>
-);
-const FaceNeutral = ({size=22,color='#f59e0b'}:{size?:number;color?:string}) => (
-  <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
-    <circle cx="50" cy="50" r="42" stroke={color} strokeWidth="4"/>
-    <circle cx="35" cy="38" r="4" fill={color}/><circle cx="65" cy="38" r="4" fill={color}/>
-    <line x1="35" y1="62" x2="65" y2="62" stroke={color} strokeWidth="5" strokeLinecap="round"/>
-  </svg>
-);
 
 /* ── StatusPill ─────────────────────────────*/
 const Pill = ({status}:{status:MilkStatus}) => (
@@ -741,7 +710,9 @@ export default function LiffPage() {
     return (
       <div style={{minHeight:'100dvh',display:'flex',alignItems:'center',justifyContent:'center',padding:24,background:'#f8fafc'}}>
         <div style={{background:'white',borderRadius:20,padding:28,textAlign:'center',maxWidth:340,border:'1px solid #e2e8f0',boxShadow:'0 4px 12px rgba(0,0,0,0.05)'}}>
-          <p style={{fontSize:48,marginBottom:12}}>🏫</p>
+          <div style={{display:'flex',justifyContent:'center',marginBottom:12}}>
+            <Building size={56} color="#6366f1" />
+          </div>
           <h2 style={{fontWeight:800,color:'#0f172a',marginBottom:8}}>ยังไม่มีข้อมูล</h2>
           <p style={{fontSize:14,color:'#64748b',lineHeight:1.6,marginBottom:20}}>
             LINE บัญชีนี้ยังไม่ได้ผูกกับนักเรียน<br/>
@@ -843,11 +814,23 @@ export default function LiffPage() {
                   </span>
                 )}
               </div>
-              <div style={{display:'flex',gap:8,fontSize:'0.65rem'}}>
-                <div style={{display:'flex',alignItems:'center',gap:3}}><div style={{width:8,height:8,borderRadius:2,background:'#10b981'}} /><span style={{color:'#64748b'}}>มา</span></div>
-                <div style={{display:'flex',alignItems:'center',gap:3}}><div style={{width:8,height:8,borderRadius:2,background:'#f59e0b'}} /><span style={{color:'#64748b'}}>ลา</span></div>
-                <div style={{display:'flex',alignItems:'center',gap:3}}><div style={{width:8,height:8,borderRadius:2,background:'#ef4444'}} /><span style={{color:'#64748b'}}>ขาด</span></div>
-                <div style={{display:'flex',alignItems:'center',gap:3}}><div style={{width:8,height:8,borderRadius:2,background:'#c084fc'}} /><span style={{color:'#64748b'}}>หยุด</span></div>
+              <div style={{display:'flex',gap:8,fontSize:'0.65rem',flexWrap:'wrap'}}>
+                <div style={{display:'flex',alignItems:'center',gap:4}}>
+                  <CheckCircle size={12} color="#10b981" />
+                  <span style={{color:'#64748b'}}>มา</span>
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:4}}>
+                  <div style={{width:10,height:10,borderRadius:2,background:'#f59e0b',border:'2px solid #f59e0b'}} />
+                  <span style={{color:'#64748b'}}>ลา</span>
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:4}}>
+                  <XCircle size={12} color="#ef4444" />
+                  <span style={{color:'#64748b'}}>ขาด</span>
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:4}}>
+                  <div style={{width:8,height:8,borderRadius:2,background:'#c084fc'}} />
+                  <span style={{color:'#64748b'}}>หยุด</span>
+                </div>
               </div>
             </div>
             <div id="calendar-scroll-container" style={{overflowX:'auto',scrollbarWidth:'none',WebkitOverflowScrolling:'touch',overflowY:'visible',padding:'4px 8px'}}>
@@ -922,7 +905,7 @@ export default function LiffPage() {
                                   <div>{dateLabel}{statusLabel ? ` - ${statusLabel}` : ''}</div>
                                   {day.activity && (
                                     <div style={{display:'flex',alignItems:'center',gap:4}}>
-                                      <BookIcon size={12} color="white" />
+                                      <Book size={12} color="white" />
                                       <span>{day.activity}</span>
                                     </div>
                                   )}
@@ -1246,24 +1229,34 @@ export default function LiffPage() {
                       return (
                         <>
                           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                            <span style={{fontSize:'0.75rem',color:'#64748b'}}>💛 ปัสสาวะ</span>
+                            <span style={{fontSize:'0.75rem',color:'#64748b',display:'flex',alignItems:'center',gap:6}}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="#fbbf24">
+                                <circle cx="12" cy="12" r="10"/>
+                              </svg>
+                              ปัสสาวะ
+                            </span>
                             <span style={{fontSize:'0.75rem',fontWeight:600,color:'#1e293b'}}>{peeTotal} ครั้ง</span>
                           </div>
                           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                            <span style={{fontSize:'0.75rem',color:'#64748b'}}>💩 อุจจาระ</span>
+                            <span style={{fontSize:'0.75rem',color:'#64748b',display:'flex',alignItems:'center',gap:6}}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="#b45309">
+                                <ellipse cx="12" cy="14" rx="6" ry="6"/>
+                              </svg>
+                              อุจจาระ
+                            </span>
                             <span style={{fontSize:'0.75rem',fontWeight:600,color:'#1e293b'}}>{pooTotal} ครั้ง</span>
                           </div>
                           <div style={{height:1,background:'#e2e8f0',margin:'4px 0'}}/>
                           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                            <span style={{fontSize:'0.75rem',color:'#64748b'}}>🩲 ผ้าอ้อม</span>
+                            <span style={{fontSize:'0.75rem',color:'#64748b',display:'flex',alignItems:'center',gap:6}}>
+                              <Diaper size={14} color="#6366f1" />
+                              ผ้าอ้อม
+                            </span>
                             <span style={{fontSize:'0.75rem',fontWeight:600,color:'#1e293b'}}>{diaperCount} ครั้ง</span>
                           </div>
                           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                            <span style={{fontSize:'0.75rem',color:'#64748b',display:'flex',alignItems:'center',gap:4}}>
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M9 11l3 3L22 4"/>
-                                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-                              </svg>
+                            <span style={{fontSize:'0.75rem',color:'#64748b',display:'flex',alignItems:'center',gap:6}}>
+                              <Toilet size={14} color="#10b981" />
                               กระโถน
                             </span>
                             <span style={{fontSize:'0.75rem',fontWeight:600,color:'#1e293b'}}>{pottyCount} ครั้ง</span>
@@ -1298,31 +1291,13 @@ export default function LiffPage() {
                 <div style={{background:attBg[attendance.status],borderRadius:16,padding:'14px 18px',marginBottom:14,display:'flex',alignItems:'center',gap:12,border:`1px solid ${attC[attendance.status]}22`}}>
                   <div style={{width:44,height:44,borderRadius:'50%',background:'white',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                     {attendance.status==='present' ? (
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                        <polyline points="22 4 12 14.01 9 11.01"/>
-                      </svg>
+                      <CheckCircle size={24} color="#10b981" strokeWidth={2.5} />
                     ) : attendance.status==='sick' ? (
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M20 9v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9"/>
-                        <path d="M9 22V12h6v10"/>
-                        <path d="M2 10.6L12 2l10 8.6"/>
-                        <line x1="12" y1="6" x2="12" y2="8"/>
-                        <line x1="12" y1="16" x2="12" y2="18"/>
-                      </svg>
+                      <AlertCircle size={24} color="#f59e0b" strokeWidth={2.5} />
                     ) : attendance.status==='absent' ? (
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="10"/>
-                        <line x1="15" y1="9" x2="9" y2="15"/>
-                        <line x1="9" y1="9" x2="15" y2="15"/>
-                      </svg>
+                      <XCircle size={24} color="#ef4444" strokeWidth={2.5} />
                     ) : (
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                        <line x1="12" y1="18" x2="12" y2="12"/>
-                        <line x1="9" y1="15" x2="15" y2="15"/>
-                      </svg>
+                      <Calendar size={24} color="#3b82f6" strokeWidth={2.5} />
                     )}
                   </div>
                   <div>
@@ -1664,7 +1639,32 @@ export default function LiffPage() {
                         </div>
                       </div>
                     );
-                  })() : <p style={{color:'#94a3b8',fontSize:14}}>ไม่ได้นอนกลางวัน</p>}
+                  })() : (
+                    <div style={{color:'#94a3b8',fontSize:14}}>
+                      <p style={{marginBottom: report.nap_note ? 6 : 0}}>ไม่ได้นอนกลางวัน</p>
+                      {report.nap_note && (
+                        <div style={{
+                          background:'#fef3c7',
+                          border:'1px solid #fbbf24',
+                          borderRadius:8,
+                          padding:'8px 12px',
+                          marginTop:8
+                        }}>
+                          <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="12" cy="12" r="10"/>
+                              <line x1="12" y1="16" x2="12" y2="12"/>
+                              <line x1="12" y1="8" x2="12.01" y2="8"/>
+                            </svg>
+                            <span style={{fontSize:'0.7rem',fontWeight:700,color:'#b45309',textTransform:'uppercase',letterSpacing:'0.05em'}}>หมายเหตุ</span>
+                          </div>
+                          <p style={{fontSize:'0.85rem',color:'#92400e',margin:0,lineHeight:1.5}}>
+                            {report.nap_note}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Excretions */}
@@ -1818,7 +1818,7 @@ export default function LiffPage() {
                   cursor:'pointer'
                 }}
               >
-                👨‍🏫 Teacher Mode
+                <User size={16} color={localStorage.getItem('mockRole') === 'teacher' ? 'white' : '#64748b'} /> Teacher Mode
               </button>
               <button
                 onClick={() => {

@@ -37,25 +37,26 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
     const body = await req.json();
-    const { nap_from, nap_to, milk1, milk1_note, milk2, milk2_note, food_amount, food_note, fruit_amount, fruit_note, note, updated_by, created_by } = body;
+    const { nap_from, nap_to, nap_note, milk1, milk1_note, milk2, milk2_note, food_amount, food_note, fruit_amount, fruit_note, note, updated_by, created_by } = body;
     const row = await queryOne(
       `UPDATE daily_report SET
         nap_from     = COALESCE($1, nap_from),
         nap_to       = COALESCE($2, nap_to),
-        milk1        = COALESCE($3, milk1),
-        milk1_note   = $4,
-        milk2        = COALESCE($5, milk2),
-        milk2_note   = $6,
-        food_amount  = COALESCE($7, food_amount),
-        food_note    = $8,
-        fruit_amount = COALESCE($9, fruit_amount),
-        fruit_note   = $10,
-        note         = $11,
-        updated_by   = $12,
-        created_by   = COALESCE($13, created_by),
+        nap_note     = $3,
+        milk1        = COALESCE($4, milk1),
+        milk1_note   = $5,
+        milk2        = COALESCE($6, milk2),
+        milk2_note   = $7,
+        food_amount  = COALESCE($8, food_amount),
+        food_note    = $9,
+        fruit_amount = COALESCE($10, fruit_amount),
+        fruit_note   = $11,
+        note         = $12,
+        updated_by   = $13,
+        created_by   = COALESCE($14, created_by),
         updated_at   = NOW()
-       WHERE id = $14 RETURNING *`,
-      [nap_from ?? null, nap_to ?? null,
+       WHERE id = $15 RETURNING *`,
+      [nap_from ?? null, nap_to ?? null, nap_note ?? null,
        milk1 ?? null, milk1_note ?? null,
        milk2 ?? null, milk2_note ?? null,
        food_amount ?? null, food_note ?? null,

@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { query } from '@/lib/db';
+import { User, Building, CheckCircle, XCircle, Calendar as CalendarIcon, PencilSquare } from '@/components/icons';
+import { Zap, Brain } from 'lucide-react';
 
 // Fetch data directly from database
 async function fetchDashboardData() {
@@ -44,20 +46,20 @@ export default async function AdminDashboard() {
   const absentToday = attendances.filter((a: any) => a.status === 'absent').length;
 
   const stats = [
-    { label: 'นักเรียนทั้งหมด', value: children.length, icon: '👧', color: '#E8754A', bg: '#FEF0EB' },
-    { label: 'ห้องเรียน', value: cohorts.length, icon: '🏫', color: '#4A90B8', bg: '#EBF4FA' },
-    { label: 'มาเรียนวันนี้', value: presentToday, icon: '✅', color: '#4CAF76', bg: '#EBF7F0' },
-    { label: 'ขาดเรียนวันนี้', value: absentToday, icon: '❌', color: '#E85C5C', bg: '#FDECEC' },
+    { label: 'นักเรียนทั้งหมด', value: children.length, icon: <User size={22} color="#E8754A" />, color: '#E8754A', bg: '#FEF0EB' },
+    { label: 'ห้องเรียน', value: cohorts.length, icon: <Building size={22} color="#4A90B8" />, color: '#4A90B8', bg: '#EBF4FA' },
+    { label: 'มาเรียนวันนี้', value: presentToday, icon: <CheckCircle size={22} color="#4CAF76" />, color: '#4CAF76', bg: '#EBF7F0' },
+    { label: 'ขาดเรียนวันนี้', value: absentToday, icon: <XCircle size={22} color="#E85C5C" />, color: '#E85C5C', bg: '#FDECEC' },
   ];
 
   const quickLinks = [
-    { href: '/admin/children', label: 'จัดการนักเรียน', desc: 'เพิ่ม แก้ไข ลบข้อมูลนักเรียน', icon: '👧' },
-    { href: '/admin/cohorts', label: 'จัดการห้องเรียน', desc: 'สร้างและจัดการรุ่น/ห้องเรียน', icon: '🏫' },
-    { href: '/admin/daily', label: 'บันทึกรายวัน', desc: 'กิจกรรม อาหาร ผลไม้ประจำวัน', icon: '📅' },
-    { href: '/admin/attendance', label: 'บันทึกการเข้าเรียน', desc: 'เช็คชื่อ สถานะนักเรียน', icon: '📋' },
-    { href: '/admin/reports', label: 'รายงานรายวัน', desc: 'นอน นม บันทึกส่วนตัว', icon: '📝' },
-    { href: '/admin/behaviors', label: 'ประเมินพฤติกรรม', desc: 'หมวดหมู่และรายการประเมิน', icon: '🧠' },
-    { href: '/admin/users', label: 'จัดการผู้ใช้', desc: 'ครู ผู้ปกครอง สิทธิ์การใช้งาน', icon: '👤' },
+    { href: '/admin/children', label: 'จัดการนักเรียน', desc: 'เพิ่ม แก้ไข ลบข้อมูลนักเรียน', icon: <User size={24} color="#6366f1" /> },
+    { href: '/admin/cohorts', label: 'จัดการห้องเรียน', desc: 'สร้างและจัดการรุ่น/ห้องเรียน', icon: <Building size={24} color="#6366f1" /> },
+    { href: '/admin/daily', label: 'บันทึกรายวัน', desc: 'กิจกรรม อาหาร ผลไม้ประจำวัน', icon: <CalendarIcon size={24} color="#6366f1" /> },
+    { href: '/admin/attendance', label: 'บันทึกการเข้าเรียน', desc: 'เช็คชื่อ สถานะนักเรียน', icon: <CheckCircle size={24} color="#6366f1" /> },
+    { href: '/admin/reports', label: 'รายงานรายวัน', desc: 'นอน นม บันทึกส่วนตัว', icon: <PencilSquare size={24} color="#6366f1" /> },
+    { href: '/admin/behaviors', label: 'ประเมินพฤติกรรม', desc: 'หมวดหมู่และรายการประเมิน', icon: <Brain size={24} color="#6366f1" /> },
+    { href: '/admin/users', label: 'จัดการผู้ใช้', desc: 'ครู ผู้ปกครอง สิทธิ์การใช้งาน', icon: <User size={24} color="#6366f1" /> },
   ];
 
   return (
@@ -70,8 +72,8 @@ export default async function AdminDashboard() {
             <p style={{ color: '#9CA3AF', fontSize: '14px', marginTop: '2px' }}>ภาพรวมระบบ KinderCare</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ padding: '6px 14px', background: '#F0EEFF', borderRadius: '99px', color: '#6C5CE7', fontSize: '13px', fontWeight: '600' }}>
-              👤 Admin
+            <div style={{ padding: '6px 14px', background: '#F0EEFF', borderRadius: '99px', color: '#6C5CE7', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <User size={14} color="#6C5CE7" /> Admin
             </div>
           </div>
         </div>
@@ -98,8 +100,9 @@ export default async function AdminDashboard() {
         {/* Today's dailies */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px', marginBottom: '32px' }}>
           <div className="card">
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #F3F4F6' }}>
-              <h3 style={{ fontSize: '15px', fontWeight: '600' }}>📅 บันทึกวันนี้</h3>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CalendarIcon size={16} color="#6366f1" />
+              <h3 style={{ fontSize: '15px', fontWeight: '600' }}>บันทึกวันนี้</h3>
             </div>
             <div style={{ padding: '0' }}>
               {dailies.length === 0 ? (
@@ -117,8 +120,9 @@ export default async function AdminDashboard() {
           </div>
 
           <div className="card">
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #F3F4F6' }}>
-              <h3 style={{ fontSize: '15px', fontWeight: '600' }}>📋 สถานะการเข้าเรียนวันนี้</h3>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CheckCircle size={16} color="#6366f1" />
+              <h3 style={{ fontSize: '15px', fontWeight: '600' }}>สถานะการเข้าเรียนวันนี้</h3>
             </div>
             <div style={{ padding: '0' }}>
               {attendances.length === 0 ? (
@@ -137,7 +141,9 @@ export default async function AdminDashboard() {
 
         {/* Quick Links */}
         <div>
-          <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '16px' }}>⚡ เมนูลัด</h3>
+          <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Zap size={16} color="#6366f1" /> เมนูลัด
+          </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
             {quickLinks.map((link) => (
               <Link key={link.href} href={link.href} style={{ textDecoration: 'none' }}>

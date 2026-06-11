@@ -8,7 +8,8 @@ import {
 import CrudTable from '@/components/admin/CrudTable';
 import Modal from '@/components/ui/Modal';
 import AutocompleteInput from '@/components/ui/AutocompleteInput';
-import { Pencil, Trash2, Plus, X, MessageSquare, FileText } from 'lucide-react';
+import { Pencil, Trash2, Plus, X, MessageSquare, FileText, User as UserIcon, Utensils, Moon, Toilet } from 'lucide-react';
+import { FaceNeutral, FaceSmile, FaceHappy, User } from '@/components/icons';
 import ReportModalContent from '@/components/admin/ReportModalContent';
 
 /* ─── Helper: Parse date as local ── */
@@ -33,14 +34,14 @@ const formatDateForInput = (dateStr: string | Date): string => {
 };
 
 /* ─── constants ── */
-const AL: Record<MilkStatus, string> = { all: 'หมด', some: 'บางส่วน', not_must: 'ไม่จำเป็น', skip: 'ข้าม' };
+const AL: Record<MilkStatus, string> = { all: 'ทานหมด', some: 'บางส่วน', not_must: 'นิดหน่อย', skip: 'ข้าม' };
 const AC: Record<MilkStatus, string> = { all: 'badge-active', some: 'badge-leave', not_must: 'badge-inactive', skip: 'badge-inactive' };
-const ET: Record<ExcretionType,   string> = { pee: '💛 ปัสสาวะ', poo: '💩 อุจจาระ' };
-const EA: Record<ExcretionAction, string> = { diaper: '🩲 ผ้าอ้อม', potty: '🚽 กระโถน' };
+const ET: Record<ExcretionType,   string> = { pee: 'ปัสสาวะ', poo: 'อุจจาระ' };
+const EA: Record<ExcretionAction, string> = { diaper: 'ผ้าอ้อม', potty: 'กระโถน' };
 
 const EMPTY_REPORT_FORM = {
   cohort_id: '', daily_id: '', child_id: '',
-  nap_from: '', nap_to: '',
+  nap_from: '', nap_to: '', nap_note: '',
   milk1: 'all' as MilkStatus, milk1_note: '',
   milk2: 'all' as MilkStatus, milk2_note: '',
   food_amount: 'all' as MilkStatus, food_note: '',
@@ -55,9 +56,9 @@ type ExLocal = ChildExcretion & { _new?: boolean; _del?: boolean };
 
 /* ─── FaceIcon ── */
 const FACES = [
-  { score: 1, emoji: '😐', label: 'ควรส่งเสริม', color: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A' },
-  { score: 2, emoji: '🙂', label: 'ทำได้ดี',     color: '#3B82F6', bg: '#EFF6FF', border: '#BFDBFE' },
-  { score: 3, emoji: '😄', label: 'ดีเยี่ยม',    color: '#10B981', bg: '#ECFDF5', border: '#A7F3D0' },
+  { score: 1, icon: FaceNeutral, label: 'ควรส่งเสริม', color: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A' },
+  { score: 2, icon: FaceSmile, label: 'ทำได้ดี',     color: '#3B82F6', bg: '#EFF6FF', border: '#BFDBFE' },
+  { score: 3, icon: FaceHappy, label: 'ดีเยี่ยม',    color: '#10B981', bg: '#ECFDF5', border: '#A7F3D0' },
 ];
 
 const DEFAULT_TEACHER_NAME = 'เบียร์';
@@ -122,6 +123,7 @@ function ScoreInput({ item, score, onChange, onNoteChange }: {
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           {FACES.slice(0, max).reverse().map(f => {
             const active = val === f.score;
+            const IconComponent = f.icon;
             return (
               <button key={f.score} type="button"
                 onClick={() => onChange(item.id, active ? null : f.score)}
@@ -129,11 +131,11 @@ function ScoreInput({ item, score, onChange, onNoteChange }: {
                 style={{
                   width: 36, height: 36, borderRadius: '50%', border: active ? `2px solid ${f.color}` : '2px solid transparent',
                   background: active ? f.bg : '#F9FAFB',
-                  cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   transition: 'all 0.15s', transform: active ? 'scale(1.15)' : 'scale(1)',
                   boxShadow: active ? `0 0 0 3px ${f.border}` : 'none',
                 }}>
-                {f.emoji}
+                <IconComponent size={20} color={active ? f.color : '#9CA3AF'} />
               </button>
             );
           })}
@@ -175,10 +177,12 @@ export default function DailyPage() {
   const [selected, setSelected] = useState<Daily | null>(null);
   const [form, setForm] = useState({ cohort_id: '', date: '', activity: '', food: '', fruit: '', note: '' });
   const [saving, setSaving] = useState(false);
+  const [isDuplicate, setIsDuplicate] = useState(false);
   
   // Autocomplete suggestions
   const [foodSuggestions, setFoodSuggestions] = useState<string[]>([]);
   const [fruitSuggestions, setFruitSuggestions] = useState<string[]>([]);
+  const [activitySuggestions, setActivitySuggestions] = useState<string[]>([]);
 
   // Report-related states
   const [reportForm, setReportForm] = useState(EMPTY_REPORT_FORM);
@@ -217,15 +221,18 @@ export default function DailyPage() {
       );
       setReportCounts(counts);
       
-      // Collect unique food and fruit suggestions from existing data
+      // Collect unique food, fruit, and activity suggestions from existing data
       const foods = new Set<string>();
       const fruits = new Set<string>();
+      const activities = new Set<string>();
       dailyData.forEach(d => {
         if (d.food) foods.add(d.food);
         if (d.fruit) fruits.add(d.fruit);
+        if (d.activity) activities.add(d.activity);
       });
       setFoodSuggestions(Array.from(foods).sort());
       setFruitSuggestions(Array.from(fruits).sort());
+      setActivitySuggestions(Array.from(activities).sort());
     }
     catch (e) { setError(e instanceof Error ? e.message : 'เกิดข้อผิดพลาด'); }
     finally { setLoading(false); }
@@ -239,6 +246,28 @@ export default function DailyPage() {
     });
   }, []);
   useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t); }, [load]);
+
+  // Check for duplicate cohort_id + date combination
+  useEffect(() => {
+    if (modal === 'add' && form.cohort_id && form.date) {
+      // Check if this combination already exists in data
+      const exists = data.some(d => 
+        d.cohort_id === form.cohort_id && 
+        formatDateForInput(d.date) === form.date
+      );
+      setIsDuplicate(exists);
+    } else if (modal === 'edit' && form.cohort_id && form.date && selected) {
+      // In edit mode, check if the new combination conflicts with other records (excluding current)
+      const exists = data.some(d => 
+        d.id !== selected.id &&
+        d.cohort_id === form.cohort_id && 
+        formatDateForInput(d.date) === form.date
+      );
+      setIsDuplicate(exists);
+    } else {
+      setIsDuplicate(false);
+    }
+  }, [form.cohort_id, form.date, modal, data, selected]);
 
   // Load children and behaviors when cohort changes in add/edit modal
   useEffect(() => {
@@ -283,6 +312,12 @@ export default function DailyPage() {
   }, [form.cohort_id, modal, showReportInModal, reportForm.child_id]);
 
   const handleSave = async () => {
+    // Prevent saving if duplicate detected
+    if (isDuplicate) {
+      alert('ไม่สามารถบันทึกได้: ห้องเรียนนี้มีบันทึกสำหรับวันที่ดังกล่าวแล้ว');
+      return;
+    }
+    
     setSaving(true);
     try {
       let dailyId: string;
@@ -318,6 +353,7 @@ export default function DailyPage() {
             cohort_id: form.cohort_id,
             nap_from: childReport.reportForm.nap_from || null,
             nap_to: childReport.reportForm.nap_to || null,
+            nap_note: childReport.reportForm.nap_note || null,
             milk1_note: childReport.reportForm.milk1_note || null,
             milk2_note: childReport.reportForm.milk2_note || null,
             food_note: childReport.reportForm.food_note || null,
@@ -532,6 +568,7 @@ export default function DailyPage() {
           ...childReport.reportForm,
           nap_from: childReport.reportForm.nap_from || null,
           nap_to: childReport.reportForm.nap_to || null,
+          nap_note: childReport.reportForm.nap_note || null,
           milk1_note: childReport.reportForm.milk1_note || null,
           milk2_note: childReport.reportForm.milk2_note || null,
           food_note: childReport.reportForm.food_note || null,
@@ -651,8 +688,8 @@ export default function DailyPage() {
   });
 
   /* ─── section header ─ */
-  const Sec = ({ emoji, label, color }: { emoji: string; label: string; color: string }) => (
-    <p style={{ fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>{emoji} {label}</p>
+  const Sec = ({ icon, label, color }: { icon: React.ReactNode; label: string; color: string }) => (
+    <p style={{ fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>{icon} {label}</p>
   );
 
   return (
@@ -732,7 +769,7 @@ export default function DailyPage() {
           </div>
         )}
       />
-      <Modal open={modal === 'add' || modal === 'edit'} title={modal === 'add' ? 'เพิ่มบันทึกรายวัน' : 'แก้ไขบันทึกรายวัน'} onClose={() => { setModal(null); setShowReportInModal(false); }} onConfirm={handleSave} confirmLabel={saving ? 'กำลังบันทึก...' : 'บันทึก'}>
+      <Modal open={modal === 'add' || modal === 'edit'} title={modal === 'add' ? 'เพิ่มบันทึกรายวัน' : 'แก้ไขบันทึกรายวัน'} onClose={() => { setModal(null); setShowReportInModal(false); setIsDuplicate(false); }} onConfirm={handleSave} confirmLabel={saving ? 'กำลังบันทึก...' : 'บันทึก'} confirmDisabled={isDuplicate || saving}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Daily Info Section */}
           <div>
@@ -745,7 +782,44 @@ export default function DailyPage() {
               </div>
               <div className="form-group"><label className="form-label">วันที่</label><input className="form-input" type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} /></div>
             </div>
-            <div className="form-group"><label className="form-label">กิจกรรมวันนี้</label><input className="form-input" value={form.activity} onChange={e => setForm({ ...form, activity: e.target.value })} /></div>
+            
+            {/* Duplicate Warning */}
+            {isDuplicate && (
+              <div style={{
+                background: '#fef2f2',
+                border: '2px solid #ef4444',
+                borderRadius: 8,
+                padding: '12px 16px',
+                marginTop: 8,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: '#dc2626', margin: 0, marginBottom: 4 }}>
+                    มีบันทึกวันนี้แล้ว
+                  </p>
+                  <p style={{ fontSize: 13, color: '#991b1b', margin: 0 }}>
+                    ห้องเรียนนี้มีบันทึกสำหรับวันที่ดังกล่าวแล้ว กรุณาเลือกวันอื่น หรือแก้ไขบันทึกเดิม
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            <div className="form-group">
+              <label className="form-label">กิจกรรมวันนี้</label>
+              <AutocompleteInput 
+                value={form.activity} 
+                onChange={v => setForm({ ...form, activity: v })}
+                suggestions={activitySuggestions}
+                placeholder="พิมพ์เพื่อค้นหาหรือเพิ่มใหม่..."
+              />
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div className="form-group">
                 <label className="form-label">อาหารกลางวัน</label>
@@ -799,8 +873,8 @@ export default function DailyPage() {
               {childrenReports.length > 0 && (
                 <div style={{ background: '#F0EEFF', borderRadius: 8, padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: '#6C5CE7', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
-                      📋 ความคืบหน้า
+                    <p style={{ fontSize: 11, fontWeight: 700, color: '#6C5CE7', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <FileText size={14} color="#6C5CE7" /> ความคืบหน้า
                     </p>
                     <p style={{ fontSize: 13, color: '#6B7280', margin: 0 }}>
                       กำลังบันทึก: <strong>{activeChildIndex + 1}</strong> / {childrenReports.length} คน
@@ -843,7 +917,7 @@ export default function DailyPage() {
 
               {/* Student Selection */}
               <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
-                <Sec emoji="👧" label="เลือกนักเรียน" color="#9CA3AF" />
+                <Sec icon={<User size={14} color="#9CA3AF" />} label="เลือกนักเรียน" color="#9CA3AF" />
                 
                 {childrenReports.length === 0 ? (
                   // Initial selection - show all students
@@ -951,7 +1025,7 @@ export default function DailyPage() {
                   {/* Behaviors */}
                   {sortedBehaviors.map(cat => (
                     <div key={cat.id} style={{ background: '#FAFAFA', border: '1px solid #F3F4F6', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
-                      <Sec emoji="🧠" label={`${cat.name_th}  ${cat.name_en}`} color="#6C5CE7" />
+                      <Sec icon={<FileText size={14} color="#6C5CE7" />} label={`${cat.name_th}  ${cat.name_en}`} color="#6C5CE7" />
                       {(cat as BehaviorCategory & { items?: BehaviorItem[] }).items?.map(item => (
                         <ScoreInput key={item.id} item={item}
                           score={activeChildReport.scores.find(s => s.item_id === item.id)}
@@ -981,7 +1055,7 @@ export default function DailyPage() {
 
                   {/* Nap Time */}
                   <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
-                    <Sec emoji="😴" label="การนอน" color="#9CA3AF" />
+                    <Sec icon={<Moon size={14} color="#9CA3AF" />} label="การนอน" color="#9CA3AF" />
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                       <div className="form-group">
                         <label className="form-label">เริ่มนอน</label>
@@ -1000,12 +1074,38 @@ export default function DailyPage() {
                           })} />
                       </div>
                     </div>
+                    {/* Nap Note with Toggle */}
+                    <div className="form-group" style={{ marginTop: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <label className="form-label" style={{ margin: 0 }}>หมายเหตุ (สำหรับเด็กไม่นอน)</label>
+                        <button type="button"
+                          onClick={() => {
+                            const napNoteInput = document.getElementById(`nap-note-input-${activeChildReport.child_id}`);
+                            if (napNoteInput) {
+                              (napNoteInput as HTMLElement).style.display = 
+                                (napNoteInput as HTMLElement).style.display === 'none' ? 'block' : 'none';
+                            }
+                          }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 4, background: activeChildReport.reportForm.nap_note ? '#F0EEFF' : 'transparent', border: 'none', borderRadius: 99, padding: '3px 8px', cursor: 'pointer', color: activeChildReport.reportForm.nap_note ? '#6C5CE7' : '#9CA3AF', fontSize: 12, fontFamily: 'Sarabun, sans-serif' }}>
+                          <MessageSquare size={12} /> {activeChildReport.reportForm.nap_note ? 'ซ่อน' : 'หมายเหตุ'}
+                        </button>
+                      </div>
+                      <input 
+                        id={`nap-note-input-${activeChildReport.child_id}`}
+                        className="form-input" 
+                        style={{ display: activeChildReport.reportForm.nap_note ? 'block' : 'none' }}
+                        placeholder="เช่น ไม่นอน, เล่นตลอด, นอนดึก..."
+                        value={activeChildReport.reportForm.nap_note}
+                        onChange={e => updateChildReport(activeChildReport.child_id, { 
+                          reportForm: { ...activeChildReport.reportForm, nap_note: e.target.value } 
+                        })} />
+                    </div>
                   </div>
 
                   {/* Excretions */}
                   <div style={{ background: '#F0EEFF', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                      <Sec emoji="🚽" label="การขับถ่าย" color="#6C5CE7" />
+                      <Sec icon={<Toilet size={14} color="#6C5CE7" />} label="การขับถ่าย" color="#6C5CE7" />
                       <button type="button" className="btn btn-sm" 
                         style={{ background: '#6C5CE7', color: 'white', fontSize: 12 }} 
                         onClick={() => {
@@ -1083,9 +1183,9 @@ export default function DailyPage() {
 
                   {/* Food & Fruit */}
                   <div style={{ background: '#EBF7F0', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
-                    <Sec emoji="🍱" label="ปริมาณที่รับประทาน" color="#4CAF76" />
+                    <Sec icon={<Utensils size={14} color="#4CAF76" />} label="ปริมาณที่รับประทาน" color="#4CAF76" />
                     <AmountSelect
-                      label={form.food ? `🍱 ${form.food}` : "ปริมาณอาหาร"}
+                      label={form.food ? form.food : "ปริมาณอาหาร"}
                       value={activeChildReport.reportForm.food_amount}
                       noteValue={activeChildReport.reportForm.food_note}
                       onAmountChange={v => updateChildReport(activeChildReport.child_id, { 
@@ -1097,7 +1197,7 @@ export default function DailyPage() {
                     />
                     <div style={{ marginTop: 10 }}>
                       <AmountSelect
-                        label={form.fruit ? `🍎 ${form.fruit}` : "ปริมาณผลไม้"}
+                        label={form.fruit ? form.fruit : "ปริมาณผลไม้"}
                         value={activeChildReport.reportForm.fruit_amount}
                         noteValue={activeChildReport.reportForm.fruit_note}
                         onAmountChange={v => updateChildReport(activeChildReport.child_id, { 
@@ -1112,7 +1212,7 @@ export default function DailyPage() {
 
                   {/* Milk */}
                   <div style={{ background: '#FEF0EB', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
-                    <Sec emoji="🍼" label="นม" color="#E8754A" />
+                    <Sec icon={<Utensils size={14} color="#E8754A" />} label="นม" color="#E8754A" />
                     <AmountSelect label="นม มื้อ 1" 
                       value={activeChildReport.reportForm.milk1} 
                       noteValue={activeChildReport.reportForm.milk1_note}
@@ -1137,8 +1237,8 @@ export default function DailyPage() {
 
                   {/* Teacher selector */}
                   <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
-                      👩‍🏫 ครูผู้บันทึก
+                    <p style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <UserIcon size={14} color="#9CA3AF" /> ครูผู้บันทึก
                     </p>
                     {teachers.length === 0 ? (
                       <p style={{ fontSize: 12, color: '#9CA3AF' }}>
@@ -1179,7 +1279,7 @@ export default function DailyPage() {
 
                   {/* Note */}
                   <div className="form-group">
-                    <label className="form-label">💬 ข้อความถึงผู้ปกครอง</label>
+                    <label className="form-label">ข้อความถึงผู้ปกครอง</label>
                     <textarea
                       className="form-input"
                       rows={2}

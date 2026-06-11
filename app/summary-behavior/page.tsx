@@ -5,6 +5,7 @@ import UserLayout from '@/components/UserLayout';
 import { useUserApp } from '@/components/UserAppProvider';
 import LoadingWrapper from '@/components/loading/LoadingWrapper';
 import BehaviorCardSkeleton from '@/components/loading/skeletons/BehaviorCardSkeleton';
+import { FaceHappy, FaceSmile, FaceNeutral, Calendar, Book } from '@/components/icons';
 
 interface BehaviorSummaryItem {
   item_id:string;
@@ -17,47 +18,6 @@ interface BehaviorSummaryItem {
 }
 
 interface DayEntry { date:string; daily_id:string; report_id:string|null; activity?:string }
-
-/* ── Face icons ─────────────────────────────*/
-const FaceHappy = ({size=22,color='#10b981'}:{size?:number;color?:string}) => (
-  <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
-    <circle cx="50" cy="50" r="42" stroke={color} strokeWidth="4"/>
-    <path d="M28 38 Q34 28 40 38" stroke={color} strokeWidth="4" strokeLinecap="round"/>
-    <path d="M60 38 Q66 28 72 38" stroke={color} strokeWidth="4" strokeLinecap="round"/>
-    <path d="M28 58 Q50 82 72 58" stroke={color} strokeWidth="5" strokeLinecap="round"/>
-  </svg>
-);
-const FaceSmile = ({size=22,color='#facc15'}:{size?:number;color?:string}) => (
-  <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
-    <circle cx="50" cy="50" r="42" stroke={color} strokeWidth="4"/>
-    <circle cx="35" cy="38" r="4" fill={color}/><circle cx="65" cy="38" r="4" fill={color}/>
-    <path d="M35 58 Q50 72 65 58" stroke={color} strokeWidth="5" strokeLinecap="round"/>
-  </svg>
-);
-const FaceNeutral = ({size=22,color='#f97316'}:{size?:number;color?:string}) => (
-  <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
-    <circle cx="50" cy="50" r="42" stroke={color} strokeWidth="4"/>
-    <circle cx="35" cy="38" r="4" fill={color}/><circle cx="65" cy="38" r="4" fill={color}/>
-    <line x1="35" y1="62" x2="65" y2="62" stroke={color} strokeWidth="5" strokeLinecap="round"/>
-  </svg>
-);
-
-/* ── Icon components ─────────────────────────────*/
-const CalendarIcon = ({size=16,color='#64748b'}:{size?:number;color?:string}) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-    <line x1="16" y1="2" x2="16" y2="6"/>
-    <line x1="8" y1="2" x2="8" y2="6"/>
-    <line x1="3" y1="10" x2="21" y2="10"/>
-  </svg>
-);
-
-const BookIcon = ({size=16,color='#6366f1'}:{size?:number;color?:string}) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-  </svg>
-);
 
 export default function SummaryPage() {
   const router = useRouter();
@@ -410,7 +370,7 @@ export default function SummaryPage() {
                                     >
                                       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                                         <div style={{display:'flex',alignItems:'center',gap:6}}>
-                                          <CalendarIcon size={14} color="#94a3b8" />
+                                          <Calendar size={14} color="#94a3b8" />
                                           <span style={{fontSize:'0.8rem',color:'#64748b',fontWeight:500}}>
                                             {thaiDate}
                                           </span>
@@ -431,7 +391,7 @@ export default function SummaryPage() {
                                           alignItems:'center',
                                           gap:6
                                         }}>
-                                          <BookIcon size={14} color="#6366f1" />
+                                          <Book size={14} color="#6366f1" />
                                           <span>{activity}</span>
                                         </div>
                                       )}

@@ -4,14 +4,17 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Users, BookOpen, GraduationCap, CalendarDays,
-  ClipboardList, FileText, Brain, UserCog, Home, X, Database, CalendarOff,
+  ClipboardList, FileText, Brain, UserCog, Home, X, Database, CalendarOff, BarChart3,
 } from 'lucide-react';
 
 const menuGroups: {
   label: string;
   items: { href: string; label: string; icon: React.ComponentType<{ size?: number }>; exact?: boolean }[];
 }[] = [
-  { label: 'ภาพรวม', items: [{ href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true }] },
+  { label: 'ภาพรวม', items: [
+    { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+    { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
+  ]},
   { label: 'ข้อมูลพื้นฐาน', items: [
     { href: '/admin/children',    label: 'นักเรียน',       icon: Users },
     { href: '/admin/cohorts',     label: 'ห้องเรียน',      icon: BookOpen },

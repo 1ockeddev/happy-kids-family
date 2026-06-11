@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import CrudTable from '@/components/admin/CrudTable';
 import Modal from '@/components/ui/Modal';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Calendar as CalendarIcon, Landmark, Building as BuildingIcon, AlertCircle } from 'lucide-react';
 
 /* ─── Helper: Parse date as local ── */
 const parseLocalDate = (dateStr: string): Date => {
@@ -112,10 +112,10 @@ export default function HolidaysPage() {
     }
   };
 
-  const typeLabels: Record<string, string> = {
-    public: '🏛️ วันหยุดราชการ',
-    school: '🏫 วันหยุดโรงเรียน',
-    weekend: '📅 วันหยุดสุดสัปดาห์'
+  const typeLabels: Record<string, { label: string; icon: React.ReactNode }> = {
+    public: { label: 'วันหยุดราชการ', icon: <Landmark size={12} /> },
+    school: { label: 'วันหยุดโรงเรียน', icon: <BuildingIcon size={12} /> },
+    weekend: { label: 'วันหยุดสุดสัปดาห์', icon: <CalendarIcon size={12} /> }
   };
 
   const filteredData = data.filter(h => {
@@ -149,8 +149,9 @@ export default function HolidaysPage() {
   return (
     <div style={{ padding: '24px' }}>
       <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
-          📅 จัดการวันหยุด
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0f172a', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <CalendarIcon size={24} color="#6366f1" />
+          จัดการวันหยุด
         </h1>
         <p style={{ color: '#64748b', fontSize: '0.875rem' }}>
           กำหนดวันหยุดราชการ วันหยุดโรงเรียน และวันปิดทำการ
@@ -166,7 +167,7 @@ export default function HolidaysPage() {
         display: 'flex',
         gap: '12px'
       }}>
-        <div style={{ fontSize: '1.5rem' }}>💡</div>
+        <AlertCircle size={24} color="#f59e0b" style={{ flexShrink: 0 }} />
         <div style={{ flex: 1 }}>
           <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#92400e', marginBottom: '4px' }}>
             คำแนะนำ
@@ -198,7 +199,12 @@ export default function HolidaysPage() {
           {
             key: 'type',
             label: 'ประเภท',
-            render: h => <span className="badge badge-teacher">{typeLabels[h.type]}</span>
+            render: h => (
+              <span className="badge badge-teacher" style={{ display: 'flex', alignItems: 'center', gap: 4, width: 'fit-content' }}>
+                {typeLabels[h.type].icon}
+                {typeLabels[h.type].label}
+              </span>
+            )
           },
           {
             key: 'cohort_id',
@@ -295,9 +301,9 @@ export default function HolidaysPage() {
               value={form.type}
               onChange={e => setForm(f => ({ ...f, type: e.target.value as any }))}
             >
-              <option value="public">🏛️ วันหยุดราชการ</option>
-              <option value="school">🏫 วันหยุดโรงเรียน</option>
-              <option value="weekend">📅 วันหยุดสุดสัปดาห์</option>
+              <option value="public">วันหยุดราชการ</option>
+              <option value="school">วันหยุดโรงเรียน</option>
+              <option value="weekend">วันหยุดสุดสัปดาห์</option>
             </select>
           </div>
           <div className="form-group">

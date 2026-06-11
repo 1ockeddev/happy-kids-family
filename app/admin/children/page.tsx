@@ -5,7 +5,7 @@ import { Child } from '@/types';
 import CrudTable from '@/components/admin/CrudTable';
 import Modal from '@/components/ui/Modal';
 import AvatarCropper from '@/components/ui/AvatarCropper';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, AlertCircle } from 'lucide-react';
 
 const EMPTY_FORM = { 
   name_en: '', 
@@ -289,9 +289,10 @@ export default function ChildrenPage() {
           />
         </div>
         
-        <div style={{padding:12,background:'#FEF9C3',borderRadius:8,border:'1px solid #FDE68A',marginTop:8}}>
+        <div style={{padding:12,background:'#FEF9C3',borderRadius:8,border:'1px solid #FDE68A',marginTop:8,display:'flex',gap:8}}>
+          <AlertCircle size={16} color="#92400E" style={{flexShrink:0,marginTop:1}} />
           <p style={{fontSize:12,color:'#92400E',margin:0}}>
-            💡 <strong>หมายเหตุ:</strong> กรอกชื่ออย่างน้อยหนึ่งช่องเพื่อเพิ่มนักเรียน
+            <strong>หมายเหตุ:</strong> กรอกชื่ออย่างน้อยหนึ่งช่องเพื่อเพิ่มนักเรียน
           </p>
         </div>
       </Modal>

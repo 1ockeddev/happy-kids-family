@@ -3,7 +3,8 @@ import { useState, useEffect, useCallback, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { Cohort, Enrollment, Child } from '@/types';
 import Modal from '@/components/ui/Modal';
-import { ArrowLeft, Plus, Trash2, GraduationCap, Users, Calendar } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, GraduationCap, Users, Calendar, BookOpen } from 'lucide-react';
+import { User } from '@/components/icons';
 
 /* ─── Helper: Format date as YYYY-MM-DD ── */
 const formatDateForInput = (dateStr: string | Date): string => {
@@ -135,9 +136,9 @@ export default function CohortDetailPage({ params }: { params: Promise<{ id: str
       <div style={{
         width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
         background: e.graduated ? '#EBF7F0' : '#FEF0EB',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        {e.graduated ? '🎓' : '👧'}
+        {e.graduated ? <GraduationCap size={18} color="#4CAF76" /> : <User size={18} color="#E8754A" />}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: 14 }}>{displayName}</div>
@@ -148,7 +149,9 @@ export default function CohortDetailPage({ params }: { params: Promise<{ id: str
         {new Date(e.start_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
       </div>
       {e.graduated ? (
-        <span className="badge badge-active" style={{ fontSize: 11 }}>🎓 จบแล้ว</span>
+        <span className="badge badge-active" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <GraduationCap size={11} /> จบแล้ว
+        </span>
       ) : (
         <div style={{ display: 'flex', gap: 6 }}>
           <button
@@ -221,12 +224,12 @@ export default function CohortDetailPage({ params }: { params: Promise<{ id: str
         {/* Stats row */}
         <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
           {[
-            { label: 'กำลังเรียน', value: active.length, icon: '📚', color: '#E8754A', bg: '#FEF0EB' },
-            { label: 'จบการศึกษา', value: grads.length, icon: '🎓', color: '#4CAF76', bg: '#EBF7F0' },
-            { label: 'ทั้งหมด', value: enrollments.length, icon: '👥', color: '#4A90B8', bg: '#EBF4FA' },
+            { label: 'กำลังเรียน', value: active.length, icon: <BookOpen size={16} color="#E8754A" />, color: '#E8754A', bg: '#FEF0EB' },
+            { label: 'จบการศึกษา', value: grads.length, icon: <GraduationCap size={16} color="#4CAF76" />, color: '#4CAF76', bg: '#EBF7F0' },
+            { label: 'ทั้งหมด', value: enrollments.length, icon: <Users size={16} color="#4A90B8" />, color: '#4A90B8', bg: '#EBF4FA' },
           ].map(s => (
             <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: s.bg, borderRadius: 99 }}>
-              <span style={{ fontSize: 16 }}>{s.icon}</span>
+              {s.icon}
               <span style={{ fontWeight: 700, fontSize: 18, color: s.color, fontFamily: 'Prompt, sans-serif' }}>{s.value}</span>
               <span style={{ fontSize: 12, color: s.color }}>{s.label}</span>
             </div>
@@ -243,7 +246,9 @@ export default function CohortDetailPage({ params }: { params: Promise<{ id: str
           </div>
           {active.length === 0 ? (
             <div style={{ padding: '32px 20px', textAlign: 'center', color: '#9CA3AF', fontSize: 14 }}>
-              <p style={{ fontSize: 32, marginBottom: 8 }}>👥</p>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+                <Users size={32} color="#9CA3AF" />
+              </div>
               ยังไม่มีนักเรียน — กด &ldquo;เพิ่มนักเรียน&rdquo; เพื่อเริ่มต้น
             </div>
           ) : (
@@ -332,7 +337,7 @@ export default function CohortDetailPage({ params }: { params: Promise<{ id: str
         title="ยืนยันจบการศึกษา"
         onClose={() => setModal(null)}
         onConfirm={handleGraduate}
-        confirmLabel={saving ? 'กำลังบันทึก...' : '🎓 ยืนยันจบการศึกษา'}
+        confirmLabel={saving ? 'กำลังบันทึก...' : 'ยืนยันจบการศึกษา'}
       >
         <p style={{ color: '#6B7280' }}>
           บันทึกว่า <strong>{selectedEnroll?.child?.nickname_th || selectedEnroll?.child?.nickname_en || selectedEnroll?.child?.name_th || selectedEnroll?.child?.name_en}</strong> จบการศึกษาจาก{' '}

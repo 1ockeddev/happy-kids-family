@@ -49,7 +49,7 @@ export interface Attendance {
 
 export interface DailyReport {
   id: string; daily_id: string; child_id: string;
-  nap_from: string | null; nap_to: string | null;
+  nap_from: string | null; nap_to: string | null; nap_note: string | null;
   milk1: MilkStatus; milk1_note: string | null;
   milk2: MilkStatus; milk2_note: string | null;
   food_amount: MilkStatus; food_note: string | null;

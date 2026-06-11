@@ -3,6 +3,7 @@ import React, { ReactNode } from 'react';
 import { useUserApp } from './UserAppProvider';
 import AppHeader from './AppHeader';
 import BottomNavigation from './BottomNavigation';
+import { useAnalytics } from '@/lib/useAnalytics';
 
 interface UserLayoutProps {
   children: ReactNode;
@@ -26,6 +27,9 @@ export default function UserLayout({ children, subtitle }: UserLayoutProps) {
     setChildId,
     setParentId
   } = useUserApp();
+
+  // Initialize analytics tracking
+  useAnalytics();
 
   const parseLocalDate = (str: string) => {
     const [y, m, d] = str.split('-').map(Number);

@@ -6,7 +6,7 @@ import { Plus, X, MessageSquare } from 'lucide-react';
 type BehaviorScore = { item_id: string; score: number | null; note: string };
 type ExLocal = { id: string; time: string | null; type: ExcretionType | null; action: ExcretionAction | null; _del?: boolean };
 
-const AL: Record<MilkStatus, string> = { all: 'หมด', some: 'บางส่วน', not_must: 'ไม่จำเป็น', skip: 'ข้าม' };
+const AL: Record<MilkStatus, string> = { all: 'ทานหมด', some: 'บางส่วน', not_must: 'นิดหน่อย', skip: 'ข้าม' };
 const AC: Record<MilkStatus, string> = { all: 'badge-active', some: 'badge-leave', not_must: 'badge-inactive', skip: 'badge-inactive' };
 const ET: Record<ExcretionType, string> = { pee: '💛 ปัสสาวะ', poo: '💩 อุจจาระ' };
 const EA: Record<ExcretionAction, string> = { diaper: '🩲 ผ้าอ้อม', potty: '🚽 กระโถน' };
@@ -130,6 +130,7 @@ interface ReportModalContentProps {
     child_id: string;
     nap_from: string;
     nap_to: string;
+    nap_note: string;
     milk1: MilkStatus;
     milk1_note: string;
     milk2: MilkStatus;
@@ -236,6 +237,30 @@ export default function ReportModalContent({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div className="form-group"><label className="form-label">เริ่มนอน</label><input className="form-input" type="time" value={reportForm.nap_from} onChange={e => onReportFormChange({ ...reportForm, nap_from: e.target.value })} /></div>
               <div className="form-group"><label className="form-label">ตื่นนอน</label><input className="form-input" type="time" value={reportForm.nap_to} onChange={e => onReportFormChange({ ...reportForm, nap_to: e.target.value })} /></div>
+            </div>
+            {/* Nap Note with Toggle */}
+            <div className="form-group" style={{ marginTop: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <label className="form-label" style={{ margin: 0 }}>หมายเหตุ (สำหรับเด็กไม่นอน)</label>
+                <button type="button"
+                  onClick={() => {
+                    const napNoteInput = document.getElementById('report-modal-nap-note-input');
+                    if (napNoteInput) {
+                      (napNoteInput as HTMLElement).style.display = 
+                        (napNoteInput as HTMLElement).style.display === 'none' ? 'block' : 'none';
+                    }
+                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 4, background: reportForm.nap_note ? '#F0EEFF' : 'transparent', border: 'none', borderRadius: 99, padding: '3px 8px', cursor: 'pointer', color: reportForm.nap_note ? '#6C5CE7' : '#9CA3AF', fontSize: 12, fontFamily: 'Sarabun, sans-serif' }}>
+                  <MessageSquare size={12} /> {reportForm.nap_note ? 'ซ่อน' : 'หมายเหตุ'}
+                </button>
+              </div>
+              <input 
+                id="report-modal-nap-note-input"
+                className="form-input" 
+                style={{ display: reportForm.nap_note ? 'block' : 'none' }}
+                placeholder="เช่น ไม่นอน, เล่นตลอด, นอนดึก..."
+                value={reportForm.nap_note}
+                onChange={e => onReportFormChange({ ...reportForm, nap_note: e.target.value })} />
             </div>
           </div>
 
