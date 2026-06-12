@@ -831,6 +831,20 @@ export default function ReportsPage() {
           fetch(`/api/excretions/${ex.id}`, { method: 'DELETE' })
         ));
         
+        // Update existing excretions (not marked as new or deleted)
+        const toUpdate = excretions.filter(ex => !ex._new && !ex._del && ex.id && !ex.id.startsWith('_n_'));
+        await Promise.all(toUpdate.map(ex =>
+          fetch(`/api/excretions/${ex.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              time: ex.time || null,
+              type: ex.type,
+              action: ex.action
+            })
+          })
+        ));
+        
         // Create only new excretions (with _new flag)
         const toCreate = excretions.filter(ex => ex._new && !ex._del);
         await Promise.all(toCreate.map(ex => 

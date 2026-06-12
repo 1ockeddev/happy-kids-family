@@ -82,6 +82,7 @@ export default function BottomNavigation() {
           <Link
             key={item.path}
             href={item.path}
+            prefetch={true}
             style={{
               flex: 1,
               display: 'flex',

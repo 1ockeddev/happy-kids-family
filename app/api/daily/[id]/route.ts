@@ -37,17 +37,52 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
     const body = await req.json();
-    const { activity, food, fruit, note, updated_by } = body;
+    const { cohort_id, date, activity, food, fruit, note, updated_by } = body;
+    
+    // Build dynamic update query
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramCount = 1;
+    
+    if (cohort_id !== undefined) {
+      updates.push(`cohort_id = $${paramCount++}`);
+      values.push(cohort_id);
+    }
+    if (date !== undefined) {
+      updates.push(`date = $${paramCount++}`);
+      values.push(date);
+    }
+    if (activity !== undefined) {
+      updates.push(`activity = $${paramCount++}`);
+      values.push(activity || null);
+    }
+    if (food !== undefined) {
+      updates.push(`food = $${paramCount++}`);
+      values.push(food || null);
+    }
+    if (fruit !== undefined) {
+      updates.push(`fruit = $${paramCount++}`);
+      values.push(fruit || null);
+    }
+    if (note !== undefined) {
+      updates.push(`note = $${paramCount++}`);
+      values.push(note || null);
+    }
+    if (updated_by !== undefined) {
+      updates.push(`updated_by = $${paramCount++}`);
+      values.push(updated_by || null);
+    }
+    
+    if (updates.length === 0) {
+      return ok({ message: 'No fields to update' });
+    }
+    
+    updates.push(`updated_at = NOW()`);
+    values.push(id); // For WHERE clause
+    
     const row = await queryOne(
-      `UPDATE daily SET
-        activity = COALESCE($1, activity),
-        food = COALESCE($2, food),
-        fruit = COALESCE($3, fruit),
-        note = COALESCE($4, note),
-        updated_by = $5,
-        updated_at = NOW()
-       WHERE id = $6 RETURNING *`,
-      [activity ?? null, food ?? null, fruit ?? null, note ?? null, updated_by ?? null, id]
+      `UPDATE daily SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING *`,
+      values
     );
     if (!row) return notFound('ไม่พบบันทึก');
     return ok(row);

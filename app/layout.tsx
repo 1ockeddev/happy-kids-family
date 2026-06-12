@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { UserAppProvider } from "@/components/UserAppProvider";
 
 export const metadata: Metadata = {
   title: "Happy Kids with Kru Beer System",
@@ -24,9 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
       </head>
       <body>
-        <UserAppProvider>
-          {children}
-        </UserAppProvider>
+        {children}
       </body>
     </html>
   );

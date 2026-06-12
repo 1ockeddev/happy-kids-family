@@ -355,7 +355,7 @@ function CustomTooltip({children,text}:{children:React.ReactNode;text:string|Rea
 }
 
 /* ─────────────────────────────────────────── */
-export default function LiffPage() {
+function LiffPageContent() {
   const liff = useLiff();
   const router = useRouter();
   const pathname = usePathname();
@@ -418,6 +418,24 @@ export default function LiffPage() {
     category_name_th:string;
     category_name_en:string;
   }[]>([]);
+
+  /* ── Handle query parameter for dayIdx ── */
+  useEffect(() => {
+    // ตรวจสอบว่ามี dayIdx ใน URL query parameter หรือไม่
+    // และรอให้ dayEntries โหลดเสร็จก่อน
+    if (typeof window !== 'undefined' && dayEntries.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const dayIdxParam = params.get('dayIdx');
+      if (dayIdxParam !== null) {
+        const idx = parseInt(dayIdxParam, 10);
+        if (!isNaN(idx) && idx >= 0 && idx < dayEntries.length) {
+          setDayIdx(idx);
+          // ลบ query parameter หลังจาก set dayIdx แล้ว
+          window.history.replaceState({}, '', '/');
+        }
+      }
+    }
+  }, [dayEntries]); // ขึ้นอยู่กับ dayEntries แทน router
   const [foodSummary, setFoodSummary] = useState<{
     food: { food_amount: MilkStatus; count: number }[];
     fruit: { fruit_amount: MilkStatus; count: number }[];
@@ -1321,6 +1339,17 @@ export default function LiffPage() {
                   </div>
                 )}
 
+                {/* Teacher note */}
+                {report.note&&(
+                  <div style={{background:'#eff6ff',borderRadius:16,padding:'16px 18px',marginBottom:14,border:'1px solid #dbeafe'}}>
+                    <p style={{fontSize:'0.7rem',fontWeight:800,color:'#3b82f6',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:6,display:'flex',alignItems:'center',gap:4}}>
+                      <i className="bi bi-chat-left-text-fill" style={{color: '#3b82f6', fontSize: '0.75rem'}}></i> 
+                      ข้อความจากครู
+                    </p>
+                    <p style={{fontSize:'0.95rem',color:'#1e293b',lineHeight:1.7,margin:0}}>{report.note}</p>
+                  </div>
+                )}
+
                 {/* Food & Milk */}
                 <div style={{background:'white',borderRadius:16,padding:'18px',marginBottom:14,border:'1px solid #e2e8f0'}}>
                   <div style={{display:'flex',alignItems:'center',fontWeight:700,fontSize:'1rem',marginBottom:14,color:'#334155',gap:8,fontFamily:'Prompt, sans-serif'}}>
@@ -1344,8 +1373,17 @@ export default function LiffPage() {
                             <span className={`status-pill status-${report.food_amount.replace('_','-')}`}>{amtL[report.food_amount]}</span>
                           )}
                           {report.food_note && (
-                            <div className="food-note">
-                              <i className="bi bi-chat-left-text-fill" style={{color: '#10b981', fontSize: '0.65rem', marginRight: '2px'}}></i>
+                            <div style={{
+                              fontSize:'0.75rem',
+                              color:'#475569',
+                              lineHeight:1.5,
+                              marginTop:8,
+                              padding:'8px 10px',
+                              background:'white',
+                              borderRadius:8,
+                              border:'1px dashed #10b981'
+                            }}>
+                              <i className="bi bi-chat-left-text-fill" style={{color:'#10b981', fontSize:'0.7rem',marginRight:'6px'}}></i>
                               {report.food_note}
                             </div>
                           )}
@@ -1361,8 +1399,17 @@ export default function LiffPage() {
                             <span className={`status-pill status-${report.fruit_amount.replace('_','-')}`}>{amtL[report.fruit_amount]}</span>
                           )}
                           {report.fruit_note && (
-                            <div className="food-note">
-                              <i className="bi bi-chat-left-text-fill" style={{color: '#10b981', fontSize: '0.65rem', marginRight: '2px'}}></i>
+                            <div style={{
+                              fontSize:'0.75rem',
+                              color:'#475569',
+                              lineHeight:1.5,
+                              marginTop:8,
+                              padding:'8px 10px',
+                              background:'white',
+                              borderRadius:8,
+                              border:'1px dashed #10b981'
+                            }}>
+                              <i className="bi bi-chat-left-text-fill" style={{color:'#10b981', fontSize:'0.7rem',marginRight:'6px'}}></i>
                               {report.fruit_note}
                             </div>
                           )}
@@ -1717,17 +1764,6 @@ export default function LiffPage() {
                   </div>
                 )}
 
-                {/* Teacher note */}
-                {report.note&&(
-                  <div style={{background:'#eff6ff',borderRadius:16,padding:'16px 18px',marginBottom:14,border:'1px solid #dbeafe'}}>
-                    <p style={{fontSize:'0.7rem',fontWeight:800,color:'#3b82f6',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:6,display:'flex',alignItems:'center',gap:4}}>
-                      <i className="bi bi-chat-left-text-fill" style={{color: '#3b82f6', fontSize: '0.75rem'}}></i> 
-                      ข้อความจากครู
-                    </p>
-                    <p style={{fontSize:'0.95rem',color:'#1e293b',lineHeight:1.7,margin:0}}>{report.note}</p>
-                  </div>
-                )}
-
                 {/* Footer */}
                 <div style={{textAlign:'center',marginTop:24,paddingTop:16,borderTop:'1px solid #f1f5f9'}}>
                   <p style={{margin:'2px 0',color:'#94a3b8',fontSize:'0.8rem'}}>บันทึกโดยคุณครู</p>
@@ -1837,3 +1873,6 @@ export default function LiffPage() {
     </div>
   );
 }
+
+/* ── Export main component (UserAppProvider is now in layout) ── */
+export default LiffPageContent;

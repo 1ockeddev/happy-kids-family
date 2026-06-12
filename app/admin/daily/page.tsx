@@ -74,15 +74,8 @@ function AmountSelect({ label, value, noteValue, onAmountChange, onNoteChange }:
   const [showNote, setShowNote] = useState(!!noteValue);
   return (
     <div className="form-group">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-        <label className="form-label" style={{ margin: 0 }}>{label}</label>
-        <button type="button"
-          onClick={() => setShowNote(s => !s)}
-          style={{ display: 'flex', alignItems: 'center', gap: 4, background: showNote ? '#F0EEFF' : 'transparent', border: 'none', borderRadius: 99, padding: '3px 8px', cursor: 'pointer', color: showNote ? '#6C5CE7' : '#9CA3AF', fontSize: 12, fontFamily: 'Sarabun, sans-serif' }}>
-          <MessageSquare size={12} /> {showNote ? 'ซ่อน' : 'หมายเหตุ'}
-        </button>
-      </div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      <label className="form-label">{label}</label>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
         {(Object.entries(AL) as [MilkStatus, string][]).map(([v, l]) => (
           <button key={v} type="button" onClick={() => onAmountChange(v)}
             className={`badge ${AC[v]}`}
@@ -90,6 +83,12 @@ function AmountSelect({ label, value, noteValue, onAmountChange, onNoteChange }:
             {l}
           </button>
         ))}
+        {/* note toggle - circular icon button matching behavior pattern */}
+        <button type="button"
+          onClick={() => setShowNote(s => !s)}
+          style={{ width: 28, height: 28, borderRadius: '50%', border: 'none', background: showNote ? '#F0EEFF' : '#F3F4F6', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: showNote ? '#6C5CE7' : '#9CA3AF' }}>
+          <MessageSquare size={12} />
+        </button>
       </div>
       {showNote && (
         <input className="form-input" style={{ marginTop: 6 }}
@@ -168,6 +167,7 @@ function ScoreInput({ item, score, onChange, onNoteChange }: {
 
 export default function DailyPage() {
   const [data, setData] = useState<Daily[]>([]);
+  const [allData, setAllData] = useState<Daily[]>([]); // เก็บข้อมูลทั้งหมดไว้เช็ค duplicate
   const [cohorts, setCohorts] = useState<Cohort[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -198,6 +198,9 @@ export default function DailyPage() {
     setLoading(true); setError(null);
     try {
       const dailyData = await dailyApi.list(search ? { search } : {}) as Daily[];
+      
+      // เก็บข้อมูลทั้งหมดไว้สำหรับเช็ค duplicate
+      setAllData(dailyData);
       
       // Filter by cohort if selected
       const filteredData = cohortFilter 
@@ -250,15 +253,15 @@ export default function DailyPage() {
   // Check for duplicate cohort_id + date combination
   useEffect(() => {
     if (modal === 'add' && form.cohort_id && form.date) {
-      // Check if this combination already exists in data
-      const exists = data.some(d => 
+      // Check if this combination already exists in ALL data (not filtered)
+      const exists = allData.some(d => 
         d.cohort_id === form.cohort_id && 
         formatDateForInput(d.date) === form.date
       );
       setIsDuplicate(exists);
     } else if (modal === 'edit' && form.cohort_id && form.date && selected) {
       // In edit mode, check if the new combination conflicts with other records (excluding current)
-      const exists = data.some(d => 
+      const exists = allData.some(d => 
         d.id !== selected.id &&
         d.cohort_id === form.cohort_id && 
         formatDateForInput(d.date) === form.date
@@ -267,7 +270,7 @@ export default function DailyPage() {
     } else {
       setIsDuplicate(false);
     }
-  }, [form.cohort_id, form.date, modal, data, selected]);
+  }, [form.cohort_id, form.date, modal, allData, selected]); // ใช้ allData แทน data
 
   // Load children and behaviors when cohort changes in add/edit modal
   useEffect(() => {

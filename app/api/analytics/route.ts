@@ -112,14 +112,21 @@ export async function GET(req: NextRequest) {
 
     let sql = `
       SELECT 
-        a.*,
-        json_build_object(
-          'id', u.id,
-          'display_name', u.display_name,
-          'role', u.role
-        ) AS user
+        a.id,
+        a.user_id,
+        a.event_type,
+        a.page_path,
+        a.from_path,
+        a.to_path,
+        a.element_type,
+        a.element_label,
+        a.duration_seconds,
+        a.timestamp,
+        a.session_id,
+        a.user_agent,
+        a.viewport_width,
+        a.viewport_height
       FROM user_analytics a
-      JOIN app_user u ON u.id = a.user_id
       WHERE 1=1
     `;
     const params: any[] = [];
@@ -141,19 +148,19 @@ export async function GET(req: NextRequest) {
 
     if (date_from) {
       params.push(date_from);
-      sql += ` AND a.timestamp >= $${params.length}`;
+      sql += ` AND a.timestamp >= $${params.length}::timestamptz`;
     }
 
     if (date_to) {
       params.push(date_to);
-      sql += ` AND a.timestamp <= $${params.length}`;
+      sql += ` AND a.timestamp <= $${params.length}::timestamptz`;
     }
 
     sql += ` ORDER BY a.timestamp DESC LIMIT ${limit}`;
 
     const data = await query(sql, params);
 
-    return NextResponse.json({ data }, { status: 200 });
+    return NextResponse.json(data, { status: 200 });
   } catch (error) {
     console.error('Analytics fetch error:', error);
     return NextResponse.json(

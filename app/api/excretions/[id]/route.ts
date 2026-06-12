@@ -7,12 +7,14 @@ type Params = { params: Promise<{ id: string }> };
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
-    const { time, type, action } = await req.json();
+    const body = await req.json();
+    const { time, type, action } = body;
+    
     const row = await queryOne(
       `UPDATE child_excretion SET
-        time   = COALESCE($1, time),
-        type   = COALESCE($2, type),
-        action = COALESCE($3, action)
+        time   = $1,
+        type   = $2,
+        action = $3
        WHERE id = $4 RETURNING *`,
       [time ?? null, type ?? null, action ?? null, id]
     );

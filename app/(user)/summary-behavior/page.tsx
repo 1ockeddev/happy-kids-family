@@ -343,7 +343,8 @@ export default function SummaryPage() {
                                         e.stopPropagation();
                                         const foundIdx = dayEntries.findIndex(entry => entry.date === day.date);
                                         if (foundIdx >= 0) {
-                                          router.push('/');
+                                          // ส่ง dayIdx ผ่าน query parameter
+                                          router.push(`/?dayIdx=${foundIdx}`);
                                         }
                                       }}
                                       style={{

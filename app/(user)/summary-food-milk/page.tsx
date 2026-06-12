@@ -197,5 +197,5 @@ export default function FoodMilkSummaryPage() {
           </LoadingWrapper>
         </div>
       </UserLayout>
-    );
+  );
 }

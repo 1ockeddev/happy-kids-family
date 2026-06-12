@@ -12,11 +12,26 @@ interface AnalyticsStats {
   hourlyPattern: any[];
 }
 
+interface UserActivity {
+  timestamp: string;
+  event_type: 'page_view' | 'click' | 'navigation';
+  page_path: string;
+  element_type?: string;
+  element_label?: string;
+  from_path?: string;
+  to_path?: string;
+}
+
 export default function AnalyticsPage() {
   const [stats, setStats] = useState<AnalyticsStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  
+  // User detail view
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [userActivities, setUserActivities] = useState<UserActivity[]>([]);
+  const [loadingUserActivities, setLoadingUserActivities] = useState(false);
 
   const fetchStats = async () => {
     setLoading(true);
@@ -40,6 +55,37 @@ export default function AnalyticsPage() {
   useEffect(() => {
     fetchStats();
   }, []);
+
+  const fetchUserActivities = async (userId: string) => {
+    if (!userId) {
+      setUserActivities([]);
+      return;
+    }
+    
+    setLoadingUserActivities(true);
+    try {
+      let url = `/api/analytics?user_id=${userId}`;
+      const params = new URLSearchParams();
+      if (dateFrom) params.append('date_from', dateFrom);
+      if (dateTo) params.append('date_to', dateTo);
+      if (params.toString()) url += `&${params.toString()}`;
+
+      const res = await fetch(url);
+      const data = await res.json();
+      setUserActivities(data || []);
+    } catch (error) {
+      console.error('Failed to fetch user activities:', error);
+      setUserActivities([]);
+    } finally {
+      setLoadingUserActivities(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedUserId) {
+      fetchUserActivities(selectedUserId);
+    }
+  }, [selectedUserId, dateFrom, dateTo]);
 
   const formatDuration = (seconds: number | null) => {
     if (!seconds) return '-';
@@ -275,13 +321,19 @@ export default function AnalyticsPage() {
               {stats.topActiveUsers.slice(0, 15).map((user, idx) => (
                 <div
                   key={idx}
+                  onClick={() => setSelectedUserId(user.user_id)}
                   style={{
                     padding: '12px 20px',
                     borderBottom: '1px solid #f1f5f9',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
+                    cursor: 'pointer',
+                    background: selectedUserId === user.user_id ? '#f0f9ff' : 'transparent',
+                    transition: 'all 0.2s'
                   }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = selectedUserId === user.user_id ? '#f0f9ff' : '#fafafa'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = selectedUserId === user.user_id ? '#f0f9ff' : 'transparent'}
                 >
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: '600', fontSize: '0.85rem', color: '#1e293b', marginBottom: '2px' }}>
@@ -299,6 +351,11 @@ export default function AnalyticsPage() {
                       {formatDuration(user.total_time_seconds)}
                     </div>
                   </div>
+                  {selectedUserId === user.user_id && (
+                    <div style={{ marginLeft: '8px', color: '#3b82f6' }}>
+                      <MousePointer size={16} />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -338,6 +395,129 @@ export default function AnalyticsPage() {
             ))}
           </div>
         </div>
+
+        {/* User Activity Timeline */}
+        {selectedUserId && (
+          <div className="card" style={{ marginTop: '20px' }}>
+            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <MousePointer size={18} color="#3b82f6" />
+                <span>
+                  กิจกรรมของ: {stats.topActiveUsers.find(u => u.user_id === selectedUserId)?.display_name}
+                </span>
+              </div>
+              <button 
+                className="btn btn-secondary btn-sm"
+                onClick={() => setSelectedUserId('')}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                ✕ ปิด
+              </button>
+            </div>
+            <div style={{ padding: '20px' }}>
+              {loadingUserActivities ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                  <div className="shimmer" style={{ width: 40, height: 40, borderRadius: '50%', margin: '0 auto 12px' }} />
+                  กำลังโหลด...
+                </div>
+              ) : userActivities.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                  ไม่มีข้อมูลกิจกรรม
+                </div>
+              ) : (
+                <div style={{ position: 'relative' }}>
+                  {/* Timeline line */}
+                  <div style={{
+                    position: 'absolute',
+                    left: '20px',
+                    top: '0',
+                    bottom: '0',
+                    width: '2px',
+                    background: '#e5e7eb'
+                  }} />
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                    {userActivities.map((activity, idx) => {
+                      const time = new Date(activity.timestamp).toLocaleTimeString('th-TH', { 
+                        hour: '2-digit', 
+                        minute: '2-digit',
+                        second: '2-digit'
+                      });
+                      const date = new Date(activity.timestamp).toLocaleDateString('th-TH', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      });
+
+                      let icon, color, bgColor, label;
+                      
+                      if (activity.event_type === 'page_view') {
+                        icon = '👁️';
+                        color = '#6366f1';
+                        bgColor = '#eff6ff';
+                        label = `เปิดหน้า: ${getPageLabel(activity.page_path)}`;
+                      } else if (activity.event_type === 'click') {
+                        icon = '👆';
+                        color = '#f59e0b';
+                        bgColor = '#fffbeb';
+                        label = `คลิก: ${activity.element_label || activity.element_type || 'ไม่ระบุ'}`;
+                      } else if (activity.event_type === 'navigation') {
+                        icon = '🔀';
+                        color = '#ec4899';
+                        bgColor = '#fdf2f8';
+                        label = `ไป: ${getPageLabel(activity.to_path || '')}`;
+                      }
+
+                      return (
+                        <div key={idx} style={{ display: 'flex', gap: '16px', paddingBottom: '20px', position: 'relative' }}>
+                          {/* Timeline dot */}
+                          <div style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '50%',
+                            background: bgColor,
+                            border: `3px solid ${color}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '18px',
+                            flexShrink: 0,
+                            position: 'relative',
+                            zIndex: 1
+                          }}>
+                            {icon}
+                          </div>
+                          
+                          {/* Content */}
+                          <div style={{ flex: 1, paddingTop: '4px' }}>
+                            <div style={{ 
+                              background: '#fafafa', 
+                              padding: '12px 16px', 
+                              borderRadius: '12px',
+                              border: '1px solid #f1f5f9'
+                            }}>
+                              <div style={{ fontWeight: '600', fontSize: '0.9rem', color: '#1e293b', marginBottom: '4px' }}>
+                                {label}
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                                {time} • {date}
+                              </div>
+                              {activity.page_path && activity.event_type !== 'page_view' && (
+                                <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '4px' }}>
+                                  หน้า: {getPageLabel(activity.page_path)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

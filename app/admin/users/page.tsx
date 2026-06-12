@@ -91,10 +91,27 @@ export default function UsersPage() {
   };
 
   const handleSave = async () => {
+    // Validation: display_name required สำหรับโหมด Add เท่านั้น
+    if (modal === 'add' && !form.display_name.trim()) {
+      alert('กรุณาระบุชื่อที่แสดง');
+      return;
+    }
+    
+    // Validation: ถ้า edit mode และลบชื่อออก ต้องมี line_display_name สำรอง
+    if (modal === 'edit' && !form.display_name.trim() && !selected?.line_display_name) {
+      alert('ไม่สามารถลบชื่อได้\n\nเหตุผล: ผู้ใช้นี้ยังไม่มีชื่อจาก LINE (ยังไม่ได้เปิด Mini App)\nกรุณาระบุชื่อที่แสดง หรือรอให้ผู้ใช้เปิด Mini App ก่อน');
+      return;
+    }
+    
     setSaving(true);
     try {
+      // ถ้าไม่ใส่ display_name ให้ใช้ line_display_name เป็น default (สำหรับ edit mode)
+      const finalDisplayName = form.display_name.trim() 
+        ? form.display_name.trim() 
+        : (selected?.line_display_name || null);
+      
       const payload: any = {
-        display_name: form.display_name || null,
+        display_name: finalDisplayName,
         role: form.role, status: form.status,
         line_user_id: form.line_user_id || null,
       };
@@ -116,7 +133,7 @@ export default function UsersPage() {
       
       // แจ้งเตือนถ้าเปลี่ยน role
       if (roleChanged) {
-        alert(`บันทึกสำเร็จ!\n\nสำคัญ: ผู้ใช้ "${form.display_name}" ต้องรีเฟรชหน้า Mini App\nเพื่อให้เห็นบทบาทใหม่ (${form.role === 'teacher' ? 'ครู' : 'ผู้ปกครอง'})`);
+        alert(`บันทึกสำเร็จ!\n\nสำคัญ: ผู้ใช้ "${finalDisplayName || 'ผู้ใช้นี้'}" ต้องรีเฟรชหน้า Mini App\nเพื่อให้เห็นบทบาทใหม่ (${form.role === 'teacher' ? 'ครู' : 'ผู้ปกครอง'})`);
       }
     } catch (e) { alert(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ'); }
     finally { setSaving(false); }
@@ -252,8 +269,9 @@ export default function UsersPage() {
 
         <div className="form-group">
           <label className="form-label">
-            ชื่อที่แสดง <span style={{ color: '#E85C5C' }}>*</span>
-            {selected?.line_display_name && selected.line_display_name !== form.display_name && (
+            ชื่อที่แสดง
+            {modal === 'add' && <span style={{ color: '#E85C5C' }}> *</span>}
+            {modal === 'edit' && selected?.line_display_name && (
               <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 400, marginLeft: 6 }}>
                 (ชื่อ LINE: {selected.line_display_name})
               </span>
@@ -263,12 +281,18 @@ export default function UsersPage() {
             className="form-input" 
             value={form.display_name} 
             onChange={e => setForm(f => ({ ...f, display_name: e.target.value }))} 
-            placeholder="เช่น ครูเบียร์ / คุณแม่สมศรี / คุณพ่อสมชาย" 
+            placeholder={
+              modal === 'edit' && selected?.line_display_name 
+                ? `ไม่ระบุจะใช้: ${selected.line_display_name}`
+                : "เช่น ครูเบียร์ / คุณแม่สมศรี / คุณพ่อสมชาย"
+            }
             autoFocus
           />
           <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
             {modal === 'edit' && selected?.line_display_name ? 
-              'ชื่อนี้แก้ไขได้ และจะไม่ถูกเปลี่ยนแปลงโดยอัตโนมัติ (ชื่อจาก LINE จะอัพเดทแยกต่างหาก)' :
+              '💡 ปล่อยว่างเพื่อใช้ชื่อ LINE อัตโนมัติ หรือใส่ชื่อที่ต้องการแทน' :
+              modal === 'add' ?
+              'ชื่อนี้จะแสดงในระบบและรายงาน (บังคับระบุ)' :
               'ชื่อนี้จะแสดงในระบบและรายงาน'
             }
           </p>
