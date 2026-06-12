@@ -11,6 +11,7 @@ import { useUserApp } from '@/components/UserAppProvider';
 import AppHeader from '@/components/AppHeader';
 import BottomNavigation from '@/components/BottomNavigation';
 import { FaceHappy, FaceSmile, FaceNeutral, Book, Diaper, Toilet, Building, User } from '@/components/icons';
+import { usePageTracking, trackClick } from '@/lib/useAnalytics';
 
 /* ── label maps ─────────────────────────────── */
 const amtL: Record<MilkStatus,string> = { all:'ทานหมด', some:'บางส่วน', not_must:'นิดหน่อย', skip:'ข้าม' };
@@ -360,6 +361,9 @@ function LiffPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const activeTab = pathname === '/summary-behavior' ? 'summary' : 'daily';
+
+  // Track page views
+  usePageTracking();
 
   // Get shared state from context
   const {
@@ -823,7 +827,7 @@ function LiffPageContent() {
           <div style={{padding:'16px',background:'white',borderBottom:'1px solid #f1f5f9'}}>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
               <div style={{display:'flex',flexDirection:'column',gap:2}}>
-                <span style={{fontSize:'0.7rem',fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:'0.06em'}}>การเข้าเรียน</span>
+                <span style={{fontSize:'0.7rem',fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:'0.06em'}}>บันทึกรายวัน</span>
                 {enrollmentPeriod && (
                   <span style={{fontSize:'0.6rem',color:'#94a3b8'}}>
                     {parseLocalDate(enrollmentPeriod.start).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'})}
@@ -836,18 +840,10 @@ function LiffPageContent() {
                 <div style={{display:'flex',alignItems:'center',gap:4}}>
                   <div style={{width:10,height:10,borderRadius:2,background:'#10b981',border:'2px solid #10b981'}} />
                   <span style={{color:'#64748b'}}>มา</span>
-                </div>
-                <div style={{display:'flex',alignItems:'center',gap:4}}>
-                  <div style={{width:10,height:10,borderRadius:2,background:'#f59e0b',border:'2px solid #f59e0b'}} />
-                  <span style={{color:'#64748b'}}>ลา</span>
-                </div>
-                <div style={{display:'flex',alignItems:'center',gap:4}}>
-                  <div style={{width:10,height:10,borderRadius:2,background:'#ef4444',border:'2px solid #ef4444'}} />
-                  <span style={{color:'#64748b'}}>ขาด</span>
-                </div>
+                </div>                
                 <div style={{display:'flex',alignItems:'center',gap:4}}>
                   <div style={{width:8,height:8,borderRadius:2,background:'#c084fc'}} />
-                  <span style={{color:'#64748b'}}>หยุด</span>
+                  <span style={{color:'#64748b'}}>หยุดนักขัตฤกษ์</span>
                 </div>
               </div>
             </div>
@@ -931,13 +927,20 @@ function LiffPageContent() {
                               );
 
                               return (
-                                <CustomTooltip key={dayIdxInWeek} text={tooltipContent}>
+                                <div key={dayIdxInWeek}>
                                   <div
                                     data-day-date={day.dateStr}
                                     onClick={() => {
                                       // อนุญาตให้คลิกได้ถ้ามี report (แม้จะเป็นวันหยุด)
                                       if (day.hasReport && day.dayIdx !== null) {
                                         setDayIdx(day.dayIdx);
+                                        // Scroll to activity section after short delay
+                                        setTimeout(() => {
+                                          const activitySection = document.getElementById('todays-activity');
+                                          if (activitySection) {
+                                            activitySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                          }
+                                        }, 100);
                                       }
                                     }}
                                     style={{
@@ -961,7 +964,7 @@ function LiffPageContent() {
                                       e.currentTarget.style.transform = 'scale(1)';
                                     }}
                                   />
-                                </CustomTooltip>
+                                </div>
                               );
                             })}
                           </div>
@@ -1333,7 +1336,7 @@ function LiffPageContent() {
 
                 {/* Activity */}
                 {report.daily?.activity && (
-                  <div style={{background:'white',borderRadius:16,padding:'20px',marginBottom:14,border:'1px solid #e2e8f0',textAlign:'center'}}>
+                  <div id="todays-activity" style={{background:'white',borderRadius:16,padding:'20px',marginBottom:14,border:'1px solid #e2e8f0',textAlign:'center'}}>
                     <span style={{fontSize:'0.7rem',fontWeight:800,color:'#6366f1',textTransform:'uppercase',letterSpacing:1.5,display:'block',marginBottom:6}}>TODAY&apos;S ACTIVITY</span>
                     <h2 style={{fontSize:'1.2rem',fontWeight:700,color:'#0f172a',margin:0,letterSpacing:'-0.2px'}}>{report.daily.activity}</h2>
                   </div>

@@ -6,6 +6,7 @@ import { useUserApp } from '@/components/UserAppProvider';
 import LoadingWrapper from '@/components/loading/LoadingWrapper';
 import BehaviorCardSkeleton from '@/components/loading/skeletons/BehaviorCardSkeleton';
 import { FaceHappy, FaceSmile, FaceNeutral, Calendar, Book } from '@/components/icons';
+import { usePageTracking, trackClick } from '@/lib/useAnalytics';
 
 interface BehaviorSummaryItem {
   item_id:string;
@@ -22,6 +23,10 @@ interface DayEntry { date:string; daily_id:string; report_id:string|null; activi
 export default function SummaryPage() {
   const router = useRouter();
   const { childId, enrollmentPeriod } = useUserApp();
+  
+  // Track page views
+  usePageTracking();
+  
   const [dataLoading, setDataLoading] = useState(false);
   const [showShimmer, setShowShimmer] = useState(false);
   const [behaviorSummary, setBehaviorSummary] = useState<BehaviorSummaryItem[]>([]);

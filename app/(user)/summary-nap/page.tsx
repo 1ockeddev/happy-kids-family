@@ -4,9 +4,14 @@ import UserLayout from '@/components/UserLayout';
 import { useUserApp } from '@/components/UserAppProvider';
 import LoadingWrapper from '@/components/loading/LoadingWrapper';
 import NapSummarySkeleton from '@/components/loading/skeletons/NapSummarySkeleton';
+import { usePageTracking } from '@/lib/useAnalytics';
 
 export default function NapSummaryPage() {
   const { childId, enrollmentPeriod } = useUserApp();
+  
+  // Track page views
+  usePageTracking();
+  
   const [dataLoading, setDataLoading] = useState(false);
   const [showShimmer, setShowShimmer] = useState(false);
   const [napSummary, setNapSummary] = useState<{

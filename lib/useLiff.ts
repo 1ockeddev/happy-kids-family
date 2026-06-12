@@ -38,6 +38,14 @@ export function useLiff() {
 
     // ── Dev mode: localhost + ไม่มี LIFF_ID ────────────
     if (isLocalhost && !LIFF_ID) {
+      // Store mock data for analytics in dev mode
+      if (DEV_MOCK_LINE_USER_ID && typeof window !== 'undefined') {
+        localStorage.setItem('liff_data', JSON.stringify({
+          userId: DEV_MOCK_LINE_USER_ID,
+          displayName: '(Dev) ผู้ปกครองทดสอบ'
+        }));
+      }
+      
       setState({
         ready: true,
         isInLiff: false,
@@ -72,6 +80,16 @@ export function useLiff() {
           }
 
           const profile = await liff.getProfile();
+          
+          // Store LINE user ID in localStorage for analytics
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('liff_data', JSON.stringify({
+              userId: profile.userId,
+              displayName: profile.displayName,
+              pictureUrl: profile.pictureUrl
+            }));
+          }
+          
           setState({
             ready: true,
             isInLiff: isInClient,

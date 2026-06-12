@@ -5,11 +5,16 @@ import { useUserApp } from '@/components/UserAppProvider';
 import { MilkStatus } from '@/types';
 import LoadingWrapper from '@/components/loading/LoadingWrapper';
 import FoodSummarySkeleton from '@/components/loading/skeletons/FoodSummarySkeleton';
+import { usePageTracking } from '@/lib/useAnalytics';
 
 const amtL: Record<MilkStatus,string> = { all:'ทานหมด', some:'บางส่วน', not_must:'นิดหน่อย', skip:'ข้าม' };
 
 export default function FoodMilkSummaryPage() {
   const { childId, enrollmentPeriod } = useUserApp();
+  
+  // Track page views
+  usePageTracking();
+  
   const [dataLoading, setDataLoading] = useState(false);
   const [showShimmer, setShowShimmer] = useState(false);
   const [foodSummary, setFoodSummary] = useState<{

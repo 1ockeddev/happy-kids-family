@@ -1,21 +1,33 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { useLiff } from './useLiff';
 
-// Generate or retrieve session ID
-const getSessionId = (): string => {
-  if (typeof window === 'undefined') return '';
+let sessionId: string | null = null;
+
+// Generate or get session ID
+function getSessionId(): string {
+  if (sessionId) return sessionId;
   
-  let sessionId = sessionStorage.getItem('analytics_session_id');
-  if (!sessionId) {
-    sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  // Try to get from sessionStorage
+  if (typeof window !== 'undefined') {
+    const stored = sessionStorage.getItem('analytics_session_id');
+    if (stored) {
+      sessionId = stored;
+      return sessionId;
+    }
+  }
+  
+  // Generate new session ID
+  sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  
+  if (typeof window !== 'undefined') {
     sessionStorage.setItem('analytics_session_id', sessionId);
   }
+  
   return sessionId;
-};
+}
 
 // Track analytics event
-const trackEvent = async (data: {
+async function trackEvent(data: {
   event_type: 'page_view' | 'click' | 'navigation';
   page_path: string;
   from_path?: string;
@@ -23,108 +35,95 @@ const trackEvent = async (data: {
   element_type?: string;
   element_label?: string;
   duration_seconds?: number;
-}, lineUserId?: string) => {
-  if (typeof window === 'undefined') return;
-
+}) {
   try {
-    const session_id = getSessionId();
-    const user_agent = navigator.userAgent;
-    const viewport_width = window.innerWidth;
-    const viewport_height = window.innerHeight;
-
-    const headers: HeadersInit = { 'Content-Type': 'application/json' };
-    if (lineUserId) {
-      headers['x-line-user-id'] = lineUserId;
+    // Get LINE user ID from localStorage (set by LIFF)
+    const liffData = localStorage.getItem('liff_data');
+    let lineUserId: string | null = null;
+    
+    if (liffData) {
+      try {
+        const parsed = JSON.parse(liffData);
+        lineUserId = parsed.userId || null;
+      } catch {
+        // Ignore parse errors
+      }
     }
-
+    
+    // If no LINE user ID, don't track (not logged in)
+    if (!lineUserId) {
+      return;
+    }
+    
     await fetch('/api/analytics', {
       method: 'POST',
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-line-user-id': lineUserId,
+      },
       body: JSON.stringify({
         ...data,
-        session_id,
-        user_agent,
-        viewport_width,
-        viewport_height,
+        session_id: getSessionId(),
+        user_agent: navigator.userAgent,
+        viewport_width: window.innerWidth,
+        viewport_height: window.innerHeight,
       }),
     });
   } catch (error) {
-    // Silent fail - don't break user experience
-    console.error('Analytics tracking failed:', error);
+    // Silently fail - analytics should not break the app
+    console.debug('Analytics tracking failed:', error);
   }
-};
+}
 
-export function useAnalytics() {
+// Hook to track page views
+export function usePageTracking() {
   const pathname = usePathname();
-  const liff = useLiff();
-  const previousPathRef = useRef<string>('');
-  const pageStartTimeRef = useRef<number>(0);
-  const lineUserIdRef = useRef<string>('');
+  const startTimeRef = useRef<number>(Date.now());
+  const previousPathRef = useRef<string | null>(null);
 
-  // Get LINE user ID
-  useEffect(() => {
-    if (liff.ready && liff.profile?.userId) {
-      lineUserIdRef.current = liff.profile.userId;
-    }
-  }, [liff.ready, liff.profile?.userId]);
-
-  // Track page view
   useEffect(() => {
     const currentPath = pathname || '/';
     const previousPath = previousPathRef.current;
-    const lineUserId = lineUserIdRef.current;
-
-    // Record page start time
-    pageStartTimeRef.current = Date.now();
-
-    // Track navigation if there was a previous page
+    
+    // Track navigation event if there was a previous page
     if (previousPath && previousPath !== currentPath) {
       trackEvent({
         event_type: 'navigation',
         page_path: currentPath,
         from_path: previousPath,
         to_path: currentPath,
-      }, lineUserId);
+      });
     }
-
+    
     // Track page view
     trackEvent({
       event_type: 'page_view',
       page_path: currentPath,
-    }, lineUserId);
-
-    // Update previous path
+    });
+    
+    // Update refs
+    startTimeRef.current = Date.now();
     previousPathRef.current = currentPath;
-
-    // Cleanup: track page duration when leaving
+    
+    // Track page duration on unmount
     return () => {
-      const duration = Math.round((Date.now() - pageStartTimeRef.current) / 1000);
-      
-      // Only track if duration is reasonable (between 1 second and 1 hour)
-      if (duration >= 1 && duration <= 3600) {
-        trackEvent({
-          event_type: 'page_view',
-          page_path: currentPath,
-          duration_seconds: duration,
-        }, lineUserId);
-      }
+      const duration = Math.round((Date.now() - startTimeRef.current) / 1000);
+      trackEvent({
+        event_type: 'page_view',
+        page_path: currentPath,
+        duration_seconds: duration,
+      });
     };
   }, [pathname]);
+}
 
-  // Track click events
-  const trackClick = useCallback((
-    element_type: string,
-    element_label: string
-  ) => {
-    const currentPath = pathname || '/';
-    const lineUserId = lineUserIdRef.current;
-    trackEvent({
-      event_type: 'click',
-      page_path: currentPath,
-      element_type,
-      element_label,
-    }, lineUserId);
-  }, [pathname]);
-
-  return { trackClick };
+// Function to track click events
+export function trackClick(element_type: string, element_label: string, page_path?: string) {
+  const currentPath = page_path || window.location.pathname;
+  trackEvent({
+    event_type: 'click',
+    page_path: currentPath,
+    element_type,
+    element_label,
+  });
 }

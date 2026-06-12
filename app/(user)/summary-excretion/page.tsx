@@ -5,9 +5,14 @@ import { useUserApp } from '@/components/UserAppProvider';
 import { ExcretionType, ExcretionAction } from '@/types';
 import LoadingWrapper from '@/components/loading/LoadingWrapper';
 import ExcretionSummarySkeleton from '@/components/loading/skeletons/ExcretionSummarySkeleton';
+import { usePageTracking } from '@/lib/useAnalytics';
 
 export default function ExcretionSummaryPage() {
   const { childId, enrollmentPeriod } = useUserApp();
+  
+  // Track page views
+  usePageTracking();
+  
   const [dataLoading, setDataLoading] = useState(false);
   const [showShimmer, setShowShimmer] = useState(false);
   const [excretionSummary, setExcretionSummary] = useState<{
