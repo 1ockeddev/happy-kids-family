@@ -12,15 +12,27 @@ declare global {
 function createPool(): Pool {
   // รองรับทั้ง DATABASE_URL และ config แยก
   if (process.env.DATABASE_URL) {
+    // ตรวจสอบว่าเป็น Supabase และใช้ Pooler URL หรือไม่
+    const isSupabase = process.env.DATABASE_URL.includes('supabase.co');
+    const usePooler = process.env.DATABASE_URL.includes('pooler.supabase.com') || 
+                      process.env.DATABASE_URL.includes(':6543');
+    
+    // สำหรับ Vercel + Supabase: ลด connection pool size
+    const maxConnections = process.env.NODE_ENV === 'production' 
+      ? (usePooler ? 10 : 3)  // Pooler ใช้ได้มากกว่า, Direct ต้องลด
+      : 10;
+    
     return new Pool({
       connectionString: process.env.DATABASE_URL,
-      // สำหรับ Supabase/SSL ในอนาคต — local ไม่ต้องใช้
-      ssl: process.env.DATABASE_URL.includes('supabase.co')
-        ? { rejectUnauthorized: false }
-        : false,
-      max: 10,
+      ssl: isSupabase ? { rejectUnauthorized: false } : false,
+      max: maxConnections,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 5000,
+      // Supabase Pooler ใช้ transaction mode
+      ...(usePooler && {
+        // ให้ pool ปิด connection ที่ไม่ได้ใช้เร็วขึ้น
+        idleTimeoutMillis: 10000,
+      })
     });
   }
 
