@@ -1771,7 +1771,7 @@ function LiffPageContent() {
                 <div style={{textAlign:'center',marginTop:24,paddingTop:16,borderTop:'1px solid #f1f5f9'}}>
                   <p style={{margin:'2px 0',color:'#94a3b8',fontSize:'0.8rem'}}>บันทึกโดยคุณครู</p>
                   <p style={{margin:'2px 0',color:'#475569',fontWeight:600,fontSize:'0.88rem'}}>
-                    {teacher?.display_name ?? 'KinderCare'}
+                    {teacher?.display_name ?? 'Happy Kids'}
                   </p>
                   {currentEntry&&<p style={{marginTop:8,fontSize:'0.72rem',color:'#94a3b8'}}>{thDate(currentEntry.date)}</p>}
                 </div>
