@@ -7,8 +7,9 @@ export async function GET(req: NextRequest) {
     const search = req.nextUrl.searchParams.get('search') ?? '';
     const date = req.nextUrl.searchParams.get('date') ?? '';
     const cohort_id = req.nextUrl.searchParams.get('cohort_id') ?? '';
-    const rows = await query(
-      `SELECT 
+    const limit = req.nextUrl.searchParams.get('limit') ?? ''; // เพิ่ม limit parameter
+    
+    let sql = `SELECT 
          d.id,
          d.cohort_id,
          to_char(d.date, 'YYYY-MM-DD') AS date,
@@ -35,7 +36,15 @@ export async function GET(req: NextRequest) {
               to_char(d.date + INTERVAL '543 years', 'DD/MM/YYYY') ILIKE $2)
          AND ($3 = '' OR d.date::text = $3)
          AND ($4 = '' OR d.cohort_id::text = $4)
-       ORDER BY d.date DESC, co.name`,
+       ORDER BY d.date DESC, co.name`;
+    
+    // เพิ่ม LIMIT ถ้ามีการระบุ (ช่วยลด query time และ memory)
+    if (limit && !isNaN(parseInt(limit))) {
+      sql += ` LIMIT ${parseInt(limit)}`;
+    }
+    
+    const rows = await query(
+      sql,
       [search, `%${search}%`, date, cohort_id]
     );
     return ok(rows);

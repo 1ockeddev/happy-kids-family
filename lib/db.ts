@@ -18,20 +18,27 @@ function createPool(): Pool {
                       process.env.DATABASE_URL.includes(':6543');
     
     // สำหรับ Vercel + Supabase: ลด connection pool size
-    const maxConnections = process.env.NODE_ENV === 'production' 
-      ? (usePooler ? 10 : 3)  // Pooler ใช้ได้มากกว่า, Direct ต้องลด
-      : 10;
+    const isProduction = process.env.NODE_ENV === 'production';
+    const maxConnections = isProduction 
+      ? (usePooler ? 10 : 2)  // Production: Pooler=10, Direct=2 เท่านั้น
+      : 10; // Development: 10
+    
+    // ใน production ให้ปิด idle connections เร็วขึ้นเพื่อประหยัด connections
+    const idleTimeout = isProduction ? 10000 : 30000; // 10 วินาที vs 30 วินาที
     
     return new Pool({
       connectionString: process.env.DATABASE_URL,
       ssl: isSupabase ? { rejectUnauthorized: false } : false,
       max: maxConnections,
-      idleTimeoutMillis: 30000,
+      min: 0, // ไม่มี minimum connections
+      idleTimeoutMillis: idleTimeout,
       connectionTimeoutMillis: 5000,
       // Supabase Pooler ใช้ transaction mode
       ...(usePooler && {
         // ให้ pool ปิด connection ที่ไม่ได้ใช้เร็วขึ้น
-        idleTimeoutMillis: 10000,
+        idleTimeoutMillis: 5000, // 5 วินาที สำหรับ pooler
+        // ลด acquisition timeout
+        connectionTimeoutMillis: 3000,
       })
     });
   }
@@ -45,6 +52,7 @@ function createPool(): Pool {
     password: process.env.DB_PASSWORD ?? 'password',
     ssl: false,
     max: 10,
+    min: 0,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,
   });

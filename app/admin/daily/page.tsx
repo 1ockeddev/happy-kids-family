@@ -209,20 +209,22 @@ export default function DailyPage() {
       
       setData(filteredData);
       
-      // Load report counts for each daily record
-      const counts: Record<string, number> = {};
-      await Promise.all(
-        filteredData.map(async (d) => {
-          try {
-            const res = await fetch(`/api/daily-reports?daily_id=${d.id}`);
-            const json = await res.json();
-            counts[d.id] = json.data?.length ?? 0;
-          } catch {
-            counts[d.id] = 0;
-          }
-        })
-      );
-      setReportCounts(counts);
+      // โหลด report counts แบบ batch (1 API call แทน N calls)
+      if (filteredData.length > 0) {
+        try {
+          const dailyIds = filteredData.map(d => d.id).join(',');
+          const res = await fetch(`/api/daily-reports/counts?daily_ids=${dailyIds}`);
+          const counts = await res.json();
+          setReportCounts(counts);
+        } catch {
+          // ถ้า error ให้ fallback เป็น 0 ทั้งหมด
+          const counts: Record<string, number> = {};
+          filteredData.forEach(d => counts[d.id] = 0);
+          setReportCounts(counts);
+        }
+      } else {
+        setReportCounts({});
+      }
       
       // Collect unique food, fruit, and activity suggestions from existing data
       const foods = new Set<string>();

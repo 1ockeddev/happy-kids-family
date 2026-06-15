@@ -3,45 +3,111 @@
 ## ปัญหา
 ```
 (EMAXCONN) max client connections reached, limit: 200
+password authentication failed for user "postgres"
 ```
 
 ## สาเหตุ
 - Vercel serverless functions สร้าง connection pool ใหม่ในแต่ละ instance
 - หลาย instances + หลาย connections ต่อ instance = เกิน Supabase limit (200)
+- Transaction Pooler ใช้ **database password** แทน service role key
+- **Admin pages ที่โหลดข้อมูลหลาย records** แล้วทำ API calls เพิ่มเติม (เช่น report counts)
 
 ## วิธีแก้ (แนะนำ): ใช้ Supabase Connection Pooler
 
-### 1. หา Connection String แบบ Pooler
+### 1. หา Database Password
+
+⚠️ **สำคัญ**: Transaction Pooler ไม่ใช้ service role key แต่ใช้ **database password**
 
 ใน Supabase Dashboard:
 1. ไปที่ **Project Settings** → **Database**
-2. มองหาส่วน **Connection string** → เลือก **Transaction pooler** หรือ **Session pooler**
-3. เลือก **URI** และ copy connection string
+2. ส่วน **Connection string** → เลือก **Transaction pooler**
+3. คลิก **Reset database password** ถ้าลืม password
+4. Copy **Connection string** (จะมี `[YOUR-PASSWORD]` อยู่)
+
+⚠️ **ระวัง Special Characters ใน Password**:
+ถ้า password มี special characters (`!@#$%^&*()` ฯลฯ) ต้อง **URL encode** ก่อน:
+
+```bash
+# Password เดิม: MyP@ss123!
+# URL encoded: MyP%40ss123%21
+
+# ตัวอย่าง encoding:
+@ → %40
+! → %21
+# → %23
+$ → %24
+% → %25
+^ → %5E
+& → %26
+* → %2A
+```
+
+### 2. สร้าง Connection String ที่ถูกต้อง
+
+รูปแบบ:
+```
+postgresql://postgres:[URL_ENCODED_PASSWORD]@db.[PROJECT].supabase.co:6543/postgres?pgbouncer=true
+```
 
 ตัวอย่าง:
-```
-# Direct (เดิม - จะเกิน limit)
-postgresql://postgres:[PASSWORD]@db.[PROJECT].supabase.co:5432/postgres
+```bash
+# ❌ ผิด - password ไม่ได้ encode
+postgresql://postgres:MyP@ss123!@db.abc.supabase.co:6543/postgres
 
-# Transaction Pooler (แนะนำ - ใช้ port 6543)
-postgresql://postgres:[PASSWORD]@db.[PROJECT].supabase.co:6543/postgres?pgbouncer=true
-
-# Session Pooler (ทางเลือก - ใช้ port 5432 แต่ผ่าน pooler)
-postgresql://postgres:[PASSWORD]@pooler.[PROJECT].supabase.co:5432/postgres
+# ✅ ถูก - password ถูก encode แล้ว
+postgresql://postgres:MyP%40ss123%21@db.abc.supabase.co:6543/postgres?pgbouncer=true
 ```
 
-### 2. อัปเดต Environment Variable บน Vercel
+### 3. เครื่องมือ URL Encode Password
 
-1. ไปที่ Vercel Project → **Settings** → **Environment Variables**
-2. แก้ไข `DATABASE_URL` เป็น Pooler URL ที่ได้จากข้างบน
-3. **Redeploy** project
+**วิธีที่ 1: ใช้ Node.js/Browser Console**
+```javascript
+encodeURIComponent('MyP@ss123!')
+// Output: 'MyP%40ss123%21'
+```
 
-### 3. ตรวจสอบว่าใช้ Pooler แล้ว
+**วิธีที่ 2: ใช้ Online Tool**
+- https://www.urlencoder.org/
+- ใส่ password → กด Encode
 
-URL ต้องมีอย่างใดอย่างหนึ่ง:
-- มี `pooler.supabase.com` ในชื่อ host
-- มี `:6543` (transaction pooler port)
-- มี `?pgbouncer=true` ใน query string
+**วิธีที่ 3: ใช้ Python**
+```python
+from urllib.parse import quote_plus
+print(quote_plus('MyP@ss123!'))
+```
+
+### 4. อัปเดต Environment Variable บน Vercel
+
+1. Encode password ก่อน (ตามวิธีข้างบน)
+2. สร้าง connection string ที่ถูกต้อง
+3. ไปที่ Vercel Project → **Settings** → **Environment Variables**
+4. แก้ไข `DATABASE_URL` เป็น Pooler URL พร้อม encoded password
+5. **Redeploy** project
+
+### 5. ตรวจสอบว่า URL ถูกต้อง
+
+URL ต้องมี:
+- ✅ `postgres` เป็น username (ไม่ใช่ service role)
+- ✅ Password ที่ถูก URL encode
+- ✅ Port `:6543` (transaction pooler)
+- ✅ `?pgbouncer=true` (optional แต่แนะนำ)
+
+ตัวอย่างที่ถูกต้อง:
+```
+postgresql://postgres:encoded_password_here@db.xyz.supabase.co:6543/postgres?pgbouncer=true
+```
+
+## ทางเลือก: ใช้ Session Pooler แทน
+
+ถ้า Transaction Pooler ยังมีปัญหา ให้ลอง **Session Pooler**:
+
+1. ใน Supabase Dashboard → **Connection string** → เลือก **Session pooler**
+2. URL จะเป็น: `postgresql://postgres.[PROJECT]@pooler.[PROJECT].supabase.co:5432/postgres`
+3. Password เดียวกัน แต่ไม่ต้อง encode (ส่วนใหญ่)
+
+ข้อแตกต่าง:
+- Transaction Pooler (port 6543): เร็วกว่า แต่จำกัด features
+- Session Pooler (port 5432): ช้ากว่านิดหน่อย แต่รองรับ features เต็ม
 
 ## การทำงานของโค้ดที่แก้แล้ว
 
@@ -55,60 +121,87 @@ const usePooler = process.env.DATABASE_URL.includes('pooler.supabase.com') ||
 const maxConnections = usePooler ? 10 : 3;
 ```
 
+## Troubleshooting
+
+### ปัญหา 1: "password authentication failed"
+**สาเหตุ**: 
+- ใช้ service role key แทน database password
+- Password ไม่ได้ URL encode
+- Password ผิด
+
+**แก้**:
+1. ไปที่ Supabase → Settings → Database
+2. Copy connection string จาก "Transaction pooler" หรือ "Session pooler"
+3. URL encode password ก่อนใช้
+4. อัปเดตใน Vercel
+
+### ปัญหา 2: "EMAXCONN" ยังเกิดอยู่
+**สาเหตุ**: ยังใช้ Direct connection (port 5432 แบบธรรมดา)
+
+**แก้**: 
+- ตรวจสอบว่า URL มี `:6543` หรือ `pooler.` ใน hostname
+- ถ้าไม่มี ให้เปลี่ยนเป็น pooler URL
+
+### ปัญหา 3: "Connection timeout"
+**สาเหตุ**: Firewall หรือ network issue
+
+**แก้**:
+- ลอง Session Pooler (port 5432) แทน
+- ตรวจสอบ Supabase service status
+
 ## เปรียบเทียบ Connection Modes
 
-| Mode | Port | Pros | Cons | Use Case |
-|------|------|------|------|----------|
-| **Direct** | 5432 | รองรับ feature ทั้งหมด | จำกัด 200 connections | Local development |
-| **Transaction Pooler** | 6543 | จำนวน connections เยอะ | ไม่รองรับ prepared statements | **Production (Vercel) ✅** |
-| **Session Pooler** | 5432 (via pooler) | รองรับ feature มากขึ้น | connections น้อยกว่า transaction | Apps ที่ต้องใช้ advanced features |
+| Mode | Port | Username | Password | Use Case |
+|------|------|----------|----------|----------|
+| **Direct** | 5432 | postgres | DB Password | Local dev |
+| **Transaction Pooler** | 6543 | postgres | DB Password | **Vercel Production ✅** |
+| **Session Pooler** | 5432 (via pooler) | postgres | DB Password | Advanced features needed |
 
 ## วิธีเช็คว่าแก้แล้ว
 
 1. Deploy แล้วเปิด Vercel Function Logs
-2. ดูว่ายังมี `EMAXCONN` error หรือไม่
-3. หรือเข้า Supabase Dashboard → **Database** → **Connection pooling** ดูจำนวน active connections
+2. ดูว่ายังมี `EMAXCONN` หรือ `password authentication failed` error หรือไม่
+3. เข้า Supabase Dashboard → **Database** → **Connection pooling** ดูจำนวน active connections
 
-## Additional: เพิ่ม Connection Pooling Statistics
+## ตัวอย่างที่สมบูรณ์
 
-ถ้าต้องการเช็คว่า connection pool ทำงานดีไหม:
+```bash
+# 1. Password เดิม
+MySecretP@ss!2024
 
-```typescript
-// เพิ่มใน lib/db.ts
-pool.on('connect', () => {
-  console.log('New client connected to pool');
-});
+# 2. URL Encode (ใน browser console)
+encodeURIComponent('MySecretP@ss!2024')
+# Result: MySecretP%40ss%212024
 
-pool.on('remove', () => {
-  console.log('Client removed from pool');
-});
-
-pool.on('error', (err) => {
-  console.error('Unexpected pool error:', err);
-});
+# 3. Connection String สำหรับ Vercel
+postgresql://postgres:MySecretP%40ss%212024@db.abcxyz.supabase.co:6543/postgres?pgbouncer=true
 ```
 
-## ทางเลือกอื่น (ถ้ายังไม่ได้)
+## Additional: รีเซ็ต Database Password
 
-### 1. Upgrade Supabase Plan
-- Free tier: 200 connections
-- Pro tier: 500 connections
-- Team/Enterprise: configurable
+ถ้าลืม password หรือต้องการเปลี่ยน:
 
-### 2. ใช้ Supabase Realtime/REST API แทน Direct SQL
-- ไม่ต้องใช้ connection pool เลย
-- เหมาะกับ simple queries
+1. Supabase Dashboard → **Settings** → **Database**
+2. หาส่วน **Database password**
+3. คลิก **Reset Database Password**
+4. Supabase จะสร้าง password ใหม่ให้
+5. Copy และ URL encode password นั้น
+6. อัปเดตใน Vercel Environment Variables
 
-### 3. ใช้ Edge Functions แทน Serverless Functions
-- Deno Deploy มี connection pooling ที่ดีกว่า
-- แต่ต้องเขียนโค้ดใหม่
+⚠️ **คำเตือน**: การรีเซ็ต password จะทำให้ connections เก่าหมดใช้ไปทันที!
 
 ## สรุป
 
-**แนะนำ**: ใช้ **Transaction Pooler** (port 6543) บน Vercel เพราะ:
-- ✅ แก้ปัญหาได้ทันที
-- ✅ ไม่ต้องเปลี่ยนโค้ด (มากนัก)
-- ✅ Performance ดีขึ้น
-- ✅ ไม่ต้องจ่ายเพิ่ม
+**ขั้นตอนแก้ปัญหา**:
+1. ✅ หา **database password** (ไม่ใช่ service role key)
+2. ✅ **URL encode** password ถ้ามี special characters
+3. ✅ ใช้ **Transaction Pooler URL** (port 6543)
+4. ✅ อัปเดต `DATABASE_URL` บน Vercel
+5. ✅ Redeploy
 
-**แค่เปลี่ยน `DATABASE_URL` บน Vercel เป็น pooler URL แล้ว redeploy!** 🚀
+**Connection String Template**:
+```
+postgresql://postgres:[URL_ENCODED_PASSWORD]@db.[PROJECT_ID].supabase.co:6543/postgres?pgbouncer=true
+```
+
+แค่นี้ก็แก้ปัญหา connection limit และ authentication ได้แล้ว! 🚀
