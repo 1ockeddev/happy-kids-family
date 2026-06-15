@@ -942,18 +942,18 @@ export default function ReportsPage() {
               <div style={{ fontSize: 12, color: '#9CA3AF' }}>{r.daily?.cohort?.name}</div>
             </div>
           )} : null,
-          visibleColumns.date ? { key: 'date', label: 'วันที่', hideOnMobile: true, render: (r: DailyReport) => r.daily?.date ? new Date(r.daily.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }) : '-' } : null,
+          visibleColumns.date ? { key: 'date', label: 'วันที่', render: (r: DailyReport) => r.daily?.date ? new Date(r.daily.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }) : '-' } : null,
           visibleColumns.milk1 ? { key: 'milk1', label: 'นม 1', render: (r: DailyReport) => <span className={`badge ${AC[r.milk1]}`}>{AL[r.milk1]}</span> } : null,
-          visibleColumns.milk2 ? { key: 'milk2', label: 'นม 2', hideOnMobile: true, render: (r: DailyReport) => <span className={`badge ${AC[r.milk2]}`}>{AL[r.milk2]}</span> } : null,
-          visibleColumns.food_amount ? { key: 'food_amount', label: 'อาหาร', hideOnMobile: true, render: (r: DailyReport) => <span className={`badge ${AC[r.food_amount]}`}>{AL[r.food_amount]}</span> } : null,
-          visibleColumns.fruit_amount ? { key: 'fruit_amount', label: 'ผลไม้', hideOnMobile: true, render: (r: DailyReport) => <span className={`badge ${AC[r.fruit_amount]}`}>{AL[r.fruit_amount]}</span> } : null,
-          visibleColumns.nap ? { key: 'nap', label: 'นอน', hideOnMobile: true, render: (r: DailyReport) => r.nap_from && r.nap_to ? <span style={{ fontSize: 12, color: '#6B7280' }}>{r.nap_from.slice(0,5)} - {r.nap_to.slice(0,5)}</span> : <span style={{ color: '#D1D5DB' }}>—</span> } : null,
-          visibleColumns.excretions ? { key: 'excretions', label: 'ขับถ่าย', hideOnMobile: true, render: (r: DailyReport) => {
+          visibleColumns.milk2 ? { key: 'milk2', label: 'นม 2', render: (r: DailyReport) => <span className={`badge ${AC[r.milk2]}`}>{AL[r.milk2]}</span> } : null,
+          visibleColumns.food_amount ? { key: 'food_amount', label: 'อาหาร', render: (r: DailyReport) => <span className={`badge ${AC[r.food_amount]}`}>{AL[r.food_amount]}</span> } : null,
+          visibleColumns.fruit_amount ? { key: 'fruit_amount', label: 'ผลไม้', render: (r: DailyReport) => <span className={`badge ${AC[r.fruit_amount]}`}>{AL[r.fruit_amount]}</span> } : null,
+          visibleColumns.nap ? { key: 'nap', label: 'นอน', render: (r: DailyReport) => r.nap_from && r.nap_to ? <span style={{ fontSize: 12, color: '#6B7280' }}>{r.nap_from.slice(0,5)} - {r.nap_to.slice(0,5)}</span> : <span style={{ color: '#D1D5DB' }}>—</span> } : null,
+          visibleColumns.excretions ? { key: 'excretions', label: 'ขับถ่าย', render: (r: DailyReport) => {
             const exs = r.excretions ?? [];
             if (!exs.length) return <span style={{ color: '#D1D5DB' }}>—</span>;
             return <div style={{ display: 'flex', gap: 4 }}>{exs.map((ex: ChildExcretion, i: number) => <span key={i} style={{ fontSize: 11, background: ex.type === 'poo' ? '#FEF6E6' : '#EBF4FA', color: ex.type === 'poo' ? '#F5A623' : '#4A90B8', padding: '2px 6px', borderRadius: 99 }}>{ex.type ? ET[ex.type] : '-'} {ex.time?.slice(0,5)}</span>)}</div>;
           }} : null,
-          visibleColumns.teacher ? { key: 'teacher', label: 'ครู', hideOnMobile: true, render: (r: DailyReport) => {
+          visibleColumns.teacher ? { key: 'teacher', label: 'ครู', render: (r: DailyReport) => {
             const teacher = teachers.find(t => t.id === r.created_by);
             if (!teacher) return <span style={{ color: '#D1D5DB', fontSize: 12 }}>—</span>;
             return (
