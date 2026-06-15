@@ -6,36 +6,50 @@ export const dynamic = 'force-dynamic';
 
 // Helper: Get user from request (supports both admin session and LINE user_id)
 async function getUserFromRequest(req: NextRequest) {
-  // Try admin session first
-  const session = await getSessionFromRequest(req);
-  if (session) {
-    const result = await query(
-      `SELECT id, role, display_name FROM app_user WHERE username = $1 LIMIT 1`,
-      [session.username]
-    );
-    if (result.length > 0) return result[0];
-  }
-
-  // Try LINE user_id from header or body
+  // Try LINE user_id from header first
   const lineUserId = req.headers.get('x-line-user-id');
   if (lineUserId) {
+    console.log('[Analytics API] LINE user ID:', lineUserId);
     const result = await query(
       `SELECT id, role, display_name FROM app_user WHERE line_user_id = $1 AND status = 'active' LIMIT 1`,
       [lineUserId]
     );
-    if (result.length > 0) return result[0];
+    if (result.length > 0) {
+      console.log('[Analytics API] User found:', result[0].display_name, 'Role:', result[0].role);
+      return result[0];
+    }
+    console.log('[Analytics API] User not found for LINE ID:', lineUserId);
   }
 
+  // Try admin session (admin doesn't exist in database, use system user)
+  const session = await getSessionFromRequest(req);
+  if (session) {
+    console.log('[Analytics API] Admin session found:', session.username);
+    // Use admin system user
+    const result = await query(
+      `SELECT id, role, display_name FROM app_user WHERE line_user_id = 'admin_system' LIMIT 1`
+    );
+    if (result.length > 0) {
+      console.log('[Analytics API] Using admin system user');
+      return result[0];
+    }
+  }
+
+  console.log('[Analytics API] No user found');
   return null;
 }
 
 // POST - Track analytics event
 export async function POST(req: NextRequest) {
   try {
+    console.log('[Analytics API POST] Incoming request');
     const user = await getUserFromRequest(req);
     if (!user) {
+      console.log('[Analytics API POST] Unauthorized - no user');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    console.log('[Analytics API POST] User authorized:', user.display_name);
 
     const body = await req.json();
     const {
@@ -51,6 +65,8 @@ export async function POST(req: NextRequest) {
       viewport_width,
       viewport_height,
     } = body;
+
+    console.log('[Analytics API POST] Event:', event_type, 'Page:', page_path);
 
     // Validate required fields
     if (!event_type || !page_path) {
@@ -84,11 +100,13 @@ export async function POST(req: NextRequest) {
       ]
     );
 
+    console.log('[Analytics API POST] Event saved, ID:', result[0].id);
     return NextResponse.json({ success: true, id: result[0].id }, { status: 201 });
-  } catch (error) {
-    console.error('Analytics tracking error:', error);
+  } catch (error: any) {
+    console.error('[Analytics API POST] Error:', error.message || error);
+    console.error('[Analytics API POST] Stack:', error.stack);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error.message },
       { status: 500 }
     );
   }

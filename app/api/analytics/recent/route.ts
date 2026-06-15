@@ -7,24 +7,32 @@ export const dynamic = 'force-dynamic';
 // GET - Get recent user activities from all users (admin only)
 export async function GET(req: NextRequest) {
   try {
+    console.log('[Analytics Recent] Starting request...');
+    
     const session = await getSessionFromRequest(req);
+    
     if (!session) {
+      console.log('[Analytics Recent] No session found');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const result = await query(
-      `SELECT id, role FROM app_user WHERE username = $1 LIMIT 1`,
-      [session.username]
-    );
+    console.log('[Analytics Recent] Session found:', session.username, 'role:', session.role);
 
-    if (result.length === 0 || result[0].role !== 'admin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Admin session doesn't have a user in database
+    // Just verify role from session
+    if (session.role !== 'admin') {
+      console.log('[Analytics Recent] Not admin:', session.role);
+      return NextResponse.json({ error: 'Unauthorized - Admin only' }, { status: 401 });
     }
+
+    console.log('[Analytics Recent] Admin authorized');
 
     const { searchParams } = new URL(req.url);
     const date_from = searchParams.get('date_from');
     const date_to = searchParams.get('date_to');
     const limit = parseInt(searchParams.get('limit') || '100');
+
+    console.log('[Analytics Recent] Query params:', { date_from, date_to, limit });
 
     let sql = `
       SELECT 
@@ -38,7 +46,7 @@ export async function GET(req: NextRequest) {
         a.element_label,
         a.duration_seconds,
         a.timestamp,
-        u.display_name,
+        COALESCE(u.display_name, u.line_display_name) as display_name,
         u.line_display_name,
         u.role
       FROM user_analytics a
@@ -49,23 +57,29 @@ export async function GET(req: NextRequest) {
 
     if (date_from) {
       params.push(date_from);
-      sql += ` AND a.timestamp >= $${params.length}::timestamptz`;
+      sql += ` AND a.timestamp >= $${params.length}::date`;
     }
 
     if (date_to) {
       params.push(date_to);
-      sql += ` AND a.timestamp <= $${params.length}::timestamptz`;
+      sql += ` AND a.timestamp <= ($${params.length}::date + interval '1 day')`;
     }
 
-    sql += ` ORDER BY a.timestamp DESC LIMIT ${limit}`;
+    sql += ` ORDER BY a.timestamp DESC LIMIT $${params.length + 1}`;
+    params.push(limit);
+
+    console.log('[Analytics Recent] Executing query...');
 
     const data = await query(sql, params);
 
+    console.log('[Analytics Recent] Query successful, rows:', data.length);
+
     return NextResponse.json(data, { status: 200 });
-  } catch (error) {
-    console.error('Recent analytics fetch error:', error);
+  } catch (error: any) {
+    console.error('[Analytics Recent] Error:', error.message || error);
+    console.error('[Analytics Recent] Stack:', error.stack);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error.message },
       { status: 500 }
     );
   }

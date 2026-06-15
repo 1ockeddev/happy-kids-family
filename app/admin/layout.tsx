@@ -2,9 +2,14 @@
 import { useState } from 'react';
 import AdminSidebar from '@/components/admin/Sidebar';
 import AdminTopBar  from '@/components/admin/TopBar';
+import { useAdminPageTracking } from '@/lib/useAdminAnalytics';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // Track admin page views
+  useAdminPageTracking();
+  
   return (
     <div style={{ minHeight: '100dvh' }}>
       <AdminSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />

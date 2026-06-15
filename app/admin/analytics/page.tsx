@@ -41,6 +41,9 @@ export default function AnalyticsPage() {
   const [recentActivities, setRecentActivities] = useState<UserActivity[]>([]);
   const [loadingRecentActivities, setLoadingRecentActivities] = useState(true);
   const [recentActivitiesError, setRecentActivitiesError] = useState<string | null>(null);
+  
+  // Filter for activity type
+  const [activityFilter, setActivityFilter] = useState<'all' | 'user' | 'admin'>('user');
 
   const fetchStats = async () => {
     setLoading(true);
@@ -119,7 +122,15 @@ export default function AnalyticsPage() {
 
       const res = await fetch(url);
       const data = await res.json();
-      setUserActivities(data || []);
+      
+      // Check if response is an error or not an array
+      if (!res.ok || data.error || !Array.isArray(data)) {
+        console.error('Failed to fetch user activities:', data);
+        setUserActivities([]);
+        return;
+      }
+      
+      setUserActivities(data);
     } catch (error) {
       console.error('Failed to fetch user activities:', error);
       setUserActivities([]);
@@ -144,11 +155,25 @@ export default function AnalyticsPage() {
 
   const getPageLabel = (path: string) => {
     const labels: Record<string, string> = {
+      // User side
       '/': 'หน้าหลัก',
       '/summary-behavior': 'สรุปอุปนิสัย',
       '/summary-nap': 'สรุปการนอน',
       '/summary-excretion': 'สรุปการขับถ่าย',
       '/summary-food-milk': 'สรุปอาหาร-นม',
+      // Admin side
+      '/admin': 'Admin Dashboard',
+      '/admin/analytics': 'Analytics',
+      '/admin/children': 'จัดการเด็ก',
+      '/admin/cohorts': 'จัดการกลุ่ม',
+      '/admin/enrollments': 'จัดการลงทะเบียน',
+      '/admin/daily': 'บันทึกรายวัน',
+      '/admin/attendance': 'การเข้าเรียน',
+      '/admin/reports': 'รายงาน',
+      '/admin/behaviors': 'อุปนิสัย',
+      '/admin/users': 'จัดการผู้ใช้',
+      '/admin/holidays': 'วันหยุด',
+      '/admin/database': 'Database',
     };
     return labels[path] || path;
   };
@@ -229,13 +254,40 @@ export default function AnalyticsPage() {
         {/* User Activity Log Table - แสดงบนสุด */}
         <div className="card" style={{ marginBottom: '20px' }}>
           <div className="card-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Activity size={18} color="#6366f1" />
-              <span>User Activity Log</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Activity size={18} color="#6366f1" />
+                  <span>Activity Log</span>
+                </div>
+                <p style={{ fontSize: '0.8rem', color: '#9CA3AF', marginTop: '4px' }}>
+                  ดู user/admin ไหนเข้ามาใช้ เมื่อไหร่ หน้าไหนบ้าง
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  className={`btn btn-sm ${activityFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setActivityFilter('all')}
+                  style={{ fontSize: '0.85rem' }}
+                >
+                  ทั้งหมด
+                </button>
+                <button
+                  className={`btn btn-sm ${activityFilter === 'user' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setActivityFilter('user')}
+                  style={{ fontSize: '0.85rem' }}
+                >
+                  User Side
+                </button>
+                <button
+                  className={`btn btn-sm ${activityFilter === 'admin' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setActivityFilter('admin')}
+                  style={{ fontSize: '0.85rem' }}
+                >
+                  Admin Side
+                </button>
+              </div>
             </div>
-            <p style={{ fontSize: '0.8rem', color: '#9CA3AF', marginTop: '4px' }}>
-              ดู user ไหนเข้ามาใช้ เมื่อไหร่ หน้าไหนบ้าง
-            </p>
           </div>
           <div style={{ padding: '16px', overflowX: 'auto' }}>
             {loadingRecentActivities ? (
@@ -266,13 +318,22 @@ export default function AnalyticsPage() {
                     <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>วันเวลา</th>
                     <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>ผู้ใช้</th>
                     <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Role</th>
+                    <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Side</th>
                     <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Event</th>
                     <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>หน้า</th>
                     <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>รายละเอียด</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {recentActivities.map((activity, idx) => {
+                  {recentActivities
+                    .filter(activity => {
+                      if (activityFilter === 'all') return true;
+                      const isAdminPath = activity.page_path?.startsWith('/admin');
+                      if (activityFilter === 'admin') return isAdminPath;
+                      if (activityFilter === 'user') return !isAdminPath;
+                      return true;
+                    })
+                    .map((activity, idx) => {
                     const time = new Date(activity.timestamp).toLocaleString('th-TH', { 
                       day: '2-digit',
                       month: 'short',
@@ -286,6 +347,10 @@ export default function AnalyticsPage() {
                                      activity.role === 'teacher' ? 'ครู' : 
                                      activity.role === 'admin' ? 'Admin' : 
                                      activity.role || '-';
+                    
+                    const isAdminPath = activity.page_path?.startsWith('/admin');
+                    const sideLabel = isAdminPath ? 'Admin' : 'User';
+                    const sideColor = isAdminPath ? '#dc2626' : '#059669';
                     
                     let eventLabel = '';
                     let eventColor = '#64748b';
@@ -326,6 +391,9 @@ export default function AnalyticsPage() {
                         </td>
                         <td style={{ padding: '10px 8px', color: '#64748b' }}>
                           {roleLabel}
+                        </td>
+                        <td style={{ padding: '10px 8px', fontWeight: 600, color: sideColor, fontSize: '0.8rem' }}>
+                          {sideLabel}
                         </td>
                         <td style={{ padding: '10px 8px', fontWeight: 500, color: eventColor }}>
                           {eventLabel}

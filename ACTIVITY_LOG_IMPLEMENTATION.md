@@ -1,14 +1,29 @@
 # Activity Log Implementation
 
 ## Overview
-Implemented a comprehensive Activity Log table in the admin analytics page that shows which users accessed which pages, when they accessed them, and what actions they performed.
+Implemented a comprehensive Activity Log table in the admin analytics page that shows which users accessed which pages, when they accessed them, and what actions they performed. Now includes **both User-side and Admin-side tracking**.
 
 ## What Was Added
 
-### 1. New API Endpoint: `/api/analytics/recent`
+### 1. User-side Analytics Tracking
+**Files**: 
+- `lib/useAnalytics.ts` - Analytics hooks for user pages
+- `app/api/analytics/route.ts` - API for tracking user activities
+
+Tracks LINE-authenticated users on pages like `/`, `/summary-behavior`, etc.
+
+### 2. Admin-side Analytics Tracking (NEW)
+**Files**:
+- `lib/useAdminAnalytics.ts` - Analytics hooks for admin pages
+- `app/api/analytics/admin/route.ts` - API for tracking admin activities
+- `app/admin/layout.tsx` - Added `useAdminPageTracking()` hook
+
+Tracks session-authenticated admins/teachers on pages like `/admin/daily`, `/admin/children`, etc.
+
+### 3. API Endpoint: `/api/analytics/recent`
 **File**: `app/api/analytics/recent/route.ts`
 
-- Fetches recent user activities from all users (admin only)
+- Fetches recent activities from **all users** (both user-side and admin-side)
 - Returns up to 100 most recent activities by default
 - Supports date filtering (date_from, date_to)
 - Joins with `app_user` table to get user display names and roles
@@ -20,28 +35,19 @@ Implemented a comprehensive Activity Log table in the admin analytics page that 
 - `element_type`, `element_label`
 - `timestamp`
 
-### 2. Updated Analytics Page
+### 4. Updated Analytics Page
 **File**: `app/admin/analytics/page.tsx`
 
-**New State**:
-```typescript
-const [recentActivities, setRecentActivities] = useState<UserActivity[]>([]);
-const [loadingRecentActivities, setLoadingRecentActivities] = useState(true);
-```
-
-**New Function**:
-```typescript
-const fetchRecentActivities = async () => {
-  // Fetches from /api/analytics/recent
-  // Respects date filters
-  // Displays up to 50 most recent activities
-}
-```
+**New Features**:
+- **Activity Filter Buttons**: ทั้งหมด / User Side / Admin Side
+- **Side Column**: Shows whether activity is from User or Admin side (color-coded)
+- **Enhanced Page Labels**: Includes Thai labels for all admin pages
 
 **Activity Log Table Features**:
 - Shows timestamp (date + time) in Thai format
 - Displays user name (display_name or line_display_name)
 - Shows user role (ผู้ปกครอง/ครู/Admin)
+- **NEW: Side indicator** (User = green, Admin = red)
 - Event type with emoji indicators:
   - 👁️ เปิดหน้า (page_view)
   - 👆 คลิก (click)
@@ -52,14 +58,28 @@ const fetchRecentActivities = async () => {
   - For navigation: from which page
 - Clickable rows that select the user to view detailed timeline
 - Hover effect for better UX
+- **Filter by side**: Can view only User activities, only Admin activities, or all
 
 ## How It Works
 
-1. **On page load**: Fetches both stats and recent activities
-2. **Date filter**: When user applies date filter, both stats and activities are refreshed
-3. **Real-time tracking**: All user-side page views, clicks, and navigation are tracked via `usePageTracking()` hook
-4. **Activity log display**: Shows the 50 most recent activities across all users
-5. **Drill-down**: Clicking any row shows that user's detailed activity timeline
+### User-side Tracking
+1. User opens Mini App (or dev mode with mocked LINE ID)
+2. `usePageTracking()` hook in `(user)/layout.tsx` tracks all page views and navigation
+3. Data sent to `/api/analytics` with LINE user ID in header
+4. Stored in `user_analytics` table
+
+### Admin-side Tracking
+1. Admin/teacher logs in via session auth
+2. `useAdminPageTracking()` hook in `admin/layout.tsx` tracks all page views and navigation
+3. Data sent to `/api/analytics/admin` with session cookie
+4. User identified from session, stored in same `user_analytics` table
+
+### Activity Log Display
+1. On page load: Fetches both stats and recent activities
+2. Date filter: When user applies date filter, both stats and activities are refreshed
+3. **Side filter**: Toggle between User Side, Admin Side, or All activities
+4. Activity log display: Shows the 50 most recent activities across all users
+5. Drill-down: Clicking any row shows that user's detailed activity timeline
 
 ## User Flow
 
@@ -114,12 +134,22 @@ LIMIT 50
 
 ## Related Files
 
-- `app/admin/analytics/page.tsx` - Frontend UI
-- `app/api/analytics/recent/route.ts` - Backend API for recent activities
-- `app/api/analytics/route.ts` - Existing API for single user activities
-- `app/api/analytics/stats/route.ts` - Stats aggregation API
+**User-side Tracking**:
 - `lib/useAnalytics.ts` - Analytics tracking hooks (client-side)
-- Database table: `user_analytics`
+- `app/api/analytics/route.ts` - API for user analytics
+- `app/(user)/layout.tsx` - Includes `usePageTracking()` hook
+
+**Admin-side Tracking**:
+- `lib/useAdminAnalytics.ts` - Admin analytics tracking hooks (client-side)
+- `app/api/analytics/admin/route.ts` - API for admin analytics
+- `app/admin/layout.tsx` - Includes `useAdminPageTracking()` hook
+
+**Aggregation & Display**:
+- `app/admin/analytics/page.tsx` - Frontend UI with filters
+- `app/api/analytics/recent/route.ts` - Backend API for recent activities
+- `app/api/analytics/stats/route.ts` - Stats aggregation API
+
+**Database**: `user_analytics` table (stores both user and admin activities)
 
 ## Future Enhancements
 
