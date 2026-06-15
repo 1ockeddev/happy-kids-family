@@ -42,7 +42,8 @@ export function useLiff() {
       if (DEV_MOCK_LINE_USER_ID && typeof window !== 'undefined') {
         localStorage.setItem('liff_data', JSON.stringify({
           userId: DEV_MOCK_LINE_USER_ID,
-          displayName: '(Dev) ผู้ปกครองทดสอบ'
+          displayName: '(Dev) Mock User',
+          pictureUrl: undefined // No picture in dev mode
         }));
       }
       
@@ -53,7 +54,7 @@ export function useLiff() {
         profile: DEV_MOCK_LINE_USER_ID
           ? {
               userId:      DEV_MOCK_LINE_USER_ID,
-              displayName: '(Dev) ผู้ปกครองทดสอบ',
+              displayName: '(Dev) Mock User',
               pictureUrl:  undefined,
             }
           : null,

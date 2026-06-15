@@ -10,20 +10,39 @@ interface TableStat { inserted: number; skipped: number; overwritten: number; co
 type StatsMap = Record<string, TableStat>;
 
 const TABLE_LABELS: Record<string, string> = {
-  app_user:             '👤 ผู้ใช้งาน',
-  child:                '👧 นักเรียน',
-  cohort:               '🏫 ห้องเรียน',
-  parent_child:         '👨‍👩‍👧 ผู้ปกครอง-นักเรียน',
-  teacher_permission:   '🔑 สิทธิ์ครู',
-  enrollment:           '📋 การลงทะเบียน',
-  daily:                '📅 บันทึกรายวัน',
-  attendance:           '✅ การเข้าเรียน',
-  daily_report:         '📝 รายงานรายวัน',
-  behavior_category:    '🧠 หมวดหมู่พฤติกรรม',
-  behavior_item:        '📌 รายการพฤติกรรม',
-  child_behavior_score: '⭐ คะแนนพฤติกรรม',
-  child_excretion:      '🚽 การขับถ่าย',
-  holidays:             '🏖️ วันหยุด',
+  app_user:             'ผู้ใช้งาน',
+  child:                'นักเรียน',
+  cohort:               'ห้องเรียน',
+  parent_child:         'ผู้ปกครอง-นักเรียน',
+  teacher_permission:   'สิทธิ์ครู',
+  enrollment:           'การลงทะเบียน',
+  daily:                'บันทึกรายวัน',
+  attendance:           'การเข้าเรียน',
+  daily_report:         'รายงานรายวัน',
+  behavior_category:    'หมวดหมู่พฤติกรรม',
+  behavior_item:        'รายการพฤติกรรม',
+  child_behavior_score: 'คะแนนพฤติกรรม',
+  child_excretion:      'การขับถ่าย',
+  holidays:             'วันหยุด',
+  user_analytics:       'Analytics (การใช้งาน)',
+};
+
+const TABLE_COLUMNS: Record<string, string[]> = {
+  app_user:             ['id','line_user_id','role','status','display_name','line_display_name','picture_url','created_at'],
+  child:                ['id','name_en','name_th','firstname_en','lastname_en','firstname_th','lastname_th','nickname_en','nickname_th','birthdate','photo_url','deleted_at','created_at'],
+  cohort:               ['id','name','level','academic_year','start_date','end_date','created_at'],
+  parent_child:         ['parent_id','child_id'],
+  teacher_permission:   ['user_id','can_manage_daily','can_manage_attendance','can_manage_report'],
+  enrollment:           ['id','child_id','cohort_id','start_date','end_date','graduated','created_at'],
+  daily:                ['id','cohort_id','date','activity','food','fruit','note','created_by','updated_by','updated_at','created_at'],
+  attendance:           ['id','daily_id','child_id','status','note','created_by','updated_by','updated_at','created_at'],
+  daily_report:         ['id','daily_id','child_id','cohort_id','nap_from','nap_to','nap_note','milk1','milk1_note','milk2','milk2_note','food_amount','food_note','fruit_amount','fruit_note','note','created_by','updated_by','updated_at','created_at'],
+  behavior_category:    ['id','name_en','name_th','sort_order','is_active','cohort_ids','created_at'],
+  behavior_item:        ['id','category_id','name_en','name_th','max_score','sort_order','is_active','created_at'],
+  child_behavior_score: ['id','daily_id','child_id','item_id','score','note','created_at'],
+  child_excretion:      ['id','daily_id','child_id','time','type','action','created_at'],
+  holidays:             ['id','date','name_th','name_en','type','cohort_id','created_at','updated_at'],
+  user_analytics:       ['id','user_id','event_type','page_path','from_path','to_path','element_type','element_label','duration_seconds','timestamp','session_id','user_agent','viewport_width','viewport_height','created_at'],
 };
 
 export default function DatabasePage() {
@@ -32,8 +51,18 @@ export default function DatabasePage() {
   // export
   const [exporting, setExporting] = useState(false);
   const [exportDone, setExportDone] = useState(false);
-  const [exportFormat, setExportFormat] = useState<'json' | 'csv'>('json');
+  const [exportFormat, setExportFormat] = useState<'json' | 'csv' | 'sql'>('json');
   const [selectedExportTables, setSelectedExportTables] = useState<Set<string>>(new Set(Object.keys(TABLE_LABELS)));
+  
+  // SQL Query Builder
+  const [showSqlBuilder, setShowSqlBuilder] = useState(false);
+  const [sqlTable, setSqlTable] = useState<string>('');
+  const [sqlFields, setSqlFields] = useState<string[]>([]);
+  const [sqlWhere, setSqlWhere] = useState<string>('');
+  const [sqlLimit, setSqlLimit] = useState<string>('');
+  const [sqlResult, setSqlResult] = useState<any[] | null>(null);
+  const [sqlError, setSqlError] = useState<string | null>(null);
+  const [sqlLoading, setSqlLoading] = useState(false);
 
   // import flow
   const [file, setFile]                   = useState<File | null>(null);
@@ -232,6 +261,69 @@ export default function DatabasePage() {
     finally { setImporting(false); }
   };
 
+  // ── SQL Query Builder ───────────────────────────────────────
+  const executeSqlQuery = async () => {
+    if (!sqlTable) {
+      alert('กรุณาเลือก Table');
+      return;
+    }
+    
+    setSqlLoading(true);
+    setSqlError(null);
+    setSqlResult(null);
+    
+    try {
+      const params = new URLSearchParams({
+        table: sqlTable,
+        fields: sqlFields.length > 0 ? sqlFields.join(',') : '*',
+      });
+      
+      if (sqlWhere) params.append('where', sqlWhere);
+      if (sqlLimit) params.append('limit', sqlLimit);
+      
+      const res = await fetch(`/api/db-query?${params.toString()}`);
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'Query failed');
+      }
+      
+      setSqlResult(data.data || []);
+    } catch (err) {
+      setSqlError(err instanceof Error ? err.message : 'Query failed');
+    } finally {
+      setSqlLoading(false);
+    }
+  };
+  
+  const downloadSqlResult = () => {
+    if (!sqlResult || sqlResult.length === 0) return;
+    
+    const fields = sqlFields.length > 0 ? sqlFields : Object.keys(sqlResult[0]);
+    let sql = `-- Query Result from ${sqlTable}\n-- Generated: ${new Date().toISOString()}\n\n`;
+    
+    for (const row of sqlResult) {
+      const values = fields.map(field => {
+        const val = row[field];
+        if (val === null || val === undefined) return 'NULL';
+        if (typeof val === 'string') return `'${val.replace(/'/g, "''")}'`;
+        if (typeof val === 'boolean') return val ? 'true' : 'false';
+        if (val instanceof Date) return `'${val.toISOString()}'`;
+        return String(val);
+      }).join(', ');
+      
+      sql += `INSERT INTO "${sqlTable}" (${fields.map(f => `"${f}"`).join(', ')}) VALUES (${values});\n`;
+    }
+    
+    const blob = new Blob([sql], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${sqlTable}-${new Date().toISOString().slice(0,10)}.sql`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // ── Step 3: Batch Import (สำหรับไฟล์ขนาดใหญ่) ───────────────
   const handleBatchImport = async () => {
     if (!file) return;
@@ -384,7 +476,33 @@ export default function DatabasePage() {
                 >
                   📊 CSV
                 </button>
+                <button
+                  onClick={() => setExportFormat('sql')}
+                  style={{
+                    flex: 1,
+                    padding: '8px 16px',
+                    borderRadius: 8,
+                    border: exportFormat === 'sql' ? '2px solid #6C5CE7' : '1px solid #E5E7EB',
+                    background: exportFormat === 'sql' ? '#F0EEFF' : 'white',
+                    color: exportFormat === 'sql' ? '#6C5CE7' : '#6B7280',
+                    cursor: 'pointer',
+                    fontWeight: exportFormat === 'sql' ? 700 : 400,
+                    fontSize: 14
+                  }}
+                >
+                  💾 SQL
+                </button>
               </div>
+              {exportFormat === 'csv' && (
+                <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 6 }}>
+                  CSV จะ export เป็นไฟล์ ZIP (แต่ละ table แยกไฟล์)
+                </p>
+              )}
+              {exportFormat === 'sql' && (
+                <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 6 }}>
+                  SQL จะสร้าง INSERT statements สำหรับนำเข้าข้อมูล
+                </p>
+              )}
             </div>
 
             {/* Table selector */}
@@ -409,7 +527,10 @@ export default function DatabasePage() {
                       onChange={() => toggleExportTable(t)}
                       style={{ cursor: 'pointer' }}
                     />
-                    <span style={{ fontSize: 12, color: selectedExportTables.has(t) ? '#4C1D95' : '#6B7280', fontWeight: selectedExportTables.has(t) ? 600 : 400 }}>{l}</span>
+                    <span style={{ fontSize: 12, color: selectedExportTables.has(t) ? '#4C1D95' : '#6B7280', fontWeight: selectedExportTables.has(t) ? 600 : 400 }}>
+                      {l}
+                      <span style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 400, marginLeft: 4 }}>({t})</span>
+                    </span>
                   </label>
                 ))}
               </div>
@@ -425,6 +546,307 @@ export default function DatabasePage() {
                 : <><Download size={15} /> Export {exportFormat.toUpperCase()} ({selectedExportTables.size} ตาราง)</>}
             </button>
           </div>
+        </div>
+
+        {/* ── SQL Query Builder ── */}
+        <div className="card" style={{ overflow: 'hidden' }}>
+          <div 
+            onClick={() => setShowSqlBuilder(!showSqlBuilder)}
+            style={{ 
+              background: '#FEF3C7', 
+              padding: '14px 18px', 
+              borderBottom: '1px solid #E5E7EB', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 10,
+              cursor: 'pointer',
+              userSelect: 'none'
+            }}>
+            <Database size={18} style={{ color: '#D97706' }} />
+            <div style={{ flex: 1 }}>
+              <h2 style={{ fontSize: 15, fontWeight: 700, color: '#78350F' }}>SQL Query Builder</h2>
+              <p style={{ fontSize: 12, color: '#B45309', marginTop: 2 }}>เลือก table, field, WHERE clause แล้วดู result หรือ download เป็น SQL</p>
+            </div>
+            {showSqlBuilder ? <ChevronUp size={18} style={{ color: '#D97706' }} /> : <ChevronDown size={18} style={{ color: '#D97706' }} />}
+          </div>
+          
+          {showSqlBuilder && (
+            <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {/* Table selector */}
+              <div>
+                <label className="form-label">เลือก Table</label>
+                <select 
+                  value={sqlTable} 
+                  onChange={(e) => {
+                    setSqlTable(e.target.value);
+                    setSqlFields([]);
+                    setSqlResult(null);
+                    setSqlError(null);
+                  }}
+                  style={{ 
+                    width: '100%', 
+                    padding: '8px 12px', 
+                    borderRadius: 8, 
+                    border: '1px solid #E5E7EB',
+                    fontSize: 14,
+                    background: 'white'
+                  }}>
+                  <option value="">-- เลือก Table --</option>
+                  {Object.entries(TABLE_LABELS).map(([table, label]) => (
+                    <option key={table} value={table}>
+                      {label} ({table})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Field selector */}
+              {sqlTable && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <label className="form-label" style={{ margin: 0 }}>เลือก Fields (เว้นว่างเพื่อเลือกทั้งหมด)</label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button 
+                        className="btn btn-ghost btn-sm" 
+                        onClick={() => setSqlFields(TABLE_COLUMNS[sqlTable] || [])}
+                        style={{ fontSize: 11 }}>
+                        เลือกทั้งหมด
+                      </button>
+                      <button 
+                        className="btn btn-ghost btn-sm" 
+                        onClick={() => setSqlFields([])}
+                        style={{ fontSize: 11 }}>
+                        ยกเลิกทั้งหมด
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{ 
+                    display: 'flex', 
+                    flexWrap: 'wrap', 
+                    gap: 6, 
+                    maxHeight: 200, 
+                    overflowY: 'auto', 
+                    padding: 8, 
+                    background: '#F9FAFB', 
+                    borderRadius: 8 
+                  }}>
+                    {(TABLE_COLUMNS[sqlTable] || []).map((field) => (
+                      <label 
+                        key={field} 
+                        style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 6, 
+                          cursor: 'pointer', 
+                          padding: '4px 10px', 
+                          borderRadius: 6, 
+                          background: sqlFields.includes(field) ? '#DBEAFE' : 'white', 
+                          border: '1px solid', 
+                          borderColor: sqlFields.includes(field) ? '#3B82F6' : '#E5E7EB' 
+                        }}>
+                        <input
+                          type="checkbox"
+                          checked={sqlFields.includes(field)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSqlFields([...sqlFields, field]);
+                            } else {
+                              setSqlFields(sqlFields.filter(f => f !== field));
+                            }
+                          }}
+                          style={{ cursor: 'pointer' }}
+                        />
+                        <span style={{ 
+                          fontSize: 12, 
+                          color: sqlFields.includes(field) ? '#1E3A8A' : '#6B7280', 
+                          fontWeight: sqlFields.includes(field) ? 600 : 400,
+                          fontFamily: 'monospace'
+                        }}>
+                          {field}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 6 }}>
+                    เลือกแล้ว: {sqlFields.length} / {(TABLE_COLUMNS[sqlTable] || []).length} fields
+                    {sqlFields.length === 0 && ' (จะเลือกทั้งหมด)'}
+                  </p>
+                </div>
+              )}
+
+              {/* WHERE clause */}
+              {sqlTable && (
+                <div>
+                  <label className="form-label">WHERE Clause (optional)</label>
+                  <input
+                    type="text"
+                    value={sqlWhere}
+                    onChange={(e) => setSqlWhere(e.target.value)}
+                    placeholder="เช่น: status = 'active' AND created_at > '2024-01-01'"
+                    style={{ 
+                      width: '100%', 
+                      padding: '8px 12px', 
+                      borderRadius: 8, 
+                      border: '1px solid #E5E7EB',
+                      fontSize: 13,
+                      fontFamily: 'monospace',
+                      background: 'white'
+                    }}
+                  />
+                  <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
+                    ⚠️ ใช้ syntax SQL ธรรมดา (ห้ามมี DROP, DELETE, TRUNCATE, ALTER, CREATE, INSERT, UPDATE)
+                  </p>
+                </div>
+              )}
+
+              {/* LIMIT */}
+              {sqlTable && (
+                <div>
+                  <label className="form-label">LIMIT (optional)</label>
+                  <input
+                    type="number"
+                    value={sqlLimit}
+                    onChange={(e) => setSqlLimit(e.target.value)}
+                    placeholder="จำนวนแถวสูงสุด เช่น 100"
+                    min="1"
+                    style={{ 
+                      width: '100%', 
+                      padding: '8px 12px', 
+                      borderRadius: 8, 
+                      border: '1px solid #E5E7EB',
+                      fontSize: 13,
+                      background: 'white'
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Execute button */}
+              {sqlTable && (
+                <button 
+                  className="btn btn-primary" 
+                  onClick={executeSqlQuery} 
+                  disabled={sqlLoading}
+                  style={{ width: '100%', justifyContent: 'center', background: '#D97706' }}>
+                  {sqlLoading 
+                    ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> กำลังดึงข้อมูล...</>
+                    : <><Database size={15} /> Execute Query</>}
+                </button>
+              )}
+
+              {/* Error display */}
+              {sqlError && (
+                <div style={{ 
+                  background: '#FEF2F2', 
+                  border: '1px solid #FCA5A5', 
+                  borderRadius: 8, 
+                  padding: 12 
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <AlertCircle size={16} style={{ color: '#DC2626', flexShrink: 0 }} />
+                    <p style={{ fontSize: 12, color: '#DC2626', margin: 0 }}>{sqlError}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Result display */}
+              {sqlResult && (
+                <div style={{ 
+                  border: '1px solid #E5E7EB', 
+                  borderRadius: 12, 
+                  overflow: 'hidden' 
+                }}>
+                  <div style={{ 
+                    background: '#F0FDF4', 
+                    padding: '12px 16px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between' 
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <CheckCircle size={18} style={{ color: '#059669' }} />
+                      <p style={{ fontWeight: 700, fontSize: 14, color: '#064E3B', margin: 0 }}>
+                        ผลลัพธ์: {sqlResult.length} แถว
+                      </p>
+                    </div>
+                    {sqlResult.length > 0 && (
+                      <button 
+                        className="btn btn-ghost btn-sm" 
+                        onClick={downloadSqlResult}
+                        style={{ fontSize: 12 }}>
+                        <Download size={13} /> Download SQL
+                      </button>
+                    )}
+                  </div>
+                  
+                  {sqlResult.length > 0 ? (
+                    <div style={{ 
+                      overflowX: 'auto', 
+                      maxHeight: 400, 
+                      overflowY: 'auto',
+                      background: 'white'
+                    }}>
+                      <table style={{ 
+                        width: '100%', 
+                        borderCollapse: 'collapse',
+                        fontSize: 12
+                      }}>
+                        <thead style={{ 
+                          background: '#F9FAFB', 
+                          position: 'sticky', 
+                          top: 0,
+                          zIndex: 1
+                        }}>
+                          <tr>
+                            {Object.keys(sqlResult[0]).map((key) => (
+                              <th key={key} style={{ 
+                                padding: '8px 12px', 
+                                textAlign: 'left', 
+                                borderBottom: '2px solid #E5E7EB',
+                                fontWeight: 700,
+                                color: '#374151',
+                                fontFamily: 'monospace',
+                                fontSize: 11
+                              }}>
+                                {key}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sqlResult.map((row, idx) => (
+                            <tr key={idx} style={{ 
+                              borderBottom: '1px solid #F3F4F6',
+                              background: idx % 2 === 0 ? 'white' : '#F9FAFB'
+                            }}>
+                              {Object.values(row).map((val: any, colIdx) => (
+                                <td key={colIdx} style={{ 
+                                  padding: '8px 12px',
+                                  color: '#6B7280',
+                                  fontFamily: 'monospace',
+                                  fontSize: 11,
+                                  maxWidth: 200,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap'
+                                }}>
+                                  {val === null ? <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>NULL</span> : String(val)}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div style={{ padding: 24, textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>
+                      ไม่พบข้อมูล
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ── Import ── */}

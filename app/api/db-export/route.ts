@@ -11,7 +11,7 @@ const ALL_TABLES = [
   'parent_child', 'teacher_permission', 'enrollment',
   'daily', 'attendance', 'daily_report',
   'behavior_category', 'behavior_item', 'child_behavior_score', 'child_excretion',
-  'holidays',
+  'holidays', 'user_analytics',
 ];
 
 // Helper: Convert rows to CSV
@@ -105,6 +105,46 @@ export async function GET(req: NextRequest) {
         headers: {
           'Content-Type': 'application/zip',
           'Content-Disposition': `attachment; filename="kindergarten-backup-${new Date().toISOString().slice(0, 10)}.zip"`,
+        },
+      });
+    } else if (format === 'sql') {
+      // SQL Export - INSERT statements
+      let sql = `-- Database Export\n-- Generated: ${new Date().toISOString()}\n-- Tables: ${selectedTables.join(', ')}\n\n`;
+      
+      for (const table of selectedTables) {
+        const cols = tableColumns[table] ?? [];
+        const order = cols.includes('created_at') ? 'ORDER BY created_at NULLS LAST' : '';
+        
+        const rows = await query(`SELECT * FROM "${table}" ${order}`, []);
+        
+        if (rows.length === 0) {
+          sql += `-- Table: ${table} (no data)\n\n`;
+          continue;
+        }
+        
+        sql += `-- Table: ${table} (${rows.length} rows)\n`;
+        sql += `TRUNCATE TABLE "${table}" CASCADE;\n`;
+        
+        for (const row of rows) {
+          const values = cols.map(col => {
+            const val = row[col];
+            if (val === null || val === undefined) return 'NULL';
+            if (typeof val === 'string') return `'${val.replace(/'/g, "''")}'`;
+            if (typeof val === 'boolean') return val ? 'true' : 'false';
+            if (val instanceof Date) return `'${val.toISOString()}'`;
+            return String(val);
+          }).join(', ');
+          
+          sql += `INSERT INTO "${table}" (${cols.map(c => `"${c}"`).join(', ')}) VALUES (${values});\n`;
+        }
+        
+        sql += '\n';
+      }
+      
+      return new NextResponse(sql, {
+        headers: {
+          'Content-Type': 'text/plain',
+          'Content-Disposition': `attachment; filename="kindergarten-backup-${new Date().toISOString().slice(0, 10)}.sql"`,
         },
       });
     } else {

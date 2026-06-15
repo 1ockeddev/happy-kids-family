@@ -135,8 +135,8 @@ export default function CrudTable<T extends { id: string }>({
 
         {/* Table */}
         <div className="card" style={{ overflow: 'hidden' }}>
-          <div className="table-wrap">
-            <table>
+          <div className="table-wrap" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ minWidth: '100%' }}>
               <thead>
                 <tr>
                   {columns.map(col => (
