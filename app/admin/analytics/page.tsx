@@ -20,6 +20,10 @@ interface UserActivity {
   element_label?: string;
   from_path?: string;
   to_path?: string;
+  display_name?: string;
+  line_display_name?: string;
+  role?: string;
+  user_id?: string;
 }
 
 export default function AnalyticsPage() {
@@ -32,6 +36,11 @@ export default function AnalyticsPage() {
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [userActivities, setUserActivities] = useState<UserActivity[]>([]);
   const [loadingUserActivities, setLoadingUserActivities] = useState(false);
+  
+  // Recent activities from all users
+  const [recentActivities, setRecentActivities] = useState<UserActivity[]>([]);
+  const [loadingRecentActivities, setLoadingRecentActivities] = useState(true);
+  const [recentActivitiesError, setRecentActivitiesError] = useState<string | null>(null);
 
   const fetchStats = async () => {
     setLoading(true);
@@ -52,8 +61,46 @@ export default function AnalyticsPage() {
     }
   };
 
+  const fetchRecentActivities = async () => {
+    setLoadingRecentActivities(true);
+    setRecentActivitiesError(null);
+    try {
+      let url = '/api/analytics/recent?limit=50';
+      const params = new URLSearchParams();
+      if (dateFrom) params.append('date_from', dateFrom);
+      if (dateTo) params.append('date_to', dateTo);
+      if (params.toString()) url += `&${params.toString()}`;
+
+      const res = await fetch(url);
+      const data = await res.json();
+      
+      // Check if response is an error
+      if (!res.ok || data.error) {
+        setRecentActivitiesError(data.error || 'Failed to fetch activities');
+        setRecentActivities([]);
+        return;
+      }
+      
+      // Ensure data is an array
+      if (Array.isArray(data)) {
+        setRecentActivities(data);
+      } else {
+        console.error('Recent activities is not an array:', data);
+        setRecentActivitiesError('Invalid data format');
+        setRecentActivities([]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch recent activities:', error);
+      setRecentActivitiesError('Network error');
+      setRecentActivities([]);
+    } finally {
+      setLoadingRecentActivities(false);
+    }
+  };
+
   useEffect(() => {
     fetchStats();
+    fetchRecentActivities();
   }, []);
 
   const fetchUserActivities = async (userId: string) => {
@@ -160,7 +207,10 @@ export default function AnalyticsPage() {
                 onChange={(e) => setDateTo(e.target.value)}
               />
             </div>
-            <button className="btn btn-primary" onClick={fetchStats}>
+            <button className="btn btn-primary" onClick={() => {
+              fetchStats();
+              fetchRecentActivities();
+            }}>
               <BarChart3 size={16} />
               ดึงข้อมูล
             </button>
@@ -173,6 +223,125 @@ export default function AnalyticsPage() {
             >
               ล้างตัวกรอง
             </button>
+          </div>
+        </div>
+
+        {/* User Activity Log Table - แสดงบนสุด */}
+        <div className="card" style={{ marginBottom: '20px' }}>
+          <div className="card-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Activity size={18} color="#6366f1" />
+              <span>User Activity Log</span>
+            </div>
+            <p style={{ fontSize: '0.8rem', color: '#9CA3AF', marginTop: '4px' }}>
+              ดู user ไหนเข้ามาใช้ เมื่อไหร่ หน้าไหนบ้าง
+            </p>
+          </div>
+          <div style={{ padding: '16px', overflowX: 'auto' }}>
+            {loadingRecentActivities ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                <div className="shimmer" style={{ width: 40, height: 40, borderRadius: '50%', margin: '0 auto 12px' }} />
+                กำลังโหลดข้อมูล...
+              </div>
+            ) : recentActivitiesError ? (
+              <div style={{ textAlign: 'center', padding: '40px' }}>
+                <div style={{ color: '#ef4444', marginBottom: '8px', fontSize: '1.2rem' }}>⚠️</div>
+                <p style={{ color: '#64748b', marginBottom: '8px' }}>เกิดข้อผิดพลาด: {recentActivitiesError}</p>
+                <button 
+                  className="btn btn-primary btn-sm"
+                  onClick={fetchRecentActivities}
+                  style={{ marginTop: '12px' }}
+                >
+                  ลองอีกครั้ง
+                </button>
+              </div>
+            ) : recentActivities.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                ยังไม่มีข้อมูล - ตรวจสอบว่ามีการเข้าใช้งาน user side หรือไม่
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #e2e8f0', background: '#f8fafc' }}>
+                    <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>วันเวลา</th>
+                    <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>ผู้ใช้</th>
+                    <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Role</th>
+                    <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Event</th>
+                    <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>หน้า</th>
+                    <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>รายละเอียด</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentActivities.map((activity, idx) => {
+                    const time = new Date(activity.timestamp).toLocaleString('th-TH', { 
+                      day: '2-digit',
+                      month: 'short',
+                      hour: '2-digit', 
+                      minute: '2-digit',
+                    });
+                    
+                    const displayName = activity.display_name || activity.line_display_name || 'ไม่ระบุชื่อ';
+                    
+                    const roleLabel = activity.role === 'parent' ? 'ผู้ปกครอง' : 
+                                     activity.role === 'teacher' ? 'ครู' : 
+                                     activity.role === 'admin' ? 'Admin' : 
+                                     activity.role || '-';
+                    
+                    let eventLabel = '';
+                    let eventColor = '#64748b';
+                    let details = '';
+                    
+                    if (activity.event_type === 'page_view') {
+                      eventLabel = '👁️ เปิดหน้า';
+                      eventColor = '#6366f1';
+                      details = '-';
+                    } else if (activity.event_type === 'click') {
+                      eventLabel = '👆 คลิก';
+                      eventColor = '#f59e0b';
+                      details = activity.element_label || activity.element_type || '-';
+                    } else if (activity.event_type === 'navigation') {
+                      eventLabel = '🔀 นำทาง';
+                      eventColor = '#ec4899';
+                      details = activity.from_path ? `จาก ${getPageLabel(activity.from_path)}` : '-';
+                    }
+                    
+                    return (
+                      <tr 
+                        key={idx}
+                        style={{ 
+                          borderBottom: '1px solid #f1f5f9',
+                          cursor: 'pointer',
+                          transition: 'background 0.15s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#fafafa'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                        onClick={() => activity.user_id && setSelectedUserId(activity.user_id)}
+                        title="คลิกเพื่อดู activity ทั้งหมดของผู้ใช้นี้"
+                      >
+                        <td style={{ padding: '10px 8px', whiteSpace: 'nowrap', fontSize: '0.8rem', color: '#64748b' }}>
+                          {time}
+                        </td>
+                        <td style={{ padding: '10px 8px', fontWeight: 500, color: '#1e293b' }}>
+                          {displayName}
+                        </td>
+                        <td style={{ padding: '10px 8px', color: '#64748b' }}>
+                          {roleLabel}
+                        </td>
+                        <td style={{ padding: '10px 8px', fontWeight: 500, color: eventColor }}>
+                          {eventLabel}
+                        </td>
+                        <td style={{ padding: '10px 8px', color: '#1e293b' }}>
+                          {getPageLabel(activity.page_path)}
+                        </td>
+                        <td style={{ padding: '10px 8px', color: '#64748b', fontSize: '0.8rem' }}>
+                          {details}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
 
