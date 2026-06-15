@@ -214,7 +214,9 @@ export default function DailyPage() {
         try {
           const dailyIds = filteredData.map(d => d.id).join(',');
           const res = await fetch(`/api/daily-reports/counts?daily_ids=${dailyIds}`);
-          const counts = await res.json();
+          const json = await res.json();
+          // API returns { data: {...}, error: null }
+          const counts = json.data || {};
           setReportCounts(counts);
         } catch {
           // ถ้า error ให้ fallback เป็น 0 ทั้งหมด
