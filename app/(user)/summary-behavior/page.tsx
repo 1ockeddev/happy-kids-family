@@ -205,13 +205,22 @@ export default function SummaryPage() {
                             onMouseLeave={e => e.currentTarget.style.background = isExpanded ? '#f8fafc' : 'white'}
                           >
                             <div style={{display:'flex',alignItems:'center',gap:12,flex:1}}>
-                              <span style={{
-                                fontSize:'0.75rem',
-                                transition:'transform 0.2s',
-                                transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                                display:'inline-block',
-                                color:'#94a3b8'
-                              }}>▶</span>
+                              <svg 
+                                width="12" 
+                                height="12" 
+                                viewBox="0 0 12 12" 
+                                fill="none"
+                                style={{
+                                  transition:'transform 0.2s',
+                                  transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                                  flexShrink: 0
+                                }}
+                              >
+                                <path 
+                                  d="M3 2L8 6L3 10V2Z" 
+                                  fill="#94a3b8"
+                                />
+                              </svg>
                               <span style={{fontSize:'0.9rem',fontWeight:600,color:'#1e293b',flex:1}}>{item.name_th}</span>
                             </div>
                             <div style={{display:'flex',alignItems:'center',gap:10}}>

@@ -15,9 +15,15 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const date_from = searchParams.get('date_from');
     const date_to = searchParams.get('date_to');
+    const user_id = searchParams.get('user_id');
 
     let dateFilter = '';
     const params: any[] = [];
+
+    if (user_id) {
+      params.push(user_id);
+      dateFilter += ` AND user_id = $${params.length}`;
+    }
 
     if (date_from) {
       params.push(date_from);
@@ -91,23 +97,25 @@ export async function GET(req: NextRequest) {
     );
 
     // 5. User engagement (top active users)
+    // When filtering by user_id, still show all users but the stats will be for the selected user
+    const topActiveUsersFilter = user_id ? '' : dateFilter; // Don't filter by user for the list
     const topActiveUsers = await query(
       `SELECT 
-        u.id,
+        u.id as user_id,
         u.display_name,
         u.role,
-        COUNT(*) as total_events,
+        COUNT(*) as activity_count,
         SUM(CASE WHEN a.event_type = 'page_view' THEN 1 ELSE 0 END) as page_views,
         SUM(CASE WHEN a.event_type = 'click' THEN 1 ELSE 0 END) as clicks,
         SUM(a.duration_seconds) as total_time_seconds,
         MAX(a.timestamp) as last_active
       FROM user_analytics a
       JOIN app_user u ON u.id = a.user_id
-      WHERE 1=1 ${dateFilter}
+      WHERE 1=1 ${topActiveUsersFilter}
       GROUP BY u.id, u.display_name, u.role
-      ORDER BY total_events DESC
+      ORDER BY activity_count DESC
       LIMIT 20`,
-      params
+      user_id ? [] : params
     );
 
     // 6. Average session duration by page

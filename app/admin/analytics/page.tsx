@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { BarChart3, Users, MousePointer, Clock, TrendingUp, Activity } from 'lucide-react';
+import { BarChart3, Users, MousePointer, Clock, TrendingUp, Activity, X } from 'lucide-react';
 
 interface AnalyticsStats {
   mostVisitedPages: any[];
@@ -45,11 +45,12 @@ export default function AnalyticsPage() {
   // Filter for activity type
   const [activityFilter, setActivityFilter] = useState<'all' | 'user' | 'admin'>('user');
 
-  const fetchStats = async () => {
+  const fetchStats = async (userId?: string) => {
     setLoading(true);
     try {
       let url = '/api/analytics/stats';
       const params = new URLSearchParams();
+      if (userId) params.append('user_id', userId);
       if (dateFrom) params.append('date_from', dateFrom);
       if (dateTo) params.append('date_to', dateTo);
       if (params.toString()) url += `?${params.toString()}`;
@@ -64,15 +65,17 @@ export default function AnalyticsPage() {
     }
   };
 
-  const fetchRecentActivities = async () => {
+  const fetchRecentActivities = async (userId?: string) => {
     setLoadingRecentActivities(true);
     setRecentActivitiesError(null);
     try {
       let url = '/api/analytics/recent?limit=50';
       const params = new URLSearchParams();
+      params.append('limit', '50');
+      if (userId) params.append('user_id', userId);
       if (dateFrom) params.append('date_from', dateFrom);
       if (dateTo) params.append('date_to', dateTo);
-      if (params.toString()) url += `&${params.toString()}`;
+      if (params.toString()) url = `/api/analytics/recent?${params.toString()}`;
 
       const res = await fetch(url);
       const data = await res.json();
@@ -102,9 +105,9 @@ export default function AnalyticsPage() {
   };
 
   useEffect(() => {
-    fetchStats();
-    fetchRecentActivities();
-  }, []);
+    fetchStats(selectedUserId || undefined);
+    fetchRecentActivities(selectedUserId || undefined);
+  }, [selectedUserId, dateFrom, dateTo]);
 
   const fetchUserActivities = async (userId: string) => {
     if (!userId) {
@@ -201,16 +204,236 @@ export default function AnalyticsPage() {
     <>
       {/* Header */}
       <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E5E7EB', padding: '16px 20px' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#1A1A2E', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <BarChart3 size={22} color="#6366f1" />
-          Analytics Dashboard
-        </h1>
-        <p style={{ color: '#9CA3AF', fontSize: '14px' }}>
-          สถิติการใช้งานระบบ
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#1A1A2E', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <BarChart3 size={22} color="#6366f1" />
+              Analytics Dashboard
+            </h1>
+            <p style={{ color: '#9CA3AF', fontSize: '14px' }}>
+              {selectedUserId 
+                ? `สถิติการใช้งานของ: ${stats.topActiveUsers.find(u => u.user_id === selectedUserId)?.display_name || 'ผู้ใช้'}`
+                : 'สถิติการใช้งานระบบทั้งหมด'
+              }
+            </p>
+          </div>
+          {selectedUserId && (
+            <button 
+              className="btn btn-sm"
+              onClick={() => setSelectedUserId(null)}
+              style={{ 
+                background: '#f3f4f6', 
+                color: '#6b7280', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '6px',
+                fontWeight: 500
+              }}
+            >
+              <X size={14} />
+              ดูทั้งหมด
+            </button>
+          )}
+        </div>
       </div>
 
       <div style={{ padding: '20px' }}>
+        
+        {/* Summary Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+          <div className="card" style={{ padding: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+              <div style={{ width: 48, height: 48, borderRadius: '12px', background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Users size={24} color="#6366f1" />
+              </div>
+              <div>
+                <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>ผู้ใช้งานทั้งหมด</p>
+                <p style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1e293b' }}>
+                  {stats.topActiveUsers.length}
+                </p>
+              </div>
+            </div>
+            {/* User names list */}
+            {stats.topActiveUsers.length > 0 && (
+              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {stats.topActiveUsers.slice(0, 10).map((user, idx) => (
+                    <div 
+                      key={idx}
+                      onClick={() => {
+                        console.log('Clicked user:', user);
+                        console.log('Setting selectedUserId to:', user.user_id);
+                        setSelectedUserId(user.user_id);
+                      }}
+                      style={{ 
+                        fontSize: '0.7rem', 
+                        background: selectedUserId === user.user_id ? '#e0e7ff' : '#f8fafc', 
+                        color: selectedUserId === user.user_id ? '#6366f1' : '#64748b',
+                        padding: '4px 8px', 
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        border: selectedUserId === user.user_id ? '1px solid #6366f1' : '1px solid transparent',
+                        transition: 'all 0.2s',
+                        fontWeight: selectedUserId === user.user_id ? 600 : 400
+                      }}
+                      onMouseEnter={(e) => {
+                        if (selectedUserId !== user.user_id) {
+                          e.currentTarget.style.background = '#f1f5f9';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (selectedUserId !== user.user_id) {
+                          e.currentTarget.style.background = '#f8fafc';
+                        }
+                      }}
+                      title={`${user.activity_count} activities - Click to view analytics`}
+                    >
+                      {user.display_name}
+                    </div>
+                  ))}
+                  {stats.topActiveUsers.length > 10 && (
+                    <div style={{ 
+                      fontSize: '0.7rem', 
+                      color: '#94a3b8',
+                      padding: '4px 8px', 
+                      fontStyle: 'italic'
+                    }}>
+                      +{stats.topActiveUsers.length - 10} คนอื่นๆ
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="card" style={{ padding: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: 48, height: 48, borderRadius: '12px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Activity size={24} color="#10b981" />
+              </div>
+              <div>
+                <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>การเข้าชมทั้งหมด</p>
+                <p style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1e293b' }}>
+                  {stats.mostVisitedPages.reduce((sum, p) => sum + parseInt(p.visit_count), 0)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="card" style={{ padding: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: 48, height: 48, borderRadius: '12px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <MousePointer size={24} color="#f59e0b" />
+              </div>
+              <div>
+                <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>คลิกทั้งหมด</p>
+                <p style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1e293b' }}>
+                  {stats.mostClickedElements.reduce((sum, e) => sum + parseInt(e.click_count), 0)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+        {/* Grid Layout: Most Clicked & Top Users */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px', marginBottom: '20px' }}>
+          
+          {/* Top Active Users */}
+          <div className="card">
+            <div className="card-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Users size={18} color="#10b981" />
+                <span>ผู้ใช้งานที่ Active มากที่สุด</span>
+              </div>
+            </div>
+            <div style={{ padding: '0', maxHeight: '400px', overflowY: 'auto' }}>
+              {stats.topActiveUsers.slice(0, 15).map((user, idx) => (
+                <div
+                  key={idx}
+                  onClick={() => setSelectedUserId(user.user_id)}
+                  style={{
+                    padding: '12px 20px',
+                    borderBottom: '1px solid #f1f5f9',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    cursor: 'pointer',
+                    background: selectedUserId === user.user_id ? '#f0f9ff' : 'transparent',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = selectedUserId === user.user_id ? '#f0f9ff' : '#fafafa'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = selectedUserId === user.user_id ? '#f0f9ff' : 'transparent'}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: '600', fontSize: '0.85rem', color: '#1e293b', marginBottom: '2px' }}>
+                      {user.display_name}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                      {user.role === 'parent' ? 'ผู้ปกครอง' : user.role === 'teacher' ? 'ครู' : 'Admin'}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontWeight: '700', fontSize: '1rem', color: '#10b981' }}>
+                      {user.total_events}
+                    </div>
+                    <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>
+                      {formatDuration(user.total_time_seconds)}
+                    </div>
+                  </div>
+                  {selectedUserId === user.user_id && (
+                    <div style={{ marginLeft: '8px', color: '#3b82f6' }}>
+                      <MousePointer size={16} />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Most Clicked Elements */}
+          <div className="card">
+            <div className="card-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <MousePointer size={18} color="#f59e0b" />
+                <span>องค์ประกอบที่คลิกมากที่สุด</span>
+              </div>
+            </div>
+            <div style={{ padding: '0', maxHeight: '400px', overflowY: 'auto' }}>
+              {stats.mostClickedElements.slice(0, 15).map((elem, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    padding: '12px 20px',
+                    borderBottom: '1px solid #f1f5f9',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: '600', fontSize: '0.85rem', color: '#1e293b', marginBottom: '2px' }}>
+                      {elem.element_label || 'ไม่ระบุ'}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                      {elem.element_type} • {getPageLabel(elem.page_path)}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '12px' }}>
+                    <div style={{ fontWeight: '700', fontSize: '1rem', color: '#f59e0b' }}>
+                      {elem.click_count}
+                    </div>
+                    <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>
+                      {elem.unique_users} ผู้ใช้
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+
         {/* Date Filter */}
         <div className="card" style={{ padding: '16px', marginBottom: '20px' }}>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'end', flexWrap: 'wrap' }}>
@@ -413,51 +636,6 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        {/* Summary Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-          <div className="card" style={{ padding: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: 48, height: 48, borderRadius: '12px', background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Users size={24} color="#6366f1" />
-              </div>
-              <div>
-                <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>ผู้ใช้งานทั้งหมด</p>
-                <p style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1e293b' }}>
-                  {stats.topActiveUsers.length}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="card" style={{ padding: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: 48, height: 48, borderRadius: '12px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Activity size={24} color="#10b981" />
-              </div>
-              <div>
-                <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>การเข้าชมทั้งหมด</p>
-                <p style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1e293b' }}>
-                  {stats.mostVisitedPages.reduce((sum, p) => sum + parseInt(p.visit_count), 0)}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="card" style={{ padding: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: 48, height: 48, borderRadius: '12px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <MousePointer size={24} color="#f59e0b" />
-              </div>
-              <div>
-                <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>คลิกทั้งหมด</p>
-                <p style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1e293b' }}>
-                  {stats.mostClickedElements.reduce((sum, e) => sum + parseInt(e.click_count), 0)}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Most Visited Pages */}
         <div className="card" style={{ marginBottom: '20px' }}>
           <div className="card-header">
@@ -500,102 +678,6 @@ export default function AnalyticsPage() {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-
-        {/* Grid Layout: Most Clicked & Top Users */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '20px', marginBottom: '20px' }}>
-          {/* Most Clicked Elements */}
-          <div className="card">
-            <div className="card-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <MousePointer size={18} color="#f59e0b" />
-                <span>องค์ประกอบที่คลิกมากที่สุด</span>
-              </div>
-            </div>
-            <div style={{ padding: '0', maxHeight: '400px', overflowY: 'auto' }}>
-              {stats.mostClickedElements.slice(0, 15).map((elem, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    padding: '12px 20px',
-                    borderBottom: '1px solid #f1f5f9',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: '600', fontSize: '0.85rem', color: '#1e293b', marginBottom: '2px' }}>
-                      {elem.element_label || 'ไม่ระบุ'}
-                    </div>
-                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
-                      {elem.element_type} • {getPageLabel(elem.page_path)}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '12px' }}>
-                    <div style={{ fontWeight: '700', fontSize: '1rem', color: '#f59e0b' }}>
-                      {elem.click_count}
-                    </div>
-                    <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>
-                      {elem.unique_users} ผู้ใช้
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Top Active Users */}
-          <div className="card">
-            <div className="card-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Users size={18} color="#10b981" />
-                <span>ผู้ใช้งานที่ Active มากที่สุด</span>
-              </div>
-            </div>
-            <div style={{ padding: '0', maxHeight: '400px', overflowY: 'auto' }}>
-              {stats.topActiveUsers.slice(0, 15).map((user, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => setSelectedUserId(user.user_id)}
-                  style={{
-                    padding: '12px 20px',
-                    borderBottom: '1px solid #f1f5f9',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                    background: selectedUserId === user.user_id ? '#f0f9ff' : 'transparent',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = selectedUserId === user.user_id ? '#f0f9ff' : '#fafafa'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = selectedUserId === user.user_id ? '#f0f9ff' : 'transparent'}
-                >
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: '600', fontSize: '0.85rem', color: '#1e293b', marginBottom: '2px' }}>
-                      {user.display_name}
-                    </div>
-                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
-                      {user.role === 'parent' ? 'ผู้ปกครอง' : user.role === 'teacher' ? 'ครู' : 'Admin'}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontWeight: '700', fontSize: '1rem', color: '#10b981' }}>
-                      {user.total_events}
-                    </div>
-                    <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>
-                      {formatDuration(user.total_time_seconds)}
-                    </div>
-                  </div>
-                  {selectedUserId === user.user_id && (
-                    <div style={{ marginLeft: '8px', color: '#3b82f6' }}>
-                      <MousePointer size={16} />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
           </div>
         </div>
 
