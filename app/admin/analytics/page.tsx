@@ -150,10 +150,43 @@ export default function AnalyticsPage() {
 
   const formatDuration = (seconds: number | null) => {
     if (!seconds) return '-';
-    if (seconds < 60) return `${seconds}s`;
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${minutes}m ${secs}s`;
+    
+    const YEAR = 365 * 24 * 60 * 60;
+    const DAY = 24 * 60 * 60;
+    const HOUR = 60 * 60;
+    const MINUTE = 60;
+    
+    // > 1 year: show date (d m y)
+    if (seconds >= YEAR) {
+      const date = new Date();
+      date.setSeconds(date.getSeconds() - seconds);
+      const day = date.getDate();
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const month = months[date.getMonth()];
+      const year = date.getFullYear();
+      return `${day} ${month} ${year}`;
+    }
+    
+    // > 24 hours: show days
+    if (seconds >= DAY) {
+      const days = Math.floor(seconds / DAY);
+      return `${days}d`;
+    }
+    
+    // > 60 minutes: show hours
+    if (seconds >= HOUR) {
+      const hours = Math.floor(seconds / HOUR);
+      return `${hours}h`;
+    }
+    
+    // > 60 seconds: show minutes
+    if (seconds >= MINUTE) {
+      const minutes = Math.floor(seconds / MINUTE);
+      return `${minutes}m`;
+    }
+    
+    // < 60 seconds: show seconds
+    return `${seconds}s`;
   };
 
   const getPageLabel = (path: string) => {
@@ -306,33 +339,38 @@ export default function AnalyticsPage() {
             )}
           </div>
 
-          <div className="card" style={{ padding: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: 48, height: 48, borderRadius: '12px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Activity size={24} color="#10b981" />
+          {/* Show these cards only when user is selected */}
+          {selectedUserId && (
+            <>
+              <div className="card" style={{ padding: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: 48, height: 48, borderRadius: '12px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Activity size={24} color="#10b981" />
+                  </div>
+                  <div>
+                    <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>การเข้าชมทั้งหมด</p>
+                    <p style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1e293b' }}>
+                      {userActivities.filter(a => a.event_type === 'page_view').length}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>การเข้าชมทั้งหมด</p>
-                <p style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1e293b' }}>
-                  {stats.mostVisitedPages.reduce((sum, p) => sum + parseInt(p.visit_count), 0)}
-                </p>
-              </div>
-            </div>
-          </div>
 
-          <div className="card" style={{ padding: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: 48, height: 48, borderRadius: '12px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <MousePointer size={24} color="#f59e0b" />
+              <div className="card" style={{ padding: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: 48, height: 48, borderRadius: '12px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <MousePointer size={24} color="#f59e0b" />
+                  </div>
+                  <div>
+                    <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>คลิกทั้งหมด</p>
+                    <p style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1e293b' }}>
+                      {userActivities.filter(a => a.event_type === 'click').length}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>คลิกทั้งหมด</p>
-                <p style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1e293b' }}>
-                  {stats.mostClickedElements.reduce((sum, e) => sum + parseInt(e.click_count), 0)}
-                </p>
-              </div>
-            </div>
-          </div>
+            </>
+          )}
         </div>
 
 
@@ -391,46 +429,74 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          {/* Most Clicked Elements */}
-          <div className="card">
-            <div className="card-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <MousePointer size={18} color="#f59e0b" />
-                <span>องค์ประกอบที่คลิกมากที่สุด</span>
+          {/* Most Clicked Elements - Show only when user is selected */}
+          {selectedUserId && (
+            <div className="card">
+              <div className="card-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <MousePointer size={18} color="#f59e0b" />
+                  <span>องค์ประกอบที่คลิกมากที่สุด</span>
+                </div>
+              </div>
+              <div style={{ padding: '0', maxHeight: '400px', overflowY: 'auto' }}>
+                {userActivities
+                  .filter(a => a.event_type === 'click' && a.element_label)
+                  .reduce((acc: any[], activity) => {
+                    const existing = acc.find(item => 
+                      item.element_label === activity.element_label && 
+                      item.page_path === activity.page_path
+                    );
+                    if (existing) {
+                      existing.count++;
+                    } else {
+                      acc.push({
+                        element_label: activity.element_label,
+                        element_type: activity.element_type,
+                        page_path: activity.page_path,
+                        count: 1
+                      });
+                    }
+                    return acc;
+                  }, [])
+                  .sort((a, b) => b.count - a.count)
+                  .slice(0, 15)
+                  .map((elem, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: '12px 20px',
+                        borderBottom: '1px solid #f1f5f9',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: '600', fontSize: '0.85rem', color: '#1e293b', marginBottom: '2px' }}>
+                          {elem.element_label || 'ไม่ระบุ'}
+                        </div>
+                        <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                          {elem.element_type} • {getPageLabel(elem.page_path)}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '12px' }}>
+                        <div style={{ fontWeight: '700', fontSize: '1rem', color: '#f59e0b' }}>
+                          {elem.count}
+                        </div>
+                        <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>
+                          คลิก
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                {userActivities.filter(a => a.event_type === 'click' && a.element_label).length === 0 && (
+                  <div style={{ padding: '40px 20px', textAlign: 'center', color: '#94a3b8' }}>
+                    ยังไม่มีข้อมูลการคลิก
+                  </div>
+                )}
               </div>
             </div>
-            <div style={{ padding: '0', maxHeight: '400px', overflowY: 'auto' }}>
-              {stats.mostClickedElements.slice(0, 15).map((elem, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    padding: '12px 20px',
-                    borderBottom: '1px solid #f1f5f9',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: '600', fontSize: '0.85rem', color: '#1e293b', marginBottom: '2px' }}>
-                      {elem.element_label || 'ไม่ระบุ'}
-                    </div>
-                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
-                      {elem.element_type} • {getPageLabel(elem.page_path)}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '12px' }}>
-                    <div style={{ fontWeight: '700', fontSize: '1rem', color: '#f59e0b' }}>
-                      {elem.click_count}
-                    </div>
-                    <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>
-                      {elem.unique_users} ผู้ใช้
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          )}
 
         </div>
 
@@ -490,7 +556,12 @@ export default function AnalyticsPage() {
                       let icon, color, bgColor, label;
                       
                       if (activity.event_type === 'page_view') {
-                        icon = '👁️';
+                        icon = (
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 5C7 5 2.73 8.11 1 12.5 2.73 16.89 7 20 12 20s9.27-3.11 11-7.5C21.27 8.11 17 5 12 5zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z" fill="#6366f1"/>
+                            <circle cx="12" cy="12.5" r="3" fill="#6366f1"/>
+                          </svg>
+                        );
                         color = '#6366f1';
                         bgColor = '#eff6ff';
                         label = `เปิดหน้า: ${getPageLabel(activity.page_path)}`;
@@ -557,286 +628,6 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* Date Filter */}
-        <div className="card" style={{ padding: '16px', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'end', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: '200px' }}>
-              <label className="form-label">วันที่เริ่มต้น</label>
-              <input
-                type="date"
-                className="form-input"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-              />
-            </div>
-            <div style={{ flex: 1, minWidth: '200px' }}>
-              <label className="form-label">วันที่สิ้นสุด</label>
-              <input
-                type="date"
-                className="form-input"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-              />
-            </div>
-            <button className="btn btn-primary" onClick={() => {
-              fetchStats();
-              fetchRecentActivities();
-            }}>
-              <BarChart3 size={16} />
-              ดึงข้อมูล
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={() => {
-                setDateFrom('');
-                setDateTo('');
-              }}
-            >
-              ล้างตัวกรอง
-            </button>
-          </div>
-        </div>
-
-        {/* User Activity Log Table - แสดงบนสุด */}
-        <div className="card" style={{ marginBottom: '20px' }}>
-          <div className="card-header">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Activity size={18} color="#6366f1" />
-                  <span>Activity Log</span>
-                </div>
-                <p style={{ fontSize: '0.8rem', color: '#9CA3AF', marginTop: '4px' }}>
-                  ดู user/admin ไหนเข้ามาใช้ เมื่อไหร่ หน้าไหนบ้าง
-                </p>
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  className={`btn btn-sm ${activityFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setActivityFilter('all')}
-                  style={{ fontSize: '0.85rem' }}
-                >
-                  ทั้งหมด
-                </button>
-                <button
-                  className={`btn btn-sm ${activityFilter === 'user' ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setActivityFilter('user')}
-                  style={{ fontSize: '0.85rem' }}
-                >
-                  User Side
-                </button>
-                <button
-                  className={`btn btn-sm ${activityFilter === 'admin' ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setActivityFilter('admin')}
-                  style={{ fontSize: '0.85rem' }}
-                >
-                  Admin Side
-                </button>
-              </div>
-            </div>
-          </div>
-          <div style={{ padding: '16px', overflowX: 'auto' }}>
-            {loadingRecentActivities ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-                <div className="shimmer" style={{ width: 40, height: 40, borderRadius: '50%', margin: '0 auto 12px' }} />
-                กำลังโหลดข้อมูล...
-              </div>
-            ) : recentActivitiesError ? (
-              <div style={{ textAlign: 'center', padding: '40px' }}>
-                <div style={{ color: '#ef4444', marginBottom: '8px', fontSize: '1.2rem' }}>⚠️</div>
-                <p style={{ color: '#64748b', marginBottom: '8px' }}>เกิดข้อผิดพลาด: {recentActivitiesError}</p>
-                <button 
-                  className="btn btn-primary btn-sm"
-                  onClick={() => fetchRecentActivities()}
-                  style={{ marginTop: '12px' }}
-                >
-                  ลองอีกครั้ง
-                </button>
-              </div>
-            ) : recentActivities.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-                ยังไม่มีข้อมูล - ตรวจสอบว่ามีการเข้าใช้งาน user side หรือไม่
-              </div>
-            ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid #e2e8f0', background: '#f8fafc' }}>
-                    <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>วันเวลา</th>
-                    <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>ผู้ใช้</th>
-                    <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Role</th>
-                    <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Side</th>
-                    <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Event</th>
-                    <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>หน้า</th>
-                    <th style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>รายละเอียด</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentActivities
-                    .filter(activity => {
-                      if (activityFilter === 'all') return true;
-                      const isAdminPath = activity.page_path?.startsWith('/admin');
-                      if (activityFilter === 'admin') return isAdminPath;
-                      if (activityFilter === 'user') return !isAdminPath;
-                      return true;
-                    })
-                    .map((activity, idx) => {
-                    const time = new Date(activity.timestamp).toLocaleString('th-TH', { 
-                      day: '2-digit',
-                      month: 'short',
-                      hour: '2-digit', 
-                      minute: '2-digit',
-                    });
-                    
-                    const displayName = activity.display_name || activity.line_display_name || 'ไม่ระบุชื่อ';
-                    
-                    const roleLabel = activity.role === 'parent' ? 'ผู้ปกครอง' : 
-                                     activity.role === 'teacher' ? 'ครู' : 
-                                     activity.role === 'admin' ? 'Admin' : 
-                                     activity.role || '-';
-                    
-                    const isAdminPath = activity.page_path?.startsWith('/admin');
-                    const sideLabel = isAdminPath ? 'Admin' : 'User';
-                    const sideColor = isAdminPath ? '#dc2626' : '#059669';
-                    
-                    let eventLabel = '';
-                    let eventColor = '#64748b';
-                    let details = '';
-                    
-                    if (activity.event_type === 'page_view') {
-                      eventLabel = '👁️ เปิดหน้า';
-                      eventColor = '#6366f1';
-                      details = '-';
-                    } else if (activity.event_type === 'click') {
-                      eventLabel = '👆 คลิก';
-                      eventColor = '#f59e0b';
-                      details = activity.element_label || activity.element_type || '-';
-                    } else if (activity.event_type === 'navigation') {
-                      eventLabel = '🔀 นำทาง';
-                      eventColor = '#ec4899';
-                      details = activity.from_path ? `จาก ${getPageLabel(activity.from_path)}` : '-';
-                    }
-                    
-                    return (
-                      <tr 
-                        key={idx}
-                        style={{ 
-                          borderBottom: '1px solid #f1f5f9',
-                          cursor: 'pointer',
-                          transition: 'background 0.15s'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = '#fafafa'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                        onClick={() => activity.user_id && setSelectedUserId(activity.user_id)}
-                        title="คลิกเพื่อดู activity ทั้งหมดของผู้ใช้นี้"
-                      >
-                        <td style={{ padding: '10px 8px', whiteSpace: 'nowrap', fontSize: '0.8rem', color: '#64748b' }}>
-                          {time}
-                        </td>
-                        <td style={{ padding: '10px 8px', fontWeight: 500, color: '#1e293b' }}>
-                          {displayName}
-                        </td>
-                        <td style={{ padding: '10px 8px', color: '#64748b' }}>
-                          {roleLabel}
-                        </td>
-                        <td style={{ padding: '10px 8px', fontWeight: 600, color: sideColor, fontSize: '0.8rem' }}>
-                          {sideLabel}
-                        </td>
-                        <td style={{ padding: '10px 8px', fontWeight: 500, color: eventColor }}>
-                          {eventLabel}
-                        </td>
-                        <td style={{ padding: '10px 8px', color: '#1e293b' }}>
-                          {getPageLabel(activity.page_path)}
-                        </td>
-                        <td style={{ padding: '10px 8px', color: '#64748b', fontSize: '0.8rem' }}>
-                          {details}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
-
-        {/* Most Visited Pages */}
-        <div className="card" style={{ marginBottom: '20px' }}>
-          <div className="card-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <TrendingUp size={18} color="#6366f1" />
-              <span>หน้าที่เข้าชมมากที่สุด</span>
-            </div>
-          </div>
-          <div style={{ padding: '0' }}>
-            {stats.mostVisitedPages.slice(0, 10).map((page, idx) => (
-              <div
-                key={idx}
-                style={{
-                  padding: '14px 20px',
-                  borderBottom: idx < stats.mostVisitedPages.length - 1 ? '1px solid #f1f5f9' : 'none',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: '600', fontSize: '0.9rem', color: '#1e293b', marginBottom: '4px' }}>
-                    {getPageLabel(page.page_path)}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                    {page.page_path}
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontWeight: '700', fontSize: '1.1rem', color: '#6366f1' }}>
-                    {page.visit_count}
-                  </div>
-                  <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
-                    {page.unique_users} ผู้ใช้
-                  </div>
-                  <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
-                    <Clock size={10} style={{ display: 'inline', marginRight: '2px' }} />
-                    {formatDuration(Math.round(page.avg_duration_seconds))}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Navigation Patterns */}
-        <div className="card">
-          <div className="card-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Activity size={18} color="#ec4899" />
-              <span>รูปแบบการนำทาง</span>
-            </div>
-          </div>
-          <div style={{ padding: '0', maxHeight: '400px', overflowY: 'auto' }}>
-            {stats.navigationPatterns.slice(0, 20).map((nav, idx) => (
-              <div
-                key={idx}
-                style={{
-                  padding: '12px 20px',
-                  borderBottom: idx < stats.navigationPatterns.length - 1 ? '1px solid #f1f5f9' : 'none',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <div style={{ flex: 1, fontSize: '0.85rem' }}>
-                  <span style={{ color: '#6366f1', fontWeight: '600' }}>{getPageLabel(nav.from_path)}</span>
-                  <span style={{ color: '#94a3b8', margin: '0 8px' }}>→</span>
-                  <span style={{ color: '#10b981', fontWeight: '600' }}>{getPageLabel(nav.to_path)}</span>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontWeight: '700', color: '#ec4899' }}>{nav.navigation_count}</div>
-                  <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{nav.unique_users} ผู้ใช้</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </>
   );
