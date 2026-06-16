@@ -45,12 +45,11 @@ export default function AnalyticsPage() {
   // Filter for activity type
   const [activityFilter, setActivityFilter] = useState<'all' | 'user' | 'admin'>('user');
 
-  const fetchStats = async (userId?: string) => {
+  const fetchStats = async () => {
     setLoading(true);
     try {
       let url = '/api/analytics/stats';
       const params = new URLSearchParams();
-      if (userId) params.append('user_id', userId);
       if (dateFrom) params.append('date_from', dateFrom);
       if (dateTo) params.append('date_to', dateTo);
       if (params.toString()) url += `?${params.toString()}`;
@@ -65,14 +64,13 @@ export default function AnalyticsPage() {
     }
   };
 
-  const fetchRecentActivities = async (userId?: string) => {
+  const fetchRecentActivities = async () => {
     setLoadingRecentActivities(true);
     setRecentActivitiesError(null);
     try {
       let url = '/api/analytics/recent?limit=50';
       const params = new URLSearchParams();
       params.append('limit', '50');
-      if (userId) params.append('user_id', userId);
       if (dateFrom) params.append('date_from', dateFrom);
       if (dateTo) params.append('date_to', dateTo);
       if (params.toString()) url = `/api/analytics/recent?${params.toString()}`;
@@ -105,9 +103,11 @@ export default function AnalyticsPage() {
   };
 
   useEffect(() => {
-    fetchStats(selectedUserId || undefined);
-    fetchRecentActivities(selectedUserId || undefined);
-  }, [selectedUserId, dateFrom, dateTo]);
+    // Only fetch stats and recent activities on initial load or date filter change
+    // Not when user selection changes
+    fetchStats();
+    fetchRecentActivities();
+  }, [dateFrom, dateTo]);
 
   const fetchUserActivities = async (userId: string) => {
     if (!userId) {
@@ -434,6 +434,129 @@ export default function AnalyticsPage() {
 
         </div>
 
+        {/* User Activity Timeline */}
+        {selectedUserId && (
+          <div className="card" style={{ marginTop: '20px' }}>
+            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <MousePointer size={18} color="#3b82f6" />
+                <span>
+                  กิจกรรมของ: {stats.topActiveUsers.find(u => u.user_id === selectedUserId)?.display_name}
+                </span>
+              </div>
+              <button 
+                className="btn btn-secondary btn-sm"
+                onClick={() => setSelectedUserId('')}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                ✕ ปิด
+              </button>
+            </div>
+            <div style={{ padding: '20px' }}>
+              {loadingUserActivities ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                  <div className="shimmer" style={{ width: 40, height: 40, borderRadius: '50%', margin: '0 auto 12px' }} />
+                  กำลังโหลด...
+                </div>
+              ) : userActivities.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                  ไม่มีข้อมูลกิจกรรม
+                </div>
+              ) : (
+                <div style={{ position: 'relative' }}>
+                  {/* Timeline line */}
+                  <div style={{
+                    position: 'absolute',
+                    left: '20px',
+                    top: '0',
+                    bottom: '0',
+                    width: '2px',
+                    background: '#e5e7eb'
+                  }} />
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                    {userActivities.map((activity, idx) => {
+                      const time = new Date(activity.timestamp).toLocaleTimeString('th-TH', { 
+                        hour: '2-digit', 
+                        minute: '2-digit',
+                        second: '2-digit'
+                      });
+                      const date = new Date(activity.timestamp).toLocaleDateString('th-TH', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      });
+
+                      let icon, color, bgColor, label;
+                      
+                      if (activity.event_type === 'page_view') {
+                        icon = '👁️';
+                        color = '#6366f1';
+                        bgColor = '#eff6ff';
+                        label = `เปิดหน้า: ${getPageLabel(activity.page_path)}`;
+                      } else if (activity.event_type === 'click') {
+                        icon = '👆';
+                        color = '#f59e0b';
+                        bgColor = '#fffbeb';
+                        label = `คลิก: ${activity.element_label || activity.element_type || 'ไม่ระบุ'}`;
+                      } else if (activity.event_type === 'navigation') {
+                        icon = '🔀';
+                        color = '#ec4899';
+                        bgColor = '#fdf2f8';
+                        label = `ไป: ${getPageLabel(activity.to_path || '')}`;
+                      }
+
+                      return (
+                        <div key={idx} style={{ display: 'flex', gap: '16px', paddingBottom: '20px', position: 'relative' }}>
+                          {/* Timeline dot */}
+                          <div style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '50%',
+                            background: bgColor,
+                            border: `3px solid ${color}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '18px',
+                            flexShrink: 0,
+                            position: 'relative',
+                            zIndex: 1
+                          }}>
+                            {icon}
+                          </div>
+                          
+                          {/* Content */}
+                          <div style={{ flex: 1, paddingTop: '4px' }}>
+                            <div style={{ 
+                              background: '#fafafa', 
+                              padding: '12px 16px', 
+                              borderRadius: '12px',
+                              border: '1px solid #f1f5f9'
+                            }}>
+                              <div style={{ fontWeight: '600', fontSize: '0.9rem', color: '#1e293b', marginBottom: '4px' }}>
+                                {label}
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                                {time} • {date}
+                              </div>
+                              {activity.page_path && activity.event_type !== 'page_view' && (
+                                <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '4px' }}>
+                                  หน้า: {getPageLabel(activity.page_path)}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Date Filter */}
         <div className="card" style={{ padding: '16px', marginBottom: '20px' }}>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'end', flexWrap: 'wrap' }}>
@@ -524,7 +647,7 @@ export default function AnalyticsPage() {
                 <p style={{ color: '#64748b', marginBottom: '8px' }}>เกิดข้อผิดพลาด: {recentActivitiesError}</p>
                 <button 
                   className="btn btn-primary btn-sm"
-                  onClick={() => fetchRecentActivities(selectedUserId || undefined)}
+                  onClick={() => fetchRecentActivities()}
                   style={{ marginTop: '12px' }}
                 >
                   ลองอีกครั้ง
@@ -714,129 +837,6 @@ export default function AnalyticsPage() {
             ))}
           </div>
         </div>
-
-        {/* User Activity Timeline */}
-        {selectedUserId && (
-          <div className="card" style={{ marginTop: '20px' }}>
-            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <MousePointer size={18} color="#3b82f6" />
-                <span>
-                  กิจกรรมของ: {stats.topActiveUsers.find(u => u.user_id === selectedUserId)?.display_name}
-                </span>
-              </div>
-              <button 
-                className="btn btn-secondary btn-sm"
-                onClick={() => setSelectedUserId('')}
-                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                ✕ ปิด
-              </button>
-            </div>
-            <div style={{ padding: '20px' }}>
-              {loadingUserActivities ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-                  <div className="shimmer" style={{ width: 40, height: 40, borderRadius: '50%', margin: '0 auto 12px' }} />
-                  กำลังโหลด...
-                </div>
-              ) : userActivities.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-                  ไม่มีข้อมูลกิจกรรม
-                </div>
-              ) : (
-                <div style={{ position: 'relative' }}>
-                  {/* Timeline line */}
-                  <div style={{
-                    position: 'absolute',
-                    left: '20px',
-                    top: '0',
-                    bottom: '0',
-                    width: '2px',
-                    background: '#e5e7eb'
-                  }} />
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                    {userActivities.map((activity, idx) => {
-                      const time = new Date(activity.timestamp).toLocaleTimeString('th-TH', { 
-                        hour: '2-digit', 
-                        minute: '2-digit',
-                        second: '2-digit'
-                      });
-                      const date = new Date(activity.timestamp).toLocaleDateString('th-TH', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric'
-                      });
-
-                      let icon, color, bgColor, label;
-                      
-                      if (activity.event_type === 'page_view') {
-                        icon = '👁️';
-                        color = '#6366f1';
-                        bgColor = '#eff6ff';
-                        label = `เปิดหน้า: ${getPageLabel(activity.page_path)}`;
-                      } else if (activity.event_type === 'click') {
-                        icon = '👆';
-                        color = '#f59e0b';
-                        bgColor = '#fffbeb';
-                        label = `คลิก: ${activity.element_label || activity.element_type || 'ไม่ระบุ'}`;
-                      } else if (activity.event_type === 'navigation') {
-                        icon = '🔀';
-                        color = '#ec4899';
-                        bgColor = '#fdf2f8';
-                        label = `ไป: ${getPageLabel(activity.to_path || '')}`;
-                      }
-
-                      return (
-                        <div key={idx} style={{ display: 'flex', gap: '16px', paddingBottom: '20px', position: 'relative' }}>
-                          {/* Timeline dot */}
-                          <div style={{
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '50%',
-                            background: bgColor,
-                            border: `3px solid ${color}`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '18px',
-                            flexShrink: 0,
-                            position: 'relative',
-                            zIndex: 1
-                          }}>
-                            {icon}
-                          </div>
-                          
-                          {/* Content */}
-                          <div style={{ flex: 1, paddingTop: '4px' }}>
-                            <div style={{ 
-                              background: '#fafafa', 
-                              padding: '12px 16px', 
-                              borderRadius: '12px',
-                              border: '1px solid #f1f5f9'
-                            }}>
-                              <div style={{ fontWeight: '600', fontSize: '0.9rem', color: '#1e293b', marginBottom: '4px' }}>
-                                {label}
-                              </div>
-                              <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                                {time} • {date}
-                              </div>
-                              {activity.page_path && activity.event_type !== 'page_view' && (
-                                <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '4px' }}>
-                                  หน้า: {getPageLabel(activity.page_path)}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     </>
   );
