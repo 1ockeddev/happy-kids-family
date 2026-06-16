@@ -33,7 +33,7 @@ export default function AnalyticsPage() {
   const [dateTo, setDateTo] = useState('');
   
   // User detail view
-  const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [userActivities, setUserActivities] = useState<UserActivity[]>([]);
   const [loadingUserActivities, setLoadingUserActivities] = useState(false);
   
@@ -524,7 +524,7 @@ export default function AnalyticsPage() {
                 <p style={{ color: '#64748b', marginBottom: '8px' }}>เกิดข้อผิดพลาด: {recentActivitiesError}</p>
                 <button 
                   className="btn btn-primary btn-sm"
-                  onClick={fetchRecentActivities}
+                  onClick={() => fetchRecentActivities(selectedUserId || undefined)}
                   style={{ marginTop: '12px' }}
                 >
                   ลองอีกครั้ง

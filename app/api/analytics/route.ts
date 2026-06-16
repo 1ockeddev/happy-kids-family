@@ -115,8 +115,9 @@ export async function POST(req: NextRequest) {
 // GET - Retrieve analytics data (admin only)
 export async function GET(req: NextRequest) {
   try {
-    const user = await getUserFromRequest(req);
-    if (!user || user.role !== 'admin') {
+    // Check for admin session first
+    const session = await getSessionFromRequest(req);
+    if (!session || session.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -143,8 +144,12 @@ export async function GET(req: NextRequest) {
         a.session_id,
         a.user_agent,
         a.viewport_width,
-        a.viewport_height
+        a.viewport_height,
+        u.display_name,
+        u.line_display_name,
+        u.role
       FROM user_analytics a
+      LEFT JOIN app_user u ON u.id = a.user_id
       WHERE 1=1
     `;
     const params: any[] = [];
