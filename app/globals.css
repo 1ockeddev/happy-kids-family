@@ -397,6 +397,34 @@ tr:hover {
   color: #b45309;
 }
 
+/* Role badges */
+.badge-super-admin {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #92400e;
+  font-weight: 700;
+  border: 1px solid #fbbf24;
+  box-shadow: 0 2px 4px rgba(251, 191, 36, 0.2);
+}
+
+.badge-admin {
+  background: #e0e7ff;
+  color: #4338ca;
+  font-weight: 600;
+  border: 1px solid #c7d2fe;
+}
+
+.badge-teacher {
+  background: #f0eeff;
+  color: #6c5ce7;
+  font-weight: 600;
+}
+
+.badge-parent {
+  background: #fef0eb;
+  color: #e8754a;
+  font-weight: 600;
+}
+
 /* ── Modals (Mobile-First) ──────────────────────────────────────── */
 .modal-backdrop,
 .modal-overlay {

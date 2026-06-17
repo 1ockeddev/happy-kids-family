@@ -11,7 +11,8 @@ export async function GET(req: NextRequest) {
       `SELECT u.*,
         CASE WHEN tp.user_id IS NOT NULL THEN
           json_build_object('can_manage_daily', tp.can_manage_daily, 'can_manage_attendance', tp.can_manage_attendance, 'can_manage_report', tp.can_manage_report)
-        ELSE NULL END AS permissions
+        ELSE NULL END AS permissions,
+        (SELECT MAX(timestamp) FROM user_analytics WHERE user_id = u.id) AS last_activity
        FROM app_user u
        LEFT JOIN teacher_permission tp ON tp.user_id = u.id
        WHERE ($1 = '' OR u.display_name ILIKE $2 OR u.line_user_id ILIKE $2)

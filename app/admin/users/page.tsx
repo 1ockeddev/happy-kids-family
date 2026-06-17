@@ -9,6 +9,7 @@ import { Plus as PlusIcon, PencilSquare, User, AlertCircle, CheckCircle, Buildin
 
 interface UserWithChildren extends AppUser {
   children?: Child[];
+  last_activity?: string | null;
 }
 
 interface Cohort {
@@ -40,6 +41,8 @@ export default function UsersPage() {
   // link children modal state
   const [linkedIds, setLinkedIds]   = useState<string[]>([]);
   const [childSearch, setChildSearch] = useState('');
+  // tabs state
+  const [activeTab, setActiveTab] = useState<'all' | 'teacher' | 'parent' | 'admin'>('all');
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -53,7 +56,9 @@ export default function UsersPage() {
         const json = await res.json();
         return { ...u, children: json.data ?? [] };
       }));
-      setData(withKids);
+      // กรอง super_admin ออก - ไม่แสดงใน UI
+      const filteredUsers = withKids.filter(u => (u.role as string) !== 'super_admin');
+      setData(filteredUsers);
     } catch (e) { setError(e instanceof Error ? e.message : 'เกิดข้อผิดพลาด'); }
     finally { setLoading(false); }
   }, [search]);
@@ -103,6 +108,12 @@ export default function UsersPage() {
       return;
     }
     
+    // Validation: teacher ที่ไม่สามารถเลือก cohort ต้องมี default_cohort_id
+    if (form.role === 'teacher' && !form.can_select_cohort && !form.default_cohort_id) {
+      alert('⚠️ ต้องเลือกห้องเรียน Default\n\nเมื่อปิดการเลือกห้อง ต้องระบุห้องเรียน Default สำหรับครู');
+      return;
+    }
+    
     setSaving(true);
     try {
       // ถ้าไม่ใส่ display_name ให้ใช้ line_display_name เป็น default (สำหรับ edit mode)
@@ -133,7 +144,7 @@ export default function UsersPage() {
       
       // แจ้งเตือนถ้าเปลี่ยน role
       if (roleChanged) {
-        alert(`บันทึกสำเร็จ!\n\nสำคัญ: ผู้ใช้ "${finalDisplayName || 'ผู้ใช้นี้'}" ต้องรีเฟรชหน้า Mini App\nเพื่อให้เห็นบทบาทใหม่ (${form.role === 'teacher' ? 'ครู' : 'ผู้ปกครอง'})`);
+        alert(`บันทึกสำเร็จ!\n\nสำคัญ: ผู้ใช้ "${finalDisplayName || 'ผู้ใช้นี้'}" ต้องรีเฟรชหน้า Mini App\nเพื่อให้เห็นบทบาทใหม่ (${form.role === 'teacher' ? 'ครู' : form.role === 'admin' ? 'Admin' : 'ผู้ปกครอง'})`);
       }
     } catch (e) { alert(e instanceof Error ? e.message : 'บันทึกไม่สำเร็จ'); }
     finally { setSaving(false); }
@@ -153,8 +164,84 @@ export default function UsersPage() {
     c.name_th?.includes(childSearch) || c.name_en?.toLowerCase().includes(childSearch.toLowerCase())
   );
 
+  // กรองข้อมูลตาม tab
+  const filteredData = data.filter(u => {
+    if (activeTab === 'all') return true;
+    return u.role === activeTab;
+  });
+
+  // นับจำนวนแต่ละ role
+  const counts = {
+    all: data.length,
+    teacher: data.filter(u => u.role === 'teacher').length,
+    parent: data.filter(u => u.role === 'parent').length,
+    admin: data.filter(u => u.role === 'admin').length,
+  };
+
+  // Format last activity
+  const formatLastActivity = (timestamp: string | null | undefined) => {
+    if (!timestamp) return <span style={{ color: '#9CA3AF', fontSize: 12 }}>ไม่เคยใช้งาน</span>;
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return <span style={{ color: '#10B981', fontSize: 12 }}>เมื่อสักครู่</span>;
+    if (diffMins < 60) return <span style={{ color: '#10B981', fontSize: 12 }}>{diffMins} นาทีที่แล้ว</span>;
+    if (diffHours < 24) return <span style={{ color: '#F59E0B', fontSize: 12 }}>{diffHours} ชั่วโมงที่แล้ว</span>;
+    if (diffDays < 7) return <span style={{ color: '#9CA3AF', fontSize: 12 }}>{diffDays} วันที่แล้ว</span>;
+    return <span style={{ color: '#9CA3AF', fontSize: 12 }}>{date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}</span>;
+  };
+
   return (
     <>
+      {/* Tabs */}
+      <div style={{ background: 'white', borderBottom: '1px solid #E5E7EB', padding: '0 20px' }}>
+        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
+          {[
+            { key: 'all', label: 'ทั้งหมด', icon: '📋', count: counts.all },
+            { key: 'teacher', label: 'ครู', icon: '👨‍🏫', count: counts.teacher },
+            { key: 'parent', label: 'ผู้ปกครอง', icon: '👨‍👩‍👧', count: counts.parent },
+            { key: 'admin', label: 'Admin', icon: '⚙️', count: counts.admin },
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key as typeof activeTab)}
+              style={{
+                padding: '14px 20px',
+                border: 'none',
+                background: 'transparent',
+                borderBottom: activeTab === tab.key ? '3px solid #6366f1' : '3px solid transparent',
+                color: activeTab === tab.key ? '#6366f1' : '#64748b',
+                fontWeight: activeTab === tab.key ? 600 : 400,
+                fontSize: '14px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <span>{tab.icon}</span>
+              <span>{tab.label}</span>
+              <span style={{ 
+                background: activeTab === tab.key ? '#e0e7ff' : '#f1f5f9',
+                color: activeTab === tab.key ? '#4338ca' : '#64748b',
+                padding: '2px 8px',
+                borderRadius: '12px',
+                fontSize: '11px',
+                fontWeight: 600
+              }}>
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <CrudTable<UserWithChildren>
         title="จัดการผู้ใช้"
         description="เพิ่มผู้ใช้ใหม่ได้ทันที — ผูก LINE ID ภายหลังเมื่อผู้ใช้เปิด Mini App"
@@ -179,17 +266,31 @@ export default function UsersPage() {
                   )}
                 </div>
                 <div style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
-                {r.line_user_id
-                  ? <><CheckCircle size={11} color="#10B981" /> <span style={{ color: '#10B981' }}>{r.line_user_id}</span></>
-                  : <><AlertCircle size={11} color="#F59E0B" /> <span style={{ color: '#F59E0B', fontSize: 11 }}>รอผูก LINE</span></>
-                }
-              </div>
+                  {r.line_user_id
+                    ? <><CheckCircle size={11} color="#10B981" /> <span style={{ color: '#10B981' }}>{r.line_user_id}</span></>
+                    : <><AlertCircle size={11} color="#F59E0B" /> <span style={{ color: '#F59E0B', fontSize: 11 }}>รอผูก LINE</span></>
+                  }
+                </div>
+                {/* Last Activity ใต้ LINE ID */}
+                <div style={{ fontSize: 11, marginTop: 4 }}>
+                  {formatLastActivity(r.last_activity)}
+                </div>
               </div>
             </div>
           )},
-          { key: 'role', label: 'บทบาท', render: r => (
-            <span className={`badge badge-${r.role}`}>{r.role === 'teacher' ? 'ครู' : 'ผู้ปกครอง'}</span>
-          )},
+          { key: 'role', label: 'บทบาท', render: r => {
+            const roleConfig: Record<string, { label: string; class: string; icon: string }> = {
+              admin: { label: 'Admin', class: 'badge-admin', icon: '⚙️' },
+              teacher: { label: 'ครู', class: 'badge-teacher', icon: '👨‍🏫' },
+              parent: { label: 'ผู้ปกครอง', class: 'badge-parent', icon: '👨‍👩‍👧' }
+            };
+            const config = roleConfig[r.role] || { label: r.role, class: 'badge', icon: '' };
+            return (
+              <span className={`badge ${config.class}`}>
+                {config.icon} {config.label}
+              </span>
+            );
+          }},
           { key: 'children', label: 'ลูกที่ผูก', render: r => {
             if (r.role !== 'parent') return <span style={{ color: '#9CA3AF', fontSize: 12 }}>-</span>;
             const kids = r.children ?? [];
@@ -211,7 +312,7 @@ export default function UsersPage() {
           )},
           { key: 'created_at', label: 'สร้างเมื่อ', hideOnMobile: true, render: r => new Date(r.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }) },
         ]}
-        data={data} loading={loading} error={error} onRefresh={load}
+        data={filteredData} loading={loading} error={error} onRefresh={load}
         onAdd={() => { setForm(EMPTY_FORM); setModal('add'); }}
         addLabel="+ เพิ่มผู้ใช้"
         searchValue={search} onSearchChange={setSearch} searchPlaceholder="ค้นหาชื่อ / LINE ID..."
@@ -354,8 +455,9 @@ export default function UsersPage() {
           <div className="form-group">
             <label className="form-label">บทบาท <span style={{ color: '#E85C5C' }}>*</span></label>
             <select className="form-input" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as UserRole }))}>
-              <option value="parent">ผู้ปกครอง</option>
-              <option value="teacher">ครู</option>
+              <option value="parent">👨‍👩‍👧 ผู้ปกครอง</option>
+              <option value="teacher">👨‍🏫 ครู</option>
+              <option value="admin">⚙️ Admin</option>
             </select>
             {modal === 'edit' && selected && selected.role !== form.role && (
               <div style={{ marginTop: 6, padding: '6px 10px', background: '#FEF9C3', border: '1px solid #FDE68A', borderRadius: 6, display: 'flex', gap: 6 }}>

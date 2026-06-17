@@ -2,7 +2,7 @@ export type AttendanceStatus = 'present' | 'absent' | 'sick' | 'leave';
 export type MilkStatus = 'all' | 'some' | 'not_must' | 'skip';
 export type ExcretionType = 'pee' | 'poo';
 export type ExcretionAction = 'diaper' | 'potty';
-export type UserRole = 'teacher' | 'parent';
+export type UserRole = 'super_admin' | 'admin' | 'teacher' | 'parent';
 export type UserStatus = 'active' | 'inactive';
 
 export interface AppUser {

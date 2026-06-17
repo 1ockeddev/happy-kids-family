@@ -245,7 +245,7 @@ export default function AnalyticsPage() {
             </h1>
             <p style={{ color: '#9CA3AF', fontSize: '14px' }}>
               {selectedUserId 
-                ? `สถิติการใช้งานของ: ${stats.topActiveUsers.find(u => u.user_id === selectedUserId)?.display_name || 'ผู้ใช้'}`
+                ? `สถิติการใช้งานของ: ${(stats?.topActiveUsers ?? []).find(u => u.user_id === selectedUserId)?.display_name || 'ผู้ใช้'}`
                 : 'สถิติการใช้งานระบบทั้งหมด'
               }
             </p>
@@ -282,15 +282,15 @@ export default function AnalyticsPage() {
               <div>
                 <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>ผู้ใช้งานทั้งหมด</p>
                 <p style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1e293b' }}>
-                  {stats.topActiveUsers.length}
+                  {stats?.topActiveUsers?.length ?? 0}
                 </p>
               </div>
             </div>
             {/* User names list */}
-            {stats.topActiveUsers.length > 0 && (
+            {(stats?.topActiveUsers?.length ?? 0) > 0 && (
               <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {stats.topActiveUsers.slice(0, 10).map((user, idx) => (
+                  {(stats?.topActiveUsers ?? []).slice(0, 10).map((user, idx) => (
                     <div 
                       key={idx}
                       onClick={() => {
@@ -324,14 +324,14 @@ export default function AnalyticsPage() {
                       {user.display_name}
                     </div>
                   ))}
-                  {stats.topActiveUsers.length > 10 && (
+                  {(stats?.topActiveUsers?.length ?? 0) > 10 && (
                     <div style={{ 
                       fontSize: '0.7rem', 
                       color: '#94a3b8',
                       padding: '4px 8px', 
                       fontStyle: 'italic'
                     }}>
-                      +{stats.topActiveUsers.length - 10} คนอื่นๆ
+                      +{(stats?.topActiveUsers?.length ?? 0) - 10} คนอื่นๆ
                     </div>
                   )}
                 </div>
@@ -386,7 +386,7 @@ export default function AnalyticsPage() {
               </div>
             </div>
             <div style={{ padding: '0', maxHeight: '400px', overflowY: 'auto' }}>
-              {stats.topActiveUsers.slice(0, 15).map((user, idx) => (
+              {(stats?.topActiveUsers ?? []).slice(0, 15).map((user, idx) => (
                 <div
                   key={idx}
                   onClick={() => setSelectedUserId(user.user_id)}
@@ -507,7 +507,7 @@ export default function AnalyticsPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <MousePointer size={18} color="#3b82f6" />
                 <span>
-                  กิจกรรมของ: {stats.topActiveUsers.find(u => u.user_id === selectedUserId)?.display_name}
+                  กิจกรรมของ: {(stats?.topActiveUsers ?? []).find(u => u.user_id === selectedUserId)?.display_name}
                 </span>
               </div>
               <button 

@@ -23,6 +23,16 @@ export default function FoodMilkSummaryPage() {
     milk1: { milk_amount: MilkStatus; count: number }[];
     milk2: { milk_amount: MilkStatus; count: number }[];
   }>({ food: [], fruit: [], milk1: [], milk2: [] });
+  const [foodNotes, setFoodNotes] = useState<Array<{name: string, notes: string[]}>>([]);
+  const [fruitNotes, setFruitNotes] = useState<Array<{name: string, notes: string[]}>>([]);
+  const [notEatenFood, setNotEatenFood] = useState<Array<{name: string, notes: string[]}>>([]);
+  const [notEatenFruit, setNotEatenFruit] = useState<Array<{name: string, notes: string[]}>>([]);
+  
+  // Toggle states
+  const [showAddedFood, setShowAddedFood] = useState(false);
+  const [showAddedFruit, setShowAddedFruit] = useState(false);
+  const [showNotEatenFood, setShowNotEatenFood] = useState(false);
+  const [showNotEatenFruit, setShowNotEatenFruit] = useState(false);
 
   /* ── Load food summary ── */
   useEffect(() => {
@@ -47,6 +57,10 @@ export default function FoodMilkSummaryPage() {
             milk2: j.data?.milk2 || []
           };
           setFoodSummary(summary);
+          setFoodNotes(j.data?.food_items || []);
+          setFruitNotes(j.data?.fruit_items || []);
+          setNotEatenFood(j.data?.not_eaten_food || []);
+          setNotEatenFruit(j.data?.not_eaten_fruit || []);
           
           // Show shimmer briefly if has data
           const hasData = summary.food.length > 0 || summary.fruit.length > 0 || 
@@ -134,6 +148,300 @@ export default function FoodMilkSummaryPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Food Notes */}
+            {foodNotes.length > 0 && (
+              <div style={{background:'white',padding:16,borderRadius:16,border:'1px solid #e2e8f0'}}>
+                <div 
+                  onClick={() => setShowAddedFood(!showAddedFood)}
+                  style={{
+                    fontSize:'0.9rem',
+                    fontWeight:700,
+                    color:'#0f172a',
+                    marginBottom: showAddedFood ? 12 : 0,
+                    display:'flex',
+                    alignItems:'center',
+                    justifyContent:'space-between',
+                    cursor:'pointer',
+                    userSelect:'none'
+                  }}
+                >
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+                      <path d="M7 2v20"/>
+                      <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+                    </svg>
+                    อาหารที่เพิ่ม ({foodNotes.length})
+                  </div>
+                  <svg 
+                    width="20" 
+                    height="20" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="#64748b" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                    style={{
+                      transform: showAddedFood ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s'
+                    }}
+                  >
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </div>
+                {showAddedFood && (
+                  <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                    {foodNotes.map((item, idx) => (
+                      <div key={idx} style={{
+                        padding:'12px',
+                        background:'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                        borderRadius:12,
+                        border:'1px solid #fbbf24'
+                      }}>
+                        <div style={{fontSize:'0.9rem',fontWeight:700,color:'#92400e',marginBottom:6}}>
+                          {item.name}
+                        </div>
+                        <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                          {item.notes.map((note, noteIdx) => (
+                            <div key={noteIdx} style={{
+                              fontSize:'0.8rem',
+                              color:'#78350f',
+                              paddingLeft:8,
+                              borderLeft:'2px solid #f59e0b'
+                            }}>
+                              {note}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Fruit Notes */}
+            {fruitNotes.length > 0 && (
+              <div style={{background:'white',padding:16,borderRadius:16,border:'1px solid #e2e8f0'}}>
+                <div 
+                  onClick={() => setShowAddedFruit(!showAddedFruit)}
+                  style={{
+                    fontSize:'0.9rem',
+                    fontWeight:700,
+                    color:'#0f172a',
+                    marginBottom: showAddedFruit ? 12 : 0,
+                    display:'flex',
+                    alignItems:'center',
+                    justifyContent:'space-between',
+                    cursor:'pointer',
+                    userSelect:'none'
+                  }}
+                >
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <svg width="20" height="20" viewBox="0 0 512 512" fill="none" stroke="#ef4444" strokeWidth="20">
+                      <path d="M445.618,228.059h-42.029l27.986-43.14c1.954-3.012,1.096-7.037-1.916-8.991c-3.011-1.953-7.036-1.097-8.99,1.916l-32.576,50.215h-70.124c-2.758-63.71-45.818-114.503-98.357-114.503c-46.697,0-86.652,40.321-96.29,95.396C95.139,188.996,75.1,164.417,70.731,143.56c-1.033-4.947-4.933-8.683-9.936-9.518c-4.923-0.823-9.735,1.366-12.333,5.579c-0.116,0.18-0.21,0.344-0.287,0.487c-8.978,15.282-11.588,33.751-7.811,52.788c-4.686-4.875-8.418-9.9-10.996-14.962c-2.297-4.498-7.044-7.077-12.088-6.572c-5.022,0.502-9.144,3.953-10.5,8.801l-0.047,0.17c-7.67,27.815,2.96,57.899,27.076,81.47c-5.247-2.475-9.847-5.33-13.638-8.552c-3.893-3.31-9.313-3.891-13.809-1.481c-4.399,2.358-6.863,7.083-6.276,12.036l0.034,0.276c2.977,23.833,18.146,44.562,42.713,58.368c18.833,10.583,41.506,16.112,65.323,16.111c6.442,0,12.972-0.405,19.526-1.223c15.844-1.979,30.252-5.563,42.955-10.496c14.35,7.672,31.206,11.714,48.975,11.714c26.114,0,49.632-8.628,66.982-24.424c16.946,15.588,39.94,24.427,67.025,24.427c58.916,0,98.5-41.794,98.5-104C452.118,230.969,449.208,228.059,445.618,228.059z M201.131,133.386c0,0.477-2,2.5-6,2.5c-3.508,0-5.476-1.555-5.908-2.259c2.088-1.007,4.215-1.91,6.375-2.711C199.273,131.07,201.131,132.928,201.131,133.386z" fill="#ef4444" opacity="0.3"/>
+                      <path d="M234.036,135.066c-10.654,0-19,6.808-19,15.5s8.346,15.5,19,15.5s19-6.808,19-15.5S244.69,135.066,234.036,135.066z M234.036,153.066c-4,0-6-2.023-6-2.5s2-2.5,6-2.5s6,2.023,6,2.5S238.036,153.066,234.036,153.066z" fill="#ef4444" opacity="0.3"/>
+                    </svg>
+                    ผลไม้ที่เพิ่ม ({fruitNotes.length})
+                  </div>
+                  <svg 
+                    width="20" 
+                    height="20" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="#64748b" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                    style={{
+                      transform: showAddedFruit ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s'
+                    }}
+                  >
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </div>
+                {showAddedFruit && (
+                  <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                    {fruitNotes.map((item, idx) => (
+                      <div key={idx} style={{
+                        padding:'12px',
+                        background:'linear-gradient(135deg, #fecaca 0%, #fca5a5 100%)',
+                        borderRadius:12,
+                        border:'1px solid #f87171'
+                      }}>
+                        <div style={{fontSize:'0.9rem',fontWeight:700,color:'#991b1b',marginBottom:6}}>
+                          {item.name}
+                        </div>
+                        <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                          {item.notes.map((note, noteIdx) => (
+                            <div key={noteIdx} style={{
+                              fontSize:'0.8rem',
+                              color:'#7f1d1d',
+                              paddingLeft:8,
+                              borderLeft:'2px solid #ef4444'
+                            }}>
+                              {note}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Not Eaten Food */}
+            {notEatenFood.length > 0 && (
+              <div style={{background:'white',padding:16,borderRadius:16,border:'1px solid #e2e8f0'}}>
+                <div 
+                  onClick={() => setShowNotEatenFood(!showNotEatenFood)}
+                  style={{
+                    fontSize:'0.9rem',
+                    fontWeight:700,
+                    color:'#0f172a',
+                    marginBottom: showNotEatenFood ? 12 : 0,
+                    display:'flex',
+                    alignItems:'center',
+                    justifyContent:'space-between',
+                    cursor:'pointer',
+                    userSelect:'none'
+                  }}
+                >
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+                      <path d="M7 2v20"/>
+                      <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
+                      <line x1="18" y1="6" x2="6" y2="18"/>
+                      <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                    อาหารที่ไม่ทาน ({notEatenFood.length})
+                  </div>
+                  <svg 
+                    width="20" 
+                    height="20" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="#64748b" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                    style={{
+                      transform: showNotEatenFood ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s'
+                    }}
+                  >
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </div>
+                {showNotEatenFood && (
+                  <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                    {notEatenFood.map((item, idx) => (
+                      <div key={idx} style={{
+                        padding:'12px',
+                        background:'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)',
+                        borderRadius:12,
+                        border:'1px solid #cbd5e1'
+                      }}>
+                        <div style={{fontSize:'0.9rem',fontWeight:700,color:'#475569',marginBottom:6}}>
+                          {item.name}
+                        </div>
+                        <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                          {item.notes.map((note, noteIdx) => (
+                            <div key={noteIdx} style={{
+                              fontSize:'0.8rem',
+                              color:'#64748b',
+                              paddingLeft:8,
+                              borderLeft:'2px solid #94a3b8'
+                            }}>
+                              {note}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Not Eaten Fruit */}
+            {notEatenFruit.length > 0 && (
+              <div style={{background:'white',padding:16,borderRadius:16,border:'1px solid #e2e8f0'}}>
+                <div 
+                  onClick={() => setShowNotEatenFruit(!showNotEatenFruit)}
+                  style={{
+                    fontSize:'0.9rem',
+                    fontWeight:700,
+                    color:'#0f172a',
+                    marginBottom: showNotEatenFruit ? 12 : 0,
+                    display:'flex',
+                    alignItems:'center',
+                    justifyContent:'space-between',
+                    cursor:'pointer',
+                    userSelect:'none'
+                  }}
+                >
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <svg width="20" height="20" viewBox="0 0 512 512" fill="none" stroke="#94a3b8" strokeWidth="20">
+                      <path d="M445.618,228.059h-42.029l27.986-43.14c1.954-3.012,1.096-7.037-1.916-8.991c-3.011-1.953-7.036-1.097-8.99,1.916l-32.576,50.215h-70.124c-2.758-63.71-45.818-114.503-98.357-114.503c-46.697,0-86.652,40.321-96.29,95.396C95.139,188.996,75.1,164.417,70.731,143.56c-1.033-4.947-4.933-8.683-9.936-9.518c-4.923-0.823-9.735,1.366-12.333,5.579c-0.116,0.18-0.21,0.344-0.287,0.487c-8.978,15.282-11.588,33.751-7.811,52.788c-4.686-4.875-8.418-9.9-10.996-14.962c-2.297-4.498-7.044-7.077-12.088-6.572c-5.022,0.502-9.144,3.953-10.5,8.801l-0.047,0.17c-7.67,27.815,2.96,57.899,27.076,81.47c-5.247-2.475-9.847-5.33-13.638-8.552c-3.893-3.31-9.313-3.891-13.809-1.481c-4.399,2.358-6.863,7.083-6.276,12.036l0.034,0.276c2.977,23.833,18.146,44.562,42.713,58.368c18.833,10.583,41.506,16.112,65.323,16.111c6.442,0,12.972-0.405,19.526-1.223c15.844-1.979,30.252-5.563,42.955-10.496c14.35,7.672,31.206,11.714,48.975,11.714c26.114,0,49.632-8.628,66.982-24.424c16.946,15.588,39.94,24.427,67.025,24.427c58.916,0,98.5-41.794,98.5-104C452.118,230.969,449.208,228.059,445.618,228.059z M201.131,133.386c0,0.477-2,2.5-6,2.5c-3.508,0-5.476-1.555-5.908-2.259c2.088-1.007,4.215-1.91,6.375-2.711C199.273,131.07,201.131,132.928,201.131,133.386z" fill="#94a3b8" opacity="0.3"/>
+                      <path d="M234.036,135.066c-10.654,0-19,6.808-19,15.5s8.346,15.5,19,15.5s19-6.808,19-15.5S244.69,135.066,234.036,135.066z M234.036,153.066c-4,0-6-2.023-6-2.5s2-2.5,6-2.5s6,2.023,6,2.5S238.036,153.066,234.036,153.066z" fill="#94a3b8" opacity="0.3"/>
+                      <line x1="400" y1="150" x2="100" y2="350" stroke="#94a3b8" strokeWidth="30"/>
+                      <line x1="100" y1="150" x2="400" y2="350" stroke="#94a3b8" strokeWidth="30"/>
+                    </svg>
+                    ผลไม้ที่ไม่ทาน ({notEatenFruit.length})
+                  </div>
+                  <svg 
+                    width="20" 
+                    height="20" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="#64748b" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                    style={{
+                      transform: showNotEatenFruit ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s'
+                    }}
+                  >
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </div>
+                {showNotEatenFruit && (
+                  <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                    {notEatenFruit.map((item, idx) => (
+                      <div key={idx} style={{
+                        padding:'12px',
+                        background:'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)',
+                        borderRadius:12,
+                        border:'1px solid #cbd5e1'
+                      }}>
+                        <div style={{fontSize:'0.9rem',fontWeight:700,color:'#475569',marginBottom:6}}>
+                          {item.name}
+                        </div>
+                        <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                          {item.notes.map((note, noteIdx) => (
+                            <div key={noteIdx} style={{
+                              fontSize:'0.8rem',
+                              color:'#64748b',
+                              paddingLeft:8,
+                              borderLeft:'2px solid #94a3b8'
+                            }}>
+                              {note}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             

@@ -11,11 +11,25 @@ function getSecret() {
 }
 
 export async function createSession(username: string): Promise<string> {
-  return new SignJWT({ username, role: 'admin' })
+  // Check if user is super admin from env
+  const role = isSuperAdmin(username) ? 'super_admin' : 'admin';
+  return new SignJWT({ username, role })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(`${MAX_AGE}s`)
     .sign(getSecret());
+}
+
+export function isSuperAdmin(username: string): boolean {
+  const adminUsername = process.env.ADMIN_USERNAME;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  // Super admin must have both username and password set in env
+  return !!adminUsername && !!adminPassword && username === adminUsername;
+}
+
+export function checkSuperAdmin(session: { username: string; role: string } | null): boolean {
+  if (!session) return false;
+  return session.role === 'super_admin' || isSuperAdmin(session.username);
 }
 
 export async function verifySession(token: string) {

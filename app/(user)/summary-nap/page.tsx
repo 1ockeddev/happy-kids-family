@@ -18,7 +18,9 @@ export default function NapSummaryPage() {
     total_days: number;
     nap_days: number;
     avg_hours: number | null;
-  }>({ total_days: 0, nap_days: 0, avg_hours: null });
+    max_hours: number | null;
+    min_hours: number | null;
+  }>({ total_days: 0, nap_days: 0, avg_hours: null, max_hours: null, min_hours: null });
 
   /* ── Load nap summary ── */
   useEffect(() => {
@@ -36,7 +38,13 @@ export default function NapSummaryPage() {
       .then(r=>r.json())
       .then(j=>{
         if (!cancelled) {
-          const napData = j.data?.nap || { total_days: 0, nap_days: 0, avg_hours: null };
+          const napData = j.data?.nap || { 
+            total_days: 0, 
+            nap_days: 0, 
+            avg_hours: null, 
+            max_hours: null, 
+            min_hours: null 
+          };
           setNapSummary(napData);
           
           // Show shimmer briefly if has data
@@ -74,7 +82,7 @@ export default function NapSummaryPage() {
                 <div style={{background:'white',padding:20,borderRadius:16,border:'1px solid #e2e8f0',textAlign:'center'}}>
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{margin:'0 auto 12px'}}>
                     <path d="M2 12h1.5M8 6v1.5M18 6v1.5M22 12h-1.5"/>
-                    <path d="M19 17a7 7 0 1 1-14 0"/>
+                    <path d="M7 14c2 3 8 3 10 0"/>
                   </svg>
                   <div style={{fontSize:'2rem',fontWeight:800,color:'#0f172a',marginBottom:8}}>
                     {napSummary.nap_days} / {napSummary.total_days}
@@ -107,16 +115,113 @@ export default function NapSummaryPage() {
                       </svg>
                       ระยะเวลาเฉลี่ย
                     </div>
-                    <div style={{display:'flex',alignItems:'baseline',gap:8}}>
-                      <span style={{fontSize:'2.5rem',fontWeight:800,color:'#6366f1'}}>
-                        {Math.floor(napSummary.avg_hours)}
-                      </span>
-                      <span style={{fontSize:'1rem',color:'#64748b',fontWeight:600}}>ชั่วโมง</span>
-                      <span style={{fontSize:'2.5rem',fontWeight:800,color:'#6366f1'}}>
-                        {Math.round((napSummary.avg_hours % 1) * 60)}
-                      </span>
-                      <span style={{fontSize:'1rem',color:'#64748b',fontWeight:600}}>นาที</span>
-                    </div>
+                    {(() => {
+                      const h = Math.floor(napSummary.avg_hours);
+                      const m = Math.round((napSummary.avg_hours % 1) * 60);
+                      
+                      if (h === 0) {
+                        return (
+                          <div style={{display:'flex',alignItems:'baseline',gap:8}}>
+                            <span style={{fontSize:'2.5rem',fontWeight:800,color:'#6366f1'}}>{m}</span>
+                            <span style={{fontSize:'1rem',color:'#64748b',fontWeight:600}}>นาที</span>
+                          </div>
+                        );
+                      }
+                      
+                      return (
+                        <div style={{display:'flex',alignItems:'baseline',gap:8}}>
+                          <span style={{fontSize:'2.5rem',fontWeight:800,color:'#6366f1'}}>{h}</span>
+                          <span style={{fontSize:'1rem',color:'#64748b',fontWeight:600}}>ชั่วโมง</span>
+                          {m > 0 && (
+                            <>
+                              <span style={{fontSize:'2.5rem',fontWeight:800,color:'#6366f1'}}>{m}</span>
+                              <span style={{fontSize:'1rem',color:'#64748b',fontWeight:600}}>นาที</span>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {/* Max & Min Duration */}
+                {(napSummary.max_hours !== null || napSummary.min_hours !== null) && (
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                    {/* Max Duration */}
+                    {napSummary.max_hours !== null && (
+                      <div style={{background:'#f0fdf4',padding:16,borderRadius:12,border:'1px solid #10b98122'}}>
+                        <div style={{fontSize:'0.7rem',color:'#059669',fontWeight:600,marginBottom:8,textTransform:'uppercase',display:'flex',alignItems:'center',gap:4}}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="18 15 12 9 6 15"/>
+                          </svg>
+                          นานสุด
+                        </div>
+                        {(() => {
+                          const h = Math.floor(napSummary.max_hours);
+                          const m = Math.round((napSummary.max_hours % 1) * 60);
+                          
+                          if (h === 0) {
+                            return (
+                              <div style={{display:'flex',alignItems:'baseline',gap:4,marginBottom:2}}>
+                                <span style={{fontSize:'1.6rem',fontWeight:800,color:'#10b981'}}>{m}</span>
+                                <span style={{fontSize:'0.7rem',color:'#64748b',fontWeight:600}}>นาที</span>
+                              </div>
+                            );
+                          }
+                          
+                          return (
+                            <div style={{display:'flex',alignItems:'baseline',gap:4,marginBottom:2}}>
+                              <span style={{fontSize:'1.6rem',fontWeight:800,color:'#10b981'}}>{h}</span>
+                              <span style={{fontSize:'0.7rem',color:'#64748b',fontWeight:600}}>ชม.</span>
+                              {m > 0 && (
+                                <>
+                                  <span style={{fontSize:'1.6rem',fontWeight:800,color:'#10b981'}}>{m}</span>
+                                  <span style={{fontSize:'0.7rem',color:'#64748b',fontWeight:600}}>นาที</span>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+                    
+                    {/* Min Duration */}
+                    {napSummary.min_hours !== null && (
+                      <div style={{background:'#fef3c7',padding:16,borderRadius:12,border:'1px solid #f59e0b22'}}>
+                        <div style={{fontSize:'0.7rem',color:'#d97706',fontWeight:600,marginBottom:8,textTransform:'uppercase',display:'flex',alignItems:'center',gap:4}}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="6 9 12 15 18 9"/>
+                          </svg>
+                          สั้นสุด
+                        </div>
+                        {(() => {
+                          const h = Math.floor(napSummary.min_hours);
+                          const m = Math.round((napSummary.min_hours % 1) * 60);
+                          
+                          if (h === 0) {
+                            return (
+                              <div style={{display:'flex',alignItems:'baseline',gap:4,marginBottom:2}}>
+                                <span style={{fontSize:'1.6rem',fontWeight:800,color:'#f59e0b'}}>{m}</span>
+                                <span style={{fontSize:'0.7rem',color:'#64748b',fontWeight:600}}>นาที</span>
+                              </div>
+                            );
+                          }
+                          
+                          return (
+                            <div style={{display:'flex',alignItems:'baseline',gap:4,marginBottom:2}}>
+                              <span style={{fontSize:'1.6rem',fontWeight:800,color:'#f59e0b'}}>{h}</span>
+                              <span style={{fontSize:'0.7rem',color:'#64748b',fontWeight:600}}>ชม.</span>
+                              {m > 0 && (
+                                <>
+                                  <span style={{fontSize:'1.6rem',fontWeight:800,color:'#f59e0b'}}>{m}</span>
+                                  <span style={{fontSize:'0.7rem',color:'#64748b',fontWeight:600}}>นาที</span>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
                 )}
 

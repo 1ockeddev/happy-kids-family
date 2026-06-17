@@ -42,7 +42,7 @@ export default function BottomNavigation() {
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M2 12h1.5M8 6v1.5M18 6v1.5M22 12h-1.5"/>
-          <path d="M19 17a7 7 0 1 1-14 0"/>
+          <path d="M7 14c2 3 8 3 10 0"/>
         </svg>
       )
     },
