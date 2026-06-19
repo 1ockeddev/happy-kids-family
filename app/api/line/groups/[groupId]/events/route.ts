@@ -60,7 +60,7 @@ export async function GET(
     }
 
     const countResult = await query(countQuery, countParams);
-    const total = parseInt(countResult[0]?.total || '0');
+    const total = parseInt(String(countResult[0]?.total || 0));
 
     return NextResponse.json({ 
       events,
