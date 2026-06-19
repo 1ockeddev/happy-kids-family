@@ -46,6 +46,11 @@ export default function LineMessagesPage() {
       return;
     }
 
+    if (!testUserId.trim()) {
+      setMessage({ type: 'error', text: 'LINE User ID ไม่ถูกต้อง' });
+      return;
+    }
+
     setLoading(true);
     setMessage(null);
 
@@ -54,25 +59,58 @@ export default function LineMessagesPage() {
       
       if (selectedTemplate) {
         const template = templates.find(t => t.id === selectedTemplate);
-        flexData = template?.template;
+        if (!template) {
+          setMessage({ type: 'error', text: 'ไม่พบ template ที่เลือก' });
+          setLoading(false);
+          return;
+        }
+        
+        // Handle both string and object format
+        if (typeof template.template === 'string') {
+          try {
+            flexData = JSON.parse(template.template);
+          } catch (e) {
+            console.error('Failed to parse template:', e);
+            setMessage({ type: 'error', text: 'Template JSON ไม่ถูกต้อง' });
+            setLoading(false);
+            return;
+          }
+        } else {
+          flexData = template.template;
+        }
       } else if (customFlexJson) {
-        flexData = JSON.parse(customFlexJson);
+        try {
+          flexData = JSON.parse(customFlexJson);
+        } catch (e) {
+          setMessage({ type: 'error', text: 'JSON ไม่ถูกต้อง' });
+          setLoading(false);
+          return;
+        }
       } else {
         setMessage({ type: 'error', text: 'กรุณาเลือก template หรือใส่ JSON' });
         setLoading(false);
         return;
       }
 
+      if (!flexData) {
+        setMessage({ type: 'error', text: 'ไม่สามารถอ่านข้อมูล Flex Message ได้' });
+        setLoading(false);
+        return;
+      }
+
+      console.log('Sending flex message:', { userId: testUserId, flexData });
+
       const res = await fetch('/api/line/send-flex', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: testUserId,
+          userId: testUserId.trim(),
           flexMessage: flexData
         })
       });
 
       const result = await res.json();
+      console.log('Response:', result);
 
       if (res.ok) {
         setMessage({ type: 'success', text: 'ส่งข้อความสำเร็จ!' });
@@ -80,6 +118,7 @@ export default function LineMessagesPage() {
         setMessage({ type: 'error', text: result.error || 'ส่งข้อความไม่สำเร็จ' });
       }
     } catch (error: any) {
+      console.error('Error:', error);
       setMessage({ type: 'error', text: error.message || 'เกิดข้อผิดพลาด' });
     } finally {
       setLoading(false);
