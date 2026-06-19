@@ -42,6 +42,39 @@ export async function POST(req: NextRequest) {
   }
 }
 
+// PUT - Update template
+export async function PUT(req: NextRequest) {
+  try {
+    const { id, name, description, template } = await req.json();
+
+    if (!id || !name || !template) {
+      return NextResponse.json(
+        { error: 'id, name and template are required' },
+        { status: 400 }
+      );
+    }
+
+    const result = await queryOne(
+      `UPDATE line_flex_templates 
+       SET name = $1, description = $2, template = $3, updated_at = NOW()
+       WHERE id = $4
+       RETURNING id, name, description, template, created_at`,
+      [name, description || null, JSON.stringify(template), id]
+    );
+
+    if (!result) {
+      return NextResponse.json(
+        { error: 'Template not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ template: result });
+  } catch (err) {
+    return serverError(err);
+  }
+}
+
 // DELETE - Remove template
 export async function DELETE(req: NextRequest) {
   try {

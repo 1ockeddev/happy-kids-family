@@ -286,6 +286,7 @@
 .template-actions {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .info-box {

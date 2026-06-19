@@ -25,10 +25,14 @@ const TABLE_LABELS: Record<string, string> = {
   child_excretion:      'การขับถ่าย',
   holidays:             'วันหยุด',
   user_analytics:       'Analytics (การใช้งาน)',
+  line_flex_templates:  'LINE Flex Templates',
+  line_groups:          'LINE Groups',
+  line_group_members:   'LINE Group Members',
+  line_group_events:    'LINE Group Events',
 };
 
 const TABLE_COLUMNS: Record<string, string[]> = {
-  app_user:             ['id','line_user_id','role','status','display_name','line_display_name','picture_url','created_at'],
+  app_user:             ['id','line_user_id','role','status','display_name','display_name_th','line_display_name','picture_url','can_select_cohort','default_cohort_id','created_at'],
   child:                ['id','name_en','name_th','firstname_en','lastname_en','firstname_th','lastname_th','nickname_en','nickname_th','birthdate','photo_url','deleted_at','created_at'],
   cohort:               ['id','name','level','academic_year','start_date','end_date','created_at'],
   parent_child:         ['parent_id','child_id'],
@@ -36,13 +40,17 @@ const TABLE_COLUMNS: Record<string, string[]> = {
   enrollment:           ['id','child_id','cohort_id','start_date','end_date','graduated','created_at'],
   daily:                ['id','cohort_id','date','activity','food','fruit','note','created_by','updated_by','updated_at','created_at'],
   attendance:           ['id','daily_id','child_id','status','note','created_by','updated_by','updated_at','created_at'],
-  daily_report:         ['id','daily_id','child_id','cohort_id','nap_from','nap_to','nap_note','milk1','milk1_note','milk2','milk2_note','food_amount','food_note','fruit_amount','fruit_note','note','created_by','updated_by','updated_at','created_at'],
+  daily_report:         ['id','daily_id','child_id','nap_from','nap_to','nap_note','milk1','milk1_note','milk2','milk2_note','food_amount','food_note','fruit_amount','fruit_note','note','created_by','updated_by','updated_at','created_at'],
   behavior_category:    ['id','name_en','name_th','sort_order','is_active','cohort_ids','created_at'],
   behavior_item:        ['id','category_id','name_en','name_th','max_score','sort_order','is_active','created_at'],
   child_behavior_score: ['id','daily_id','child_id','item_id','score','note','created_at'],
   child_excretion:      ['id','daily_id','child_id','time','type','action','created_at'],
   holidays:             ['id','date','name_th','name_en','type','cohort_id','created_at','updated_at'],
   user_analytics:       ['id','user_id','event_type','page_path','from_path','to_path','element_type','element_label','duration_seconds','timestamp','session_id','user_agent','viewport_width','viewport_height','created_at'],
+  line_flex_templates:  ['id','name','description','template','created_at','updated_at'],
+  line_groups:          ['id','line_group_id','group_name','group_type','status','picture_url','joined_at','left_at','created_at','updated_at'],
+  line_group_members:   ['id','group_id','user_id','line_user_id','display_name','picture_url','role','joined_at','left_at','status','created_at','updated_at'],
+  line_group_events:    ['id','group_id','line_user_id','event_type','message_type','message_text','message_data','created_at'],
 };
 
 export default function DatabasePage() {
@@ -63,6 +71,15 @@ export default function DatabasePage() {
   const [sqlResult, setSqlResult] = useState<any[] | null>(null);
   const [sqlError, setSqlError] = useState<string | null>(null);
   const [sqlLoading, setSqlLoading] = useState(false);
+
+  // UPDATE Record
+  const [showUpdate, setShowUpdate] = useState(false);
+  const [updateTable, setUpdateTable] = useState<string>('');
+  const [updateRecordId, setUpdateRecordId] = useState<string>('');
+  const [updateFields, setUpdateFields] = useState<Record<string, any>>({});
+  const [updateLoading, setUpdateLoading] = useState(false);
+  const [updateResult, setUpdateResult] = useState<{ success: boolean; message: string; data?: any } | null>(null);
+  const [fetchingRecord, setFetchingRecord] = useState(false);
 
   // import flow
   const [file, setFile]                   = useState<File | null>(null);
@@ -294,6 +311,96 @@ export default function DatabasePage() {
     } finally {
       setSqlLoading(false);
     }
+  };
+
+  // ── UPDATE Record ───────────────────────────────────────────
+  const fetchRecordForUpdate = async () => {
+    if (!updateTable || !updateRecordId) {
+      alert('กรุณาเลือก Table และใส่ Record ID');
+      return;
+    }
+
+    setFetchingRecord(true);
+    setUpdateResult(null);
+    
+    try {
+      const res = await fetch(`/api/db-update?table=${updateTable}&id=${updateRecordId}`);
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'ไม่พบข้อมูล');
+      }
+      
+      setUpdateFields(data.data);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด');
+      setUpdateFields({});
+    } finally {
+      setFetchingRecord(false);
+    }
+  };
+
+  const handleUpdateRecord = async () => {
+    if (!updateTable || !updateRecordId) {
+      alert('กรุณาเลือก Table และใส่ Record ID');
+      return;
+    }
+
+    if (Object.keys(updateFields).length === 0) {
+      alert('กรุณาโหลดข้อมูลก่อน');
+      return;
+    }
+
+    // Remove id from updates (we use it in WHERE clause)
+    const { id, created_at, updated_at, ...updates } = updateFields;
+    
+    if (Object.keys(updates).length === 0) {
+      alert('ไม่มีฟิลด์ที่สามารถอัปเดตได้');
+      return;
+    }
+
+    setUpdateLoading(true);
+    setUpdateResult(null);
+    
+    try {
+      const res = await fetch('/api/db-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table: updateTable,
+          id: updateRecordId,
+          updates,
+        }),
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'Update failed');
+      }
+      
+      setUpdateResult({
+        success: true,
+        message: `อัปเดตสำเร็จ ${data.count} รายการ`,
+        data: data.data,
+      });
+      
+      // Refresh the record
+      setTimeout(() => {
+        fetchRecordForUpdate();
+      }, 500);
+    } catch (err) {
+      setUpdateResult({
+        success: false,
+        message: err instanceof Error ? err.message : 'เกิดข้อผิดพลาด',
+      });
+    } finally {
+      setUpdateLoading(false);
+    }
+  };
+
+  const updateFieldValue = (field: string, value: any) => {
+    setUpdateFields(prev => ({ ...prev, [field]: value }));
   };
   
   const downloadSqlResult = () => {
@@ -546,6 +653,223 @@ export default function DatabasePage() {
                 : <><Download size={15} /> Export {exportFormat.toUpperCase()} ({selectedExportTables.size} ตาราง)</>}
             </button>
           </div>
+        </div>
+
+        {/* ── UPDATE Record ── */}
+        <div className="card" style={{ overflow: 'hidden' }}>
+          <div 
+            onClick={() => setShowUpdate(!showUpdate)}
+            style={{ 
+              background: '#E0E7FF', 
+              padding: '14px 18px', 
+              borderBottom: '1px solid #E5E7EB', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 10,
+              cursor: 'pointer',
+              userSelect: 'none'
+            }}>
+            <RefreshCw size={18} style={{ color: '#4F46E5' }} />
+            <div style={{ flex: 1 }}>
+              <h2 style={{ fontSize: 15, fontWeight: 700, color: '#312E81' }}>Update Record</h2>
+              <p style={{ fontSize: 12, color: '#4F46E5', marginTop: 2 }}>แก้ไขข้อมูลในตาราง โดยระบุ Table และ Record ID</p>
+            </div>
+            {showUpdate ? <ChevronUp size={18} style={{ color: '#4F46E5' }} /> : <ChevronDown size={18} style={{ color: '#4F46E5' }} />}
+          </div>
+          
+          {showUpdate && (
+            <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {/* Table selector */}
+              <div>
+                <label className="form-label">เลือก Table</label>
+                <select 
+                  value={updateTable} 
+                  onChange={(e) => {
+                    setUpdateTable(e.target.value);
+                    setUpdateRecordId('');
+                    setUpdateFields({});
+                    setUpdateResult(null);
+                  }}
+                  style={{ 
+                    width: '100%', 
+                    padding: '8px 12px', 
+                    borderRadius: 8, 
+                    border: '1px solid #E5E7EB',
+                    fontSize: 14,
+                    background: 'white'
+                  }}>
+                  <option value="">-- เลือก Table --</option>
+                  {Object.entries(TABLE_LABELS).map(([table, label]) => (
+                    <option key={table} value={table}>
+                      {label} ({table})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Record ID input */}
+              {updateTable && (
+                <div>
+                  <label className="form-label">Record ID</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      type="text"
+                      value={updateRecordId}
+                      onChange={(e) => setUpdateRecordId(e.target.value)}
+                      placeholder="ใส่ ID ของ record ที่ต้องการแก้ไข"
+                      style={{ 
+                        flex: 1,
+                        padding: '8px 12px', 
+                        borderRadius: 8, 
+                        border: '1px solid #E5E7EB',
+                        fontSize: 13,
+                        fontFamily: 'monospace',
+                        background: 'white'
+                      }}
+                    />
+                    <button 
+                      className="btn btn-primary" 
+                      onClick={fetchRecordForUpdate}
+                      disabled={fetchingRecord || !updateRecordId}
+                      style={{ background: '#4F46E5', whiteSpace: 'nowrap' }}>
+                      {fetchingRecord 
+                        ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> โหลด...</>
+                        : <>โหลดข้อมูล</>}
+                    </button>
+                  </div>
+                  <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
+                    💡 กดโหลดข้อมูลเพื่อแสดงฟิลด์ที่สามารถแก้ไขได้
+                  </p>
+                </div>
+              )}
+
+              {/* Edit fields */}
+              {Object.keys(updateFields).length > 0 && (
+                <div>
+                  <label className="form-label">แก้ไขข้อมูล</label>
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: 10, 
+                    maxHeight: 400, 
+                    overflowY: 'auto', 
+                    padding: 12, 
+                    background: '#F9FAFB', 
+                    borderRadius: 8,
+                    border: '1px solid #E5E7EB'
+                  }}>
+                    {Object.entries(updateFields).map(([field, value]) => {
+                      const isReadOnly = ['id', 'created_at', 'updated_at'].includes(field);
+                      const isJsonField = typeof value === 'object' && value !== null;
+                      
+                      return (
+                        <div key={field} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <label style={{ 
+                            fontSize: 11, 
+                            fontWeight: 600, 
+                            color: isReadOnly ? '#9CA3AF' : '#374151',
+                            fontFamily: 'monospace',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6
+                          }}>
+                            {field}
+                            {isReadOnly && <span style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 400 }}>(read-only)</span>}
+                          </label>
+                          {isJsonField ? (
+                            <textarea
+                              value={JSON.stringify(value, null, 2)}
+                              onChange={(e) => {
+                                try {
+                                  const parsed = JSON.parse(e.target.value);
+                                  updateFieldValue(field, parsed);
+                                } catch {
+                                  // Invalid JSON, keep as string for now
+                                }
+                              }}
+                              disabled={isReadOnly}
+                              rows={5}
+                              style={{ 
+                                padding: '6px 10px', 
+                                borderRadius: 6, 
+                                border: '1px solid #E5E7EB',
+                                fontSize: 11,
+                                fontFamily: 'monospace',
+                                background: isReadOnly ? '#F3F4F6' : 'white',
+                                color: isReadOnly ? '#9CA3AF' : '#1F2937',
+                                resize: 'vertical'
+                              }}
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              value={value === null ? '' : String(value)}
+                              onChange={(e) => updateFieldValue(field, e.target.value || null)}
+                              disabled={isReadOnly}
+                              placeholder={value === null ? 'NULL' : ''}
+                              style={{ 
+                                padding: '6px 10px', 
+                                borderRadius: 6, 
+                                border: '1px solid #E5E7EB',
+                                fontSize: 12,
+                                fontFamily: 'monospace',
+                                background: isReadOnly ? '#F3F4F6' : 'white',
+                                color: isReadOnly ? '#9CA3AF' : '#1F2937'
+                              }}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 6 }}>
+                    ⚠️ ฟิลด์ id, created_at, updated_at จะไม่ถูกแก้ไข
+                  </p>
+                </div>
+              )}
+
+              {/* Update button */}
+              {Object.keys(updateFields).length > 0 && (
+                <button 
+                  className="btn btn-primary" 
+                  onClick={handleUpdateRecord} 
+                  disabled={updateLoading}
+                  style={{ width: '100%', justifyContent: 'center', background: '#4F46E5' }}>
+                  {updateLoading 
+                    ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> กำลังอัปเดต...</>
+                    : <><RefreshCw size={15} /> อัปเดตข้อมูล</>}
+                </button>
+              )}
+
+              {/* Result display */}
+              {updateResult && (
+                <div style={{ 
+                  background: updateResult.success ? '#F0FDF4' : '#FEF2F2', 
+                  border: `1px solid ${updateResult.success ? '#86EFAC' : '#FCA5A5'}`, 
+                  borderRadius: 8, 
+                  padding: 12 
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {updateResult.success ? (
+                      <CheckCircle size={16} style={{ color: '#059669', flexShrink: 0 }} />
+                    ) : (
+                      <AlertCircle size={16} style={{ color: '#DC2626', flexShrink: 0 }} />
+                    )}
+                    <p style={{ fontSize: 12, color: updateResult.success ? '#064E3B' : '#991B1B', margin: 0 }}>
+                      {updateResult.message}
+                    </p>
+                  </div>
+                  {updateResult.success && updateResult.data && updateResult.data.length > 0 && (
+                    <div style={{ marginTop: 8, padding: 8, background: 'white', borderRadius: 6, fontSize: 11, fontFamily: 'monospace' }}>
+                      <pre style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#374151' }}>
+                        {JSON.stringify(updateResult.data[0], null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ── SQL Query Builder ── */}

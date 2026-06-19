@@ -20,6 +20,7 @@ export default function LineMessagesPage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   
   // Template form
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [templateName, setTemplateName] = useState('');
   const [templateDescription, setTemplateDescription] = useState('');
   const [templateJson, setTemplateJson] = useState('');
@@ -137,23 +138,29 @@ export default function LineMessagesPage() {
     try {
       const flexData = JSON.parse(templateJson);
       
-      const res = await fetch('/api/line/templates', {
-        method: 'POST',
+      const url = '/api/line/templates';
+      const method = editingTemplateId ? 'PUT' : 'POST';
+      const body = editingTemplateId
+        ? { id: editingTemplateId, name: templateName, description: templateDescription, template: flexData }
+        : { name: templateName, description: templateDescription, template: flexData };
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: templateName,
-          description: templateDescription,
-          template: flexData
-        })
+        body: JSON.stringify(body)
       });
 
       const result = await res.json();
 
       if (res.ok) {
-        setMessage({ type: 'success', text: 'บันทึก template สำเร็จ!' });
+        setMessage({ 
+          type: 'success', 
+          text: editingTemplateId ? 'อัปเดต template สำเร็จ!' : 'บันทึก template สำเร็จ!' 
+        });
         setTemplateName('');
         setTemplateDescription('');
         setTemplateJson('');
+        setEditingTemplateId(null);
         loadTemplates();
       } else {
         setMessage({ type: 'error', text: result.error || 'บันทึกไม่สำเร็จ' });
@@ -163,6 +170,29 @@ export default function LineMessagesPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const editTemplate = (template: FlexMessageTemplate) => {
+    setEditingTemplateId(template.id);
+    setTemplateName(template.name);
+    setTemplateDescription(template.description || '');
+    
+    // Handle both string and object format
+    const jsonStr = typeof template.template === 'string' 
+      ? template.template 
+      : JSON.stringify(template.template, null, 2);
+    setTemplateJson(jsonStr);
+    
+    // Scroll to form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEdit = () => {
+    setEditingTemplateId(null);
+    setTemplateName('');
+    setTemplateDescription('');
+    setTemplateJson('');
+    setMessage(null);
   };
 
   const deleteTemplate = async (id: string) => {
@@ -284,7 +314,37 @@ export default function LineMessagesPage() {
       {activeTab === 'templates' && (
         <div className="tab-content">
           <div className="card">
-            <h2>สร้าง Template ใหม่</h2>
+            <h2>{editingTemplateId ? '✏️ แก้ไข Template' : 'สร้าง Template ใหม่'}</h2>
+            
+            {editingTemplateId && (
+              <div style={{ 
+                padding: '12px', 
+                background: '#fef3c7', 
+                border: '1px solid #fcd34d',
+                borderRadius: '8px',
+                marginBottom: '16px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <span style={{ color: '#b45309', fontWeight: 600 }}>
+                  🔄 กำลังแก้ไข template
+                </span>
+                <button
+                  onClick={cancelEdit}
+                  style={{
+                    padding: '6px 12px',
+                    background: 'white',
+                    border: '1px solid #fcd34d',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  ยกเลิก
+                </button>
+              </div>
+            )}
             
             <div className="form-group">
               <label>ชื่อ Template *</label>
@@ -324,7 +384,7 @@ export default function LineMessagesPage() {
               disabled={loading}
               className="btn btn-primary"
             >
-              {loading ? 'กำลังบันทึก...' : '💾 บันทึก Template'}
+              {loading ? 'กำลังบันทึก...' : (editingTemplateId ? '💾 อัปเดต Template' : '💾 บันทึก Template')}
             </button>
           </div>
 
@@ -344,17 +404,26 @@ export default function LineMessagesPage() {
                     </div>
                     <div className="template-actions">
                       <button
+                        onClick={() => editTemplate(t)}
+                        className="btn btn-sm"
+                        title="แก้ไข"
+                      >
+                        ✏️ แก้ไข
+                      </button>
+                      <button
                         onClick={() => {
                           setSelectedTemplate(t.id);
                           setActiveTab('send');
                         }}
                         className="btn btn-sm"
+                        title="ใช้"
                       >
                         📤 ใช้
                       </button>
                       <button
                         onClick={() => deleteTemplate(t.id)}
                         className="btn btn-sm btn-danger"
+                        title="ลบ"
                       >
                         🗑️
                       </button>
