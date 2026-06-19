@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Users, BookOpen, GraduationCap, CalendarDays,
   ClipboardList, FileText, Brain, UserCog, Home, X, Database, CalendarOff, BarChart3,
+  MessageSquare,
 } from 'lucide-react';
 
 const menuGroups: {
@@ -31,6 +32,10 @@ const menuGroups: {
   ]},
   { label: 'ผู้ใช้', items: [
     { href: '/admin/users', label: 'ผู้ใช้งาน', icon: UserCog },
+  ]},
+  { label: 'การสื่อสาร', items: [
+    { href: '/admin/line-messages', label: 'LINE Messages', icon: MessageSquare },
+    { href: '/admin/line-groups', label: 'LINE Groups', icon: Users },
   ]},
   { label: 'ระบบ', items: [
     { href: '/admin/database', label: 'Import / Export', icon: Database },
