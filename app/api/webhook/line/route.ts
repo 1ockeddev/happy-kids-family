@@ -268,7 +268,7 @@ export async function POST(req: NextRequest) {
         const targetId = groupId || roomId;
         
         // Get group from database
-        const group = await queryOne(
+        const group = await queryOne<{ id: string }>(
           `SELECT id FROM line_groups WHERE line_group_id = $1`,
           [targetId]
         ).catch(() => null);
@@ -286,7 +286,7 @@ export async function POST(req: NextRequest) {
         const joinedMembers = event.joined?.members || [];
 
         // Ensure group exists in database
-        let group = await queryOne(
+        let group = await queryOne<{ id: string }>(
           `SELECT id FROM line_groups WHERE line_group_id = $1`,
           [targetId]
         ).catch(() => null);
@@ -329,7 +329,7 @@ export async function POST(req: NextRequest) {
         const leftMembers = event.left?.members || [];
 
         // Get group from database
-        const group = await queryOne(
+        const group = await queryOne<{ id: string }>(
           `SELECT id FROM line_groups WHERE line_group_id = $1`,
           [targetId]
         ).catch(() => null);
@@ -364,7 +364,7 @@ export async function POST(req: NextRequest) {
           const targetId = groupId || roomId;
           
           // Get or create group
-          let group = await queryOne(
+          let group = await queryOne<{ id: string }>(
             `SELECT id FROM line_groups WHERE line_group_id = $1`,
             [targetId]
           ).catch(() => null);
