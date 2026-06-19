@@ -5,10 +5,10 @@ import { serverError } from '@/lib/api-helpers';
 // GET - List members of a group
 export async function GET(
   req: NextRequest,
-  { params }: { params: { groupId: string } }
+  context: { params: Promise<{ groupId: string }> }
 ) {
   try {
-    const { groupId } = params;
+    const { groupId } = await context.params;
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status') || 'active'; // 'active', 'left', 'all'
 
