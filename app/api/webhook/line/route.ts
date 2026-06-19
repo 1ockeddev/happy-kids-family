@@ -286,14 +286,15 @@ export async function POST(req: NextRequest) {
         const joinedMembers = event.joined?.members || [];
 
         // Ensure group exists in database
-        let group = await queryOne<{ id: string }>(
+        let group: { id: string } | null = await queryOne<{ id: string }>(
           `SELECT id FROM line_groups WHERE line_group_id = $1`,
           [targetId]
         ).catch(() => null);
 
         if (!group) {
           // Create group if not exists
-          group = await upsertGroup(targetId, 'Unknown Group', targetType);
+          const newGroup = await upsertGroup(targetId, 'Unknown Group', targetType);
+          group = newGroup as { id: string };
         }
 
         // Add each member
@@ -364,14 +365,15 @@ export async function POST(req: NextRequest) {
           const targetId = groupId || roomId;
           
           // Get or create group
-          let group = await queryOne<{ id: string }>(
+          let group: { id: string } | null = await queryOne<{ id: string }>(
             `SELECT id FROM line_groups WHERE line_group_id = $1`,
             [targetId]
           ).catch(() => null);
 
           if (!group) {
             const targetType = groupId ? 'group' : 'room';
-            group = await upsertGroup(targetId, 'Unknown Group', targetType);
+            const newGroup = await upsertGroup(targetId, 'Unknown Group', targetType);
+            group = newGroup as { id: string };
           }
 
           // Log message event
