@@ -30,7 +30,24 @@ export async function POST(req: NextRequest) {
     const isGroupId = userId.startsWith('C');
     console.log('[LINE] Sending to:', isGroupId ? 'group' : 'user', userId);
 
-    // Send flex message via LINE Messaging API
+    // Detect message type: Flex Message or Template Message
+    let message;
+    
+    if (flexMessage.type === 'template') {
+      // Template Message (buttons, confirm, carousel, image carousel)
+      console.log('[LINE] Detected Template Message type:', flexMessage.template?.type);
+      message = flexMessage; // Use as-is (already has type, altText, template)
+    } else {
+      // Flex Message (bubble, carousel)
+      console.log('[LINE] Detected Flex Message type:', flexMessage.type);
+      message = {
+        type: 'flex',
+        altText: flexMessage.altText || 'Flex Message',
+        contents: flexMessage
+      };
+    }
+
+    // Send message via LINE Messaging API
     const response = await fetch('https://api.line.me/v2/bot/message/push', {
       method: 'POST',
       headers: {
@@ -39,13 +56,7 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         to: userId,
-        messages: [
-          {
-            type: 'flex',
-            altText: 'Flex Message',
-            contents: flexMessage
-          }
-        ]
+        messages: [message]
       }),
     });
 
