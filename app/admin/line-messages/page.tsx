@@ -10,11 +10,22 @@ interface FlexMessageTemplate {
   created_at: string;
 }
 
+interface Recipient {
+  id: string;
+  label: string;
+  type: 'user' | 'group';
+  role?: string;
+  groupType?: string;
+}
+
 export default function LineMessagesPage() {
   const [activeTab, setActiveTab] = useState<'send' | 'templates' | 'webhook'>('send');
   const [templates, setTemplates] = useState<FlexMessageTemplate[]>([]);
+  const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [testUserId, setTestUserId] = useState('');
+  const [showRecipientDropdown, setShowRecipientDropdown] = useState(false);
+  const [filteredRecipients, setFilteredRecipients] = useState<Recipient[]>([]);
   const [customFlexJson, setCustomFlexJson] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -27,7 +38,23 @@ export default function LineMessagesPage() {
 
   useEffect(() => {
     loadTemplates();
+    loadRecipients();
   }, []);
+
+  useEffect(() => {
+    // Filter recipients based on input
+    if (testUserId.trim() === '') {
+      setFilteredRecipients(recipients);
+    } else {
+      const search = testUserId.toLowerCase();
+      setFilteredRecipients(
+        recipients.filter(r => 
+          r.id.toLowerCase().includes(search) || 
+          r.label.toLowerCase().includes(search)
+        )
+      );
+    }
+  }, [testUserId, recipients]);
 
   const loadTemplates = async () => {
     try {
@@ -39,6 +66,24 @@ export default function LineMessagesPage() {
     } catch (error) {
       console.error('Failed to load templates:', error);
     }
+  };
+
+  const loadRecipients = async () => {
+    try {
+      const res = await fetch('/api/line/recipients');
+      if (res.ok) {
+        const data = await res.json();
+        setRecipients(data.recipients || []);
+        setFilteredRecipients(data.recipients || []);
+      }
+    } catch (error) {
+      console.error('Failed to load recipients:', error);
+    }
+  };
+
+  const selectRecipient = (recipient: Recipient) => {
+    setTestUserId(recipient.id);
+    setShowRecipientDropdown(false);
   };
 
   const sendFlexMessage = async () => {
@@ -252,16 +297,98 @@ export default function LineMessagesPage() {
           <div className="card">
             <h2>ส่ง Flex Message ทดสอบ</h2>
             
-            <div className="form-group">
-              <label>LINE User ID</label>
+            <div className="form-group" style={{ position: 'relative' }}>
+              <label>LINE User ID / Group ID</label>
               <input
                 type="text"
                 value={testUserId}
                 onChange={(e) => setTestUserId(e.target.value)}
-                placeholder="U1234567890abcdef..."
+                onFocus={() => setShowRecipientDropdown(true)}
+                onBlur={() => {
+                  // Delay to allow click on dropdown
+                  setTimeout(() => setShowRecipientDropdown(false), 200);
+                }}
+                placeholder="พิมพ์หรือเลือกจากรายการ..."
                 className="form-input"
               />
-              <small>User ID ของผู้รับข้อความ (ดูได้จาก webhook events)</small>
+              <small>
+                User ID (U...) สำหรับส่งถึงผู้ใช้ หรือ Group ID (C...) สำหรับส่งถึงกลุ่ม
+              </small>
+              
+              {showRecipientDropdown && filteredRecipients.length > 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  background: 'white',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '8px',
+                  maxHeight: '300px',
+                  overflowY: 'auto',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  zIndex: 1000,
+                  marginTop: '4px'
+                }}>
+                  {filteredRecipients.map((recipient) => (
+                    <div
+                      key={recipient.id}
+                      onClick={() => selectRecipient(recipient)}
+                      style={{
+                        padding: '10px 14px',
+                        cursor: 'pointer',
+                        borderBottom: '1px solid #F3F4F6',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        transition: 'background 0.15s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#F9FAFB'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                    >
+                      <span style={{
+                        fontSize: '16px',
+                        flexShrink: 0
+                      }}>
+                        {recipient.type === 'user' ? '👤' : '👥'}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          fontSize: '14px',
+                          fontWeight: 600,
+                          color: '#1F2937',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {recipient.label}
+                        </div>
+                        <div style={{
+                          fontSize: '11px',
+                          color: '#9CA3AF',
+                          fontFamily: 'monospace',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {recipient.id}
+                        </div>
+                      </div>
+                      <span style={{
+                        fontSize: '10px',
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                        background: recipient.type === 'user' ? '#DBEAFE' : '#D1FAE5',
+                        color: recipient.type === 'user' ? '#1E40AF' : '#065F46',
+                        fontWeight: 600,
+                        flexShrink: 0
+                      }}>
+                        {recipient.type === 'user' ? 'USER' : 'GROUP'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="form-group">
