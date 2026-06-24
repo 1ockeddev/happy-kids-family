@@ -95,7 +95,7 @@ export default function AdminLoginPage() {
                 padding: '12px 16px',
                 border: '1px solid #E5E7EB',
                 borderRadius: '8px',
-                fontSize: '14px',
+                fontSize: '16px',
                 outline: 'none',
                 transition: 'all 0.2s'
               }}
@@ -125,7 +125,7 @@ export default function AdminLoginPage() {
                 padding: '12px 16px',
                 border: '1px solid #E5E7EB',
                 borderRadius: '8px',
-                fontSize: '14px',
+                fontSize: '16px',
                 outline: 'none',
                 transition: 'all 0.2s'
               }}
