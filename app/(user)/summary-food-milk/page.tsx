@@ -198,20 +198,20 @@ export default function FoodMilkSummaryPage() {
                     {foodNotes.map((item, idx) => (
                       <div key={idx} style={{
                         padding:'12px',
-                        background:'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                        background:'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
                         borderRadius:12,
-                        border:'1px solid #fbbf24'
+                        border:'1px solid #93c5fd'
                       }}>
-                        <div style={{fontSize:'0.9rem',fontWeight:700,color:'#92400e',marginBottom:6}}>
+                        <div style={{fontSize:'0.9rem',fontWeight:700,color:'#1e3a8a',marginBottom:6}}>
                           {item.name}
                         </div>
                         <div style={{display:'flex',flexDirection:'column',gap:4}}>
                           {item.notes.map((note, noteIdx) => (
                             <div key={noteIdx} style={{
                               fontSize:'0.8rem',
-                              color:'#78350f',
+                              color:'#1e40af',
                               paddingLeft:8,
-                              borderLeft:'2px solid #f59e0b'
+                              borderLeft:'2px solid #3b82f6'
                             }}>
                               {note}
                             </div>
@@ -270,20 +270,20 @@ export default function FoodMilkSummaryPage() {
                     {fruitNotes.map((item, idx) => (
                       <div key={idx} style={{
                         padding:'12px',
-                        background:'linear-gradient(135deg, #fecaca 0%, #fca5a5 100%)',
+                        background:'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)',
                         borderRadius:12,
-                        border:'1px solid #f87171'
+                        border:'1px solid #7dd3fc'
                       }}>
-                        <div style={{fontSize:'0.9rem',fontWeight:700,color:'#991b1b',marginBottom:6}}>
+                        <div style={{fontSize:'0.9rem',fontWeight:700,color:'#0c4a6e',marginBottom:6}}>
                           {item.name}
                         </div>
                         <div style={{display:'flex',flexDirection:'column',gap:4}}>
                           {item.notes.map((note, noteIdx) => (
                             <div key={noteIdx} style={{
                               fontSize:'0.8rem',
-                              color:'#7f1d1d',
+                              color:'#075985',
                               paddingLeft:8,
-                              borderLeft:'2px solid #ef4444'
+                              borderLeft:'2px solid #0ea5e9'
                             }}>
                               {note}
                             </div>

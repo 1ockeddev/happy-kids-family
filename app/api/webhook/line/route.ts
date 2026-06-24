@@ -69,12 +69,13 @@ async function getGroupMemberProfile(groupId: string, userId: string) {
 // ── DB: upsert user ───────────────────────────────────────────
 async function upsertUser(userId: string, displayName: string, pictureUrl?: string) {
   return queryOne(
-    `INSERT INTO app_user (id, line_user_id, role, status, display_name, picture_url)
-     VALUES (gen_random_uuid(), $1, 'parent', 'active', $2, $3)
+    `INSERT INTO app_user (id, line_user_id, role, status, display_name, line_display_name, picture_url)
+     VALUES (gen_random_uuid(), $1, 'parent', 'active', $2, $2, $3)
      ON CONFLICT (line_user_id) DO UPDATE SET
-       display_name = COALESCE(EXCLUDED.display_name, app_user.display_name),
-       picture_url  = COALESCE(EXCLUDED.picture_url,  app_user.picture_url),
-       status       = 'active'
+       line_display_name = $2,
+       picture_url  = $3,
+       status       = 'active',
+       updated_at   = NOW()
      RETURNING id, display_name`,
     [userId, displayName, pictureUrl ?? null]
   );
@@ -86,8 +87,8 @@ async function upsertGroup(groupId: string, groupName: string, groupType: string
     `INSERT INTO line_groups (id, line_group_id, group_name, group_type, status, picture_url, joined_at)
      VALUES (gen_random_uuid(), $1, $2, $3, 'active', $4, NOW())
      ON CONFLICT (line_group_id) DO UPDATE SET
-       group_name = COALESCE(EXCLUDED.group_name, line_groups.group_name),
-       picture_url = COALESCE(EXCLUDED.picture_url, line_groups.picture_url),
+       group_name = $2,
+       picture_url = $4,
        status = 'active',
        joined_at = COALESCE(line_groups.joined_at, NOW()),
        updated_at = NOW()
@@ -108,8 +109,8 @@ async function upsertGroupMember(groupDbId: string, lineUserId: string, displayN
     `INSERT INTO line_group_members (id, group_id, user_id, line_user_id, display_name, picture_url, status, joined_at)
      VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'active', NOW())
      ON CONFLICT (group_id, line_user_id) DO UPDATE SET
-       display_name = COALESCE(EXCLUDED.display_name, line_group_members.display_name),
-       picture_url = COALESCE(EXCLUDED.picture_url, line_group_members.picture_url),
+       display_name = $4,
+       picture_url = $5,
        status = 'active',
        left_at = NULL,
        updated_at = NOW()

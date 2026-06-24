@@ -295,7 +295,7 @@ export default function LineMessagesPage() {
       {activeTab === 'send' && (
         <div className="tab-content">
           <div className="card">
-            <h2>ส่ง Flex Message ทดสอบ</h2>
+            <h2>ส่ง Flex Message</h2>
             
             <div className="form-group" style={{ position: 'relative' }}>
               <label>LINE User ID / Group ID</label>

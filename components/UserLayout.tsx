@@ -1,6 +1,7 @@
 'use client';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { useUserApp } from './UserAppProvider';
+import { useProfileSync } from '@/lib/useProfileSync';
 import AppHeader from './AppHeader';
 import BottomNavigation from './BottomNavigation';
 
@@ -10,6 +11,9 @@ interface UserLayoutProps {
 }
 
 export default function UserLayout({ children, subtitle }: UserLayoutProps) {
+  // Auto-sync profile when app opens
+  useProfileSync();
+
   const {
     currentUser,
     liffReady,
