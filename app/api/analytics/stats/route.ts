@@ -8,7 +8,10 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   try {
     const session = await getSessionFromRequest(req);
+    console.log('[Analytics Stats] Session:', session);
+    
     if (!session || session.role !== 'admin') {
+      console.log('[Analytics Stats] Unauthorized - session:', session);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -16,6 +19,8 @@ export async function GET(req: NextRequest) {
     const date_from = searchParams.get('date_from');
     const date_to = searchParams.get('date_to');
     const user_id = searchParams.get('user_id');
+
+    console.log('[Analytics Stats] Filters:', { date_from, date_to, user_id });
 
     let dateFilter = '';
     const params: any[] = [];
@@ -35,6 +40,8 @@ export async function GET(req: NextRequest) {
       dateFilter += ` AND timestamp <= $${params.length}`;
     }
 
+    console.log('[Analytics Stats] Date filter:', dateFilter, 'Params:', params);
+
     // 1. Most visited pages
     const mostVisitedPages = await query(
       `SELECT 
@@ -49,6 +56,7 @@ export async function GET(req: NextRequest) {
       LIMIT 20`,
       params
     );
+    console.log('[Analytics Stats] Most visited pages:', mostVisitedPages.length);
 
     // 2. Most clicked elements
     const mostClickedElements = await query(
@@ -65,6 +73,7 @@ export async function GET(req: NextRequest) {
       LIMIT 20`,
       params
     );
+    console.log('[Analytics Stats] Most clicked elements:', mostClickedElements.length);
 
     // 3. User navigation patterns (from -> to)
     const navigationPatterns = await query(
@@ -80,6 +89,7 @@ export async function GET(req: NextRequest) {
       LIMIT 20`,
       params
     );
+    console.log('[Analytics Stats] Navigation patterns:', navigationPatterns.length);
 
     // 4. Daily activity (last 30 days)
     const dailyActivity = await query(
@@ -95,6 +105,7 @@ export async function GET(req: NextRequest) {
       ORDER BY date DESC`,
       params
     );
+    console.log('[Analytics Stats] Daily activity:', dailyActivity.length);
 
     // 5. User engagement (top active users)
     // When filtering by user_id, still show all users but the stats will be for the selected user
@@ -108,7 +119,8 @@ export async function GET(req: NextRequest) {
         SUM(CASE WHEN a.event_type = 'page_view' THEN 1 ELSE 0 END) as page_views,
         SUM(CASE WHEN a.event_type = 'click' THEN 1 ELSE 0 END) as clicks,
         SUM(a.duration_seconds) as total_time_seconds,
-        MAX(a.timestamp) as last_active
+        MAX(a.timestamp) as last_active,
+        COUNT(*) as total_events
       FROM user_analytics a
       JOIN app_user u ON u.id = a.user_id
       WHERE 1=1 ${topActiveUsersFilter}
@@ -117,6 +129,7 @@ export async function GET(req: NextRequest) {
       LIMIT 20`,
       user_id ? [] : params
     );
+    console.log('[Analytics Stats] Top active users:', topActiveUsers.length);
 
     // 6. Average session duration by page
     const avgDurationByPage = await query(
@@ -132,6 +145,7 @@ export async function GET(req: NextRequest) {
       ORDER BY avg_duration_seconds DESC`,
       params
     );
+    console.log('[Analytics Stats] Avg duration by page:', avgDurationByPage.length);
 
     // 7. Hourly activity pattern (all time)
     const hourlyPattern = await query(
@@ -145,8 +159,9 @@ export async function GET(req: NextRequest) {
       ORDER BY hour`,
       params
     );
+    console.log('[Analytics Stats] Hourly pattern:', hourlyPattern.length);
 
-    return NextResponse.json({
+    const result = {
       mostVisitedPages,
       mostClickedElements,
       navigationPatterns,
@@ -154,11 +169,15 @@ export async function GET(req: NextRequest) {
       topActiveUsers,
       avgDurationByPage,
       hourlyPattern,
-    }, { status: 200 });
+    };
+
+    console.log('[Analytics Stats] Returning result with', topActiveUsers.length, 'users');
+    
+    return NextResponse.json(result, { status: 200 });
   } catch (error) {
-    console.error('Analytics stats error:', error);
+    console.error('[Analytics Stats] Error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

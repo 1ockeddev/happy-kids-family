@@ -13,35 +13,27 @@ const SkCircle = ({size=40}:{size?:number}) =>
   <div style={{...shimmer,width:size,height:size,borderRadius:'50%',flexShrink:0}} />;
 
 function Avatar({src,name,size=42,active,accentColor='#6366f1'}:{src?:string|null;name?:string|null;size?:number;active?:boolean;accentColor?:string}) {
-  const [imageError, setImageError] = React.useState(false);
-  const [imageLoading, setImageLoading] = React.useState(true);
+  const [imgSrc, setImgSrc] = React.useState(src || 'https://linedeveloperth.web.app/imgs/icon.png');
+  const fallbackImage = 'https://linedeveloperth.web.app/imgs/icon.png';
   
-  const initial = (name ?? '?').slice(0,1).toUpperCase();
-  const colors  = ['#E8754A','#6366f1','#4A90B8','#4CAF76','#F5A623','#E85C5C','#ec4899','#34d399'];
-  const bg      = colors[(initial.charCodeAt(0))%colors.length];
-  
-  const showInitials = !src || imageError;
-  
-  if (showInitials) {
-    return <div style={{width:size,height:size,borderRadius:'50%',background:active?bg:'#f1f5f9',display:'flex',alignItems:'center',justifyContent:'center',color:active?'white':'#94a3b8',fontSize:size*0.4,fontWeight:700,border:`2px solid ${active?accentColor:'#e2e8f0'}`,opacity:active?1:0.35,transition:'all .2s',flexShrink:0}}>
-      {initial}
-    </div>;
-  }
+  // Update imgSrc when src prop changes
+  React.useEffect(() => {
+    setImgSrc(src || fallbackImage);
+  }, [src]);
   
   return (
     <div style={{position:'relative',width:size,height:size,flexShrink:0}}>
       <img 
-        src={src} 
+        src={imgSrc} 
         alt={name||''} 
-        onError={() => setImageError(true)}
-        onLoad={() => setImageLoading(false)}
+        onError={() => {
+          // If not already using fallback, switch to it
+          if (imgSrc !== fallbackImage) {
+            setImgSrc(fallbackImage);
+          }
+        }}
         style={{width:size,height:size,borderRadius:'50%',objectFit:'cover',border:`2px solid ${active?accentColor:'#e2e8f0'}`,opacity:active?1:0.35,transition:'all .2s'}} 
       />
-      {imageLoading && (
-        <div style={{position:'absolute',top:0,left:0,width:size,height:size,borderRadius:'50%',background:active?bg:'#f1f5f9',display:'flex',alignItems:'center',justifyContent:'center',color:active?'white':'#94a3b8',fontSize:size*0.4,fontWeight:700,border:`2px solid ${active?accentColor:'#e2e8f0'}`,opacity:active?1:0.35}}>
-          {initial}
-        </div>
-      )}
     </div>
   );
 }
