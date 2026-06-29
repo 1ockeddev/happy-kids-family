@@ -67,8 +67,8 @@ export async function clearSessionCookie() {
   cookieStore.delete(COOKIE_NAME);
 }
 
-export function getSessionFromRequest(req: NextRequest) {
+export async function getSessionFromRequest(req: NextRequest): Promise<{ username: string; role: string } | null> {
   const token = req.cookies.get(COOKIE_NAME)?.value;
   if (!token) return null;
-  return verifySession(token);
+  return await verifySession(token);
 }
