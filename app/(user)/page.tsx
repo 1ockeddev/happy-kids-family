@@ -268,6 +268,42 @@ function LiffPageContent() {
     acc[s.category_id].items.push(s); return acc;
   },{});
   
+  // Calculate child age
+  const getChildAge = () => {
+    if (!selectedChild?.birthdate || !currentEntry?.date) return null;
+    
+    const birthDate = new Date(selectedChild.birthdate);
+    const activityDate = new Date(currentEntry.date);
+    
+    let years = activityDate.getFullYear() - birthDate.getFullYear();
+    let months = activityDate.getMonth() - birthDate.getMonth();
+    let days = activityDate.getDate() - birthDate.getDate();
+    
+    // Adjust if days is negative
+    if (days < 0) {
+      months--;
+      const prevMonth = new Date(activityDate.getFullYear(), activityDate.getMonth(), 0);
+      days += prevMonth.getDate();
+    }
+    
+    // Adjust if months is negative
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+    
+    // Format age string with all units
+    const parts = [];
+    if (years > 0) parts.push(`${years} ปี`);
+    if (months > 0) parts.push(`${months} เดือน`);
+    if (days > 0) parts.push(`${days} วัน`);
+    
+    // If no parts, return 0 days
+    return parts.length > 0 ? parts.join(' ') : '0 วัน';
+  };
+  
+  const childAge = getChildAge();
+  
   // Development mode: Toggle role (only on localhost)
   const [isDevelopment, setIsDevelopment] = useState(false);
   const [showDevMenu, setShowDevMenu] = useState(false);
@@ -381,7 +417,7 @@ function LiffPageContent() {
           cohorts={cohorts}
           cohortId={cohortId}
           onCohortSelect={setCohortId}
-          subtitle={selectedChild && currentEntry ? thDate(currentEntry.date) : selectedChild ? 'รอลงข้อมูล' : undefined}
+          subtitle={childAge ? `อายุ ${childAge}` : selectedChild ? 'รอลงข้อมูล' : undefined}
         />
 
         {/* ─── CONTRIBUTION GRAPH ─────────────────── */}
@@ -423,6 +459,7 @@ function LiffPageContent() {
               currentEntry={currentEntry}
               reportLoading={reportLoading}
               behaviorGroups={behaviorGroups}
+              selectedChild={selectedChild}
             />
           </div>
         )}

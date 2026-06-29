@@ -14,6 +14,7 @@ interface DailyReportViewProps {
   currentEntry: DayEntry | null;
   reportLoading: boolean;
   behaviorGroups: Record<string, { name_th: string; items: BehaviorScore[] }>;
+  selectedChild: { id: string; birthdate: string | null; [key: string]: any } | undefined;
 }
 
 // Helper function to get badge colors based on status
@@ -44,7 +45,8 @@ export default function DailyReportView({
   teacher,
   currentEntry,
   reportLoading,
-  behaviorGroups
+  behaviorGroups,
+  selectedChild
 }: DailyReportViewProps) {
   const exDiaper = report?.excretions?.filter((e) => e.action === 'diaper') ?? [];
   const exPotty = report?.excretions?.filter((e) => e.action === 'potty') ?? [];
@@ -64,7 +66,7 @@ export default function DailyReportView({
       {attendance && <AttendanceCard attendance={attendance} report={report} />}
 
       {/* Activity Card */}
-      {report?.daily?.activity && <ActivityCard activity={report.daily.activity} />}
+      {report?.daily?.activity && <ActivityCard activity={report.daily.activity} currentEntry={currentEntry} />}
 
       {/* Teacher Note Card */}
       {report?.note && <TeacherNoteCard note={report.note} />}
@@ -82,7 +84,7 @@ export default function DailyReportView({
       {(exDiaper.length > 0 || exPotty.length > 0) && <ExcretionSection exDiaper={exDiaper} exPotty={exPotty} />}
 
       {/* Teacher Footer */}
-      <TeacherFooter teacher={teacher} currentEntry={currentEntry} />
+      <TeacherFooter teacher={teacher} currentEntry={currentEntry} selectedChild={selectedChild} />
     </div>
   );
 }
@@ -188,9 +190,10 @@ function AttendanceCard({ attendance, report }: AttendanceCardProps) {
 /* ─── Activity Card ─────────────────────────────── */
 interface ActivityCardProps {
   activity: string;
+  currentEntry: DayEntry | null;
 }
 
-function ActivityCard({ activity }: ActivityCardProps) {
+function ActivityCard({ activity, currentEntry }: ActivityCardProps) {
   return (
     <div
       id="todays-activity"
@@ -203,6 +206,11 @@ function ActivityCard({ activity }: ActivityCardProps) {
         textAlign: 'center'
       }}
     >
+      {currentEntry && (
+        <p style={{ fontSize: '0.72rem', color: '#94a3b8', margin: '0 0 12px 0' }}>
+          {thDate(currentEntry.date)}
+        </p>
+      )}
       <span
         style={{
           fontSize: '0.7rem',
@@ -1052,16 +1060,16 @@ function ExcretionSection({ exDiaper, exPotty }: ExcretionSectionProps) {
 interface TeacherFooterProps {
   teacher: AppUser | null;
   currentEntry: DayEntry | null;
+  selectedChild: { id: string; birthdate: string | null; [key: string]: any } | undefined;
 }
 
-function TeacherFooter({ teacher, currentEntry }: TeacherFooterProps) {
+function TeacherFooter({ teacher, currentEntry, selectedChild }: TeacherFooterProps) {
   return (
     <div style={{ textAlign: 'center', marginTop: 24, paddingTop: 16, borderTop: '1px solid #f1f5f9' }}>
       <p style={{ margin: '2px 0', color: '#94a3b8', fontSize: '0.8rem' }}>บันทึกโดยคุณครู</p>
       <p style={{ margin: '2px 0', color: '#475569', fontWeight: 600, fontSize: '0.88rem' }}>
         {teacher?.display_name ?? 'Happy Kids'}
       </p>
-      {currentEntry && <p style={{ marginTop: 8, fontSize: '0.72rem', color: '#94a3b8' }}>{thDate(currentEntry.date)}</p>}
     </div>
   );
 }

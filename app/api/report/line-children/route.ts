@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     if (!line_user_id) return badRequest('line_user_id จำเป็น');
 
     const rows = await query(
-      `SELECT c.id, c.name_th, c.name_en, c.photo_url
+      `SELECT c.id, c.name_th, c.name_en, c.photo_url, c.birthdate
        FROM app_user u
        JOIN parent_child pc ON pc.parent_id = u.id
        JOIN child c         ON c.id = pc.child_id
