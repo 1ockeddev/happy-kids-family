@@ -775,8 +775,8 @@ function NapTimeline({ report }: NapTimelineProps) {
           const napWidthPercent = ((napEnd - napStart) / totalRange) * 100;
 
           // Light blue background (extended nap area)
-          const bgStart = Math.max(dayMid, dayStart);
-          const bgEnd = dayEnd;
+          const bgStart = dayMid;
+          const bgEnd = 14 * 60;        // 14:00
           const bgLeftPercent = ((bgStart - dayStart) / totalRange) * 100;
           const bgWidthPercent = ((bgEnd - bgStart) / totalRange) * 100;
 
@@ -786,8 +786,24 @@ function NapTimeline({ report }: NapTimelineProps) {
             return (totalMin / 720) * 360;
           };
 
-          const startAngle = getAngle(startTime.hours, startTime.minutes);
-          const startPercent = (startAngle / 360) * 100;
+          // Convert napStart/napEnd minutes to hours:minutes for angle calculation
+          const napStartHours = Math.floor(napStart / 60);
+          const napStartMinutes = napStart % 60;
+          const napEndHours = Math.floor(napEnd / 60);
+          const napEndMinutes = napEnd % 60;
+
+          // Calculate angles for actual nap time
+          const napStartAngle = getAngle(napStartHours, napStartMinutes);
+          const napEndAngle = getAngle(napEndHours, napEndMinutes);
+          
+          // Calculate percentages for conic gradient
+          const napStartPercent = (napStartAngle / 360) * 100;
+          const napEndPercent = (napEndAngle / 360) * 100;
+
+          // Fixed hour hand at 12:00 (0deg) and minute hand at 14:00 (60deg)
+          const hourHandAngle = 0;    // 12:00
+          const minuteHandAngle = 60; // 14:00 (2 o'clock position)
+          const minuteHandPercent = (minuteHandAngle / 360) * 100; // 16.67%
 
           return (
             <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
@@ -797,13 +813,13 @@ function NapTimeline({ report }: NapTimelineProps) {
                   width: 50,
                   height: 50,
                   borderRadius: '50%',
-                  background: `conic-gradient(#e2e8f0 0% ${startPercent}%, #818cf8 ${startPercent}% ${startPercent + 0.5}%, #e2e8f0 ${startPercent + 0.5}% 100%)`,
+                  background: `conic-gradient(#e0f2fe 0% ${napStartPercent}%, #818cf8 ${napStartPercent}% ${napEndPercent}%, #e0f2fe ${napEndPercent}% ${minuteHandPercent}%, #e2e8f0 ${minuteHandPercent}% 100%)`,
                   position: 'relative',
                   flexShrink: 0,
                   border: '2px solid #f8fafc'
                 }}
               >
-                {/* Hour hand */}
+                {/* Hour hand - fixed at 12:00 */}
                 <div
                   style={{
                     position: 'absolute',
@@ -812,11 +828,11 @@ function NapTimeline({ report }: NapTimelineProps) {
                     width: '1.5px',
                     height: '20px',
                     background: '#60a5fa',
-                    transform: `translate(-50%, -100%) rotate(${startAngle}deg)`,
+                    transform: `translate(-50%, -100%) rotate(${hourHandAngle}deg)`,
                     transformOrigin: 'bottom'
                   }}
                 ></div>
-                {/* Minute hand */}
+                {/* Minute hand - fixed at 14:00 */}
                 <div
                   style={{
                     position: 'absolute',
@@ -825,7 +841,7 @@ function NapTimeline({ report }: NapTimelineProps) {
                     width: '1.5px',
                     height: '20px',
                     background: '#60a5fa',
-                    transform: `translate(-50%, -100%) rotate(${startAngle + 60}deg)`,
+                    transform: `translate(-50%, -100%) rotate(${minuteHandAngle}deg)`,
                     transformOrigin: 'bottom'
                   }}
                 ></div>
