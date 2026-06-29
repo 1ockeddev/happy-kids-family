@@ -54,7 +54,16 @@ export default function AnalyticsPage() {
       if (dateTo) params.append('date_to', dateTo);
       if (params.toString()) url += `?${params.toString()}`;
 
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        credentials: 'include' // ✅ Ensure cookies are sent
+      });
+      
+      if (res.status === 401) {
+        console.error('Unauthorized - redirecting to login');
+        window.location.href = '/admin/login';
+        return;
+      }
+      
       const data = await res.json();
       setStats(data);
     } catch (error) {
@@ -75,7 +84,16 @@ export default function AnalyticsPage() {
       if (dateTo) params.append('date_to', dateTo);
       if (params.toString()) url = `/api/analytics/recent?${params.toString()}`;
 
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        credentials: 'include' // ✅ Ensure cookies are sent
+      });
+      
+      if (res.status === 401) {
+        console.error('Unauthorized - redirecting to login');
+        window.location.href = '/admin/login';
+        return;
+      }
+      
       const data = await res.json();
       
       // Check if response is an error
@@ -123,7 +141,16 @@ export default function AnalyticsPage() {
       if (dateTo) params.append('date_to', dateTo);
       if (params.toString()) url += `&${params.toString()}`;
 
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        credentials: 'include' // ✅ Ensure cookies are sent
+      });
+      
+      if (res.status === 401) {
+        console.error('Unauthorized - redirecting to login');
+        window.location.href = '/admin/login';
+        return;
+      }
+      
       const data = await res.json();
       
       // Check if response is an error or not an array

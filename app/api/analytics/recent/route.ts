@@ -8,19 +8,22 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   try {
     console.log('[Analytics Recent] Starting request...');
+    console.log('[Analytics Recent] Cookies:', req.cookies.getAll());
     
     const session = await getSessionFromRequest(req);
     
+    console.log('[Analytics Recent] Session result:', session);
+    
     if (!session) {
-      console.log('[Analytics Recent] No session found');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      console.log('[Analytics Recent] No session found - Unauthorized');
+      return NextResponse.json({ error: 'Unauthorized - No session' }, { status: 401 });
     }
 
     console.log('[Analytics Recent] Session found:', session.username, 'role:', session.role);
 
     // Admin session doesn't have a user in database
     // Just verify role from session
-    if (session.role !== 'admin') {
+    if (session.role !== 'admin' && session.role !== 'super_admin') {
       console.log('[Analytics Recent] Not admin:', session.role);
       return NextResponse.json({ error: 'Unauthorized - Admin only' }, { status: 401 });
     }

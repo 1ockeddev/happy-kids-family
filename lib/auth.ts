@@ -13,6 +13,8 @@ function getSecret() {
 export async function createSession(username: string): Promise<string> {
   // Check if user is super admin from env
   const role = isSuperAdmin(username) ? 'super_admin' : 'admin';
+  console.log('[Auth] Creating session for:', username, 'with role:', role);
+  
   return new SignJWT({ username, role })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -34,12 +36,17 @@ export function checkSuperAdmin(session: { username: string; role: string } | nu
 
 export async function verifySession(token: string) {
   // guard: JWT ต้องเป็น string ที่มี 3 ส่วนคั่นด้วย "." เท่านั้น
-  if (!token || token.split('.').length !== 3) return null;
+  if (!token || token.split('.').length !== 3) {
+    console.log('[Auth] Invalid token format');
+    return null;
+  }
   try {
     const { payload } = await jwtVerify(token, getSecret());
+    console.log('[Auth] Token verified, payload:', payload);
     return payload as { username: string; role: string };
-  } catch {
+  } catch (error) {
     // ครอบ error ทุกแบบ: InvalidCompactJWS, expired, wrong secret ฯลฯ
+    console.log('[Auth] Token verification failed:', error);
     return null;
   }
 }
@@ -53,9 +60,13 @@ export async function getSession() {
 
 export async function setSessionCookie(token: string) {
   const cookieStore = await cookies();
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  console.log('[Auth] Setting session cookie, isProduction:', isProduction);
+  
   cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isProduction,
     sameSite: 'lax',
     maxAge: MAX_AGE,
     path: '/',
