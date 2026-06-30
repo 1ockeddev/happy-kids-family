@@ -321,8 +321,8 @@ export default function LineMessagesPage() {
                   top: '100%',
                   left: 0,
                   right: 0,
-                  background: 'white',
-                  border: '1px solid #E5E7EB',
+                  background: 'var(--bg-primary)',
+                  border: '1px solid var(--border-color)',
                   borderRadius: '8px',
                   maxHeight: '300px',
                   overflowY: 'auto',
@@ -337,7 +337,7 @@ export default function LineMessagesPage() {
                       style={{
                         padding: '10px 14px',
                         cursor: 'pointer',
-                        borderBottom: '1px solid #F3F4F6',
+                        borderBottom: '1px solid var(--border-color)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
@@ -365,7 +365,7 @@ export default function LineMessagesPage() {
                         </div>
                         <div style={{
                           fontSize: '11px',
-                          color: '#9CA3AF',
+                          color: 'var(--text-secondary)',
                           fontFamily: 'monospace',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -461,7 +461,7 @@ export default function LineMessagesPage() {
                   onClick={cancelEdit}
                   style={{
                     padding: '6px 12px',
-                    background: 'white',
+                    background: 'var(--bg-primary)',
                     border: '1px solid #fcd34d',
                     borderRadius: '6px',
                     cursor: 'pointer',

@@ -65,15 +65,15 @@ export default async function AdminDashboard() {
   return (
     <>
       {/* Header */}
-      <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E5E7EB', padding: '14px 16px' }}>
+      <div style={{ background: 'var(--bg-primary)', borderBottom: '1px solid var(--border-color)', padding: '14px 16px', transition: 'background 0.3s, border-color 0.3s' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#1A1A2E' }}>Dashboard</h1>
-            <p style={{ color: '#9CA3AF', fontSize: '14px', marginTop: '2px' }}>ภาพรวมระบบ KinderCare</p>
+            <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)' }}>Dashboard</h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '2px' }}>ภาพรวมระบบ KinderCare</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ padding: '6px 14px', background: '#F0EEFF', borderRadius: '99px', color: '#6C5CE7', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <User size={14} color="#6C5CE7" /> Admin
+            <div style={{ padding: '6px 14px', background: 'var(--accent-bg)', borderRadius: '99px', color: 'var(--accent-color)', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <User size={14} color="var(--accent-color)" /> Admin
             </div>
           </div>
         </div>
@@ -86,7 +86,7 @@ export default async function AdminDashboard() {
             <div key={stat.label} className="card" style={{ padding: '20px 24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <p style={{ color: '#9CA3AF', fontSize: '13px', marginBottom: '6px' }}>{stat.label}</p>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '6px' }}>{stat.label}</p>
                   <p style={{ fontSize: '32px', fontWeight: '700', color: stat.color, fontFamily: 'Prompt, sans-serif' }}>{stat.value}</p>
                 </div>
                 <div style={{ width: 48, height: 48, borderRadius: '12px', background: stat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' }}>
@@ -100,36 +100,36 @@ export default async function AdminDashboard() {
         {/* Today's dailies */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px', marginBottom: '32px' }}>
           <div className="card">
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <CalendarIcon size={16} color="#6366f1" />
-              <h3 style={{ fontSize: '15px', fontWeight: '600' }}>บันทึกวันนี้</h3>
+              <h3 style={{ fontSize: '15px', fontWeight: '600', color: 'var(--text-primary)' }}>บันทึกวันนี้</h3>
             </div>
             <div style={{ padding: '0' }}>
               {dailies.length === 0 ? (
-                <p style={{ padding: '20px', color: '#9CA3AF', fontSize: '14px' }}>ยังไม่มีบันทึกวันนี้</p>
+                <p style={{ padding: '20px', color: 'var(--text-secondary)', fontSize: '14px' }}>ยังไม่มีบันทึกวันนี้</p>
               ) : dailies.map((d: any) => (
-                <div key={d.id} style={{ padding: '14px 20px', borderBottom: '1px solid #F3F4F6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div key={d.id} style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <p style={{ fontWeight: '500', fontSize: '14px' }}>{d.cohort?.name || 'ไม่ระบุห้อง'}</p>
-                    <p style={{ color: '#9CA3AF', fontSize: '12px' }}>{d.activity || 'ไม่มีกิจกรรม'}</p>
+                    <p style={{ fontWeight: '500', fontSize: '14px', color: 'var(--text-primary)' }}>{d.cohort?.name || 'ไม่ระบุห้อง'}</p>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>{d.activity || 'ไม่มีกิจกรรม'}</p>
                   </div>
-                  <span style={{ fontSize: '12px', color: '#4CAF76', background: '#EBF7F0', padding: '2px 10px', borderRadius: '99px' }}>บันทึกแล้ว</span>
+                  <span className="badge-success-inline">บันทึกแล้ว</span>
                 </div>
               ))}
             </div>
           </div>
 
           <div className="card">
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <CheckCircle size={16} color="#6366f1" />
-              <h3 style={{ fontSize: '15px', fontWeight: '600' }}>สถานะการเข้าเรียนวันนี้</h3>
+              <h3 style={{ fontSize: '15px', fontWeight: '600', color: 'var(--text-primary)' }}>สถานะการเข้าเรียนวันนี้</h3>
             </div>
             <div style={{ padding: '0' }}>
               {attendances.length === 0 ? (
-                <p style={{ padding: '20px', color: '#9CA3AF', fontSize: '14px' }}>ยังไม่มีข้อมูลการเข้าเรียนวันนี้</p>
+                <p style={{ padding: '20px', color: 'var(--text-secondary)', fontSize: '14px' }}>ยังไม่มีข้อมูลการเข้าเรียนวันนี้</p>
               ) : attendances.slice(0, 10).map((a: any) => (
-                <div key={a.id} style={{ padding: '12px 20px', borderBottom: '1px solid #F3F4F6', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <p style={{ fontSize: '14px' }}>{a.child?.name_th || a.child?.name_en || 'ไม่ระบุชื่อ'}</p>
+                <div key={a.id} style={{ padding: '12px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <p style={{ fontSize: '14px', color: 'var(--text-primary)' }}>{a.child?.name_th || a.child?.name_en || 'ไม่ระบุชื่อ'}</p>
                   <span className={`badge badge-${a.status}`}>
                     {a.status === 'present' ? 'มาเรียน' : a.status === 'absent' ? 'ขาด' : a.status === 'sick' ? 'ป่วย' : 'ลา'}
                   </span>
@@ -141,7 +141,7 @@ export default async function AdminDashboard() {
 
         {/* Quick Links */}
         <div>
-          <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-primary)' }}>
             <Zap size={16} color="#6366f1" /> เมนูลัด
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
@@ -149,8 +149,8 @@ export default async function AdminDashboard() {
               <Link key={link.href} href={link.href} style={{ textDecoration: 'none' }}>
                 <div className="card" style={{ padding: '16px', cursor: 'pointer', transition: 'all 0.15s' }}>
                   <div style={{ fontSize: '24px', marginBottom: '8px' }}>{link.icon}</div>
-                  <p style={{ fontWeight: '600', fontSize: '13px', marginBottom: '4px', color: '#1A1A2E' }}>{link.label}</p>
-                  <p style={{ fontSize: '12px', color: '#9CA3AF' }}>{link.desc}</p>
+                  <p style={{ fontWeight: '600', fontSize: '13px', marginBottom: '4px', color: 'var(--text-primary)' }}>{link.label}</p>
+                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{link.desc}</p>
                 </div>
               </Link>
             ))}

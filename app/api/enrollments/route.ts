@@ -6,6 +6,8 @@ export async function GET(req: NextRequest) {
   try {
     const search = req.nextUrl.searchParams.get('search') ?? '';
     const cohort_id = req.nextUrl.searchParams.get('cohort_id') ?? '';
+    const include_hidden = req.nextUrl.searchParams.get('include_hidden') === 'true';
+    
     const rows = await query(
       `SELECT 
          e.id,
@@ -14,6 +16,7 @@ export async function GET(req: NextRequest) {
          to_char(e.start_date, 'YYYY-MM-DD') AS start_date,
          to_char(e.end_date, 'YYYY-MM-DD') AS end_date,
          e.graduated,
+         e.hidden,
          e.created_at,
          json_build_object(
            'id', c.id, 
@@ -43,8 +46,9 @@ export async function GET(req: NextRequest) {
               c.nickname_th ILIKE $2 OR
               c.nickname_en ILIKE $2)
          AND ($3 = '' OR e.cohort_id::text = $3)
+         AND ($4 OR e.hidden = FALSE)
        ORDER BY c.nickname_th, c.name_th`,
-      [search, `%${search}%`, cohort_id]
+      [search, `%${search}%`, cohort_id, include_hidden]
     );
     return ok(rows);
   } catch (err) {

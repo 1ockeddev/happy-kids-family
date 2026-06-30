@@ -112,11 +112,11 @@ function ScoreInput({ item, score, onChange, onNoteChange }: {
   const max = Math.min(item.max_score, 3); // cap at 3 for FaceIcon
 
   return (
-    <div style={{ padding: '10px 0', borderBottom: '1px solid #F3F4F6' }}>
+    <div style={{ padding: '10px 0', borderBottom: '1px solid var(--border-color)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ flex: 1, fontSize: 13 }}>
           <span>{item.name_th}</span>
-          <span style={{ color: '#9CA3AF', fontSize: 11, marginLeft: 6 }}>{item.name_en}</span>
+          <span style={{ color: 'var(--text-secondary)', fontSize: 11, marginLeft: 6 }}>{item.name_en}</span>
         </div>
         {/* Face buttons */}
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -878,7 +878,7 @@ export default function DailyPage() {
             <div style={{ borderTop: '2px solid #E5E7EB', paddingTop: '16px' }}>
               {/* Progress indicator */}
               {childrenReports.length > 0 && (
-                <div style={{ background: '#F0EEFF', borderRadius: 8, padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ background: 'var(--accent-bg)', borderRadius: 8, padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
                     <p style={{ fontSize: 11, fontWeight: 700, color: '#6C5CE7', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <FileText size={14} color="#6C5CE7" /> ความคืบหน้า
@@ -923,7 +923,7 @@ export default function DailyPage() {
               )}
 
               {/* Student Selection */}
-              <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
+              <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
                 <Sec icon={<User size={14} color="#9CA3AF" />} label="เลือกนักเรียน" color="#9CA3AF" />
                 
                 {childrenReports.length === 0 ? (
@@ -941,8 +941,8 @@ export default function DailyPage() {
                           cursor: 'pointer', 
                           fontSize: 14, 
                           fontFamily: 'Sarabun,sans-serif', 
-                          background: '#FFFFFF', 
-                          color: '#1A1A2E', 
+                          background: 'var(--bg-primary)', 
+                          color: 'var(--text-primary)', 
                           fontWeight: 500, 
                           boxShadow: '0 0 0 1px #E5E7EB', 
                           transition: 'all .15s'
@@ -957,15 +957,15 @@ export default function DailyPage() {
                 ) : (
                   // Show current student and add more button
                   <div>
-                    <div style={{ background: 'white', borderRadius: 8, padding: '12px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ background: 'var(--bg-primary)', borderRadius: 8, padding: '12px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <div>
-                        <p style={{ fontSize: 15, fontWeight: 700, color: '#1A1A2E', margin: 0 }}>
+                        <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
                           {(() => {
                             const child = childrenForCohort.find(c => c.id === activeChildReport?.child_id);
                             return child?.nickname_en || child?.nickname_th || child?.name_en || child?.name_th || 'ไม่ระบุชื่อ';
                           })()}
                         </p>
-                        <p style={{ fontSize: 12, color: '#9CA3AF', margin: 0 }}>
+                        <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
                           นักเรียนคนที่ {activeChildIndex + 1}
                         </p>
                       </div>
@@ -1013,7 +1013,7 @@ export default function DailyPage() {
                                 cursor: 'pointer', 
                                 fontSize: 13, 
                                 fontFamily: 'Sarabun,sans-serif', 
-                                background: '#F3F4F6', 
+                                background: 'var(--bg-secondary)', 
                                 color: '#6B7280', 
                                 fontWeight: 400
                               }}
@@ -1031,7 +1031,7 @@ export default function DailyPage() {
                 <>
                   {/* Behaviors */}
                   {sortedBehaviors.map(cat => (
-                    <div key={cat.id} style={{ background: '#FAFAFA', border: '1px solid #F3F4F6', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
+                    <div key={cat.id} style={{ background: 'var(--bg-secondary)', border: '1px solid #F3F4F6', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
                       <Sec icon={<FileText size={14} color="#6C5CE7" />} label={`${cat.name_th}  ${cat.name_en}`} color="#6C5CE7" />
                       {(cat as BehaviorCategory & { items?: BehaviorItem[] }).items?.map(item => (
                         <ScoreInput key={item.id} item={item}
@@ -1061,7 +1061,7 @@ export default function DailyPage() {
                   ))}
 
                   {/* Nap Time */}
-                  <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
+                  <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
                     <Sec icon={<Moon size={14} color="#9CA3AF" />} label="การนอน" color="#9CA3AF" />
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                       <div className="form-group">
@@ -1110,7 +1110,7 @@ export default function DailyPage() {
                   </div>
 
                   {/* Excretions */}
-                  <div style={{ background: '#F0EEFF', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
+                  <div style={{ background: 'var(--accent-bg)', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                       <Sec icon={<Toilet size={14} color="#6C5CE7" />} label="การขับถ่าย" color="#6C5CE7" />
                       <button type="button" className="btn btn-sm" 
@@ -1132,11 +1132,11 @@ export default function DailyPage() {
                       </button>
                     </div>
                     {activeChildReport.excretions.filter(ex => !ex._del).length === 0 && (
-                      <p style={{ color: '#9CA3AF', fontSize: 13 }}>ยังไม่มีบันทึก</p>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: 13 }}>ยังไม่มีบันทึก</p>
                     )}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {activeChildReport.excretions.filter(ex => !ex._del).map(ex => (
-                        <div key={ex.id} style={{ background: 'white', borderRadius: 8, padding: '8px 12px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div key={ex.id} style={{ background: 'var(--bg-primary)', borderRadius: 8, padding: '8px 12px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                           <input type="time" className="form-input" value={ex.time ?? ''} 
                             onChange={evt => {
                               const newExs = activeChildReport.excretions.map(e => 
@@ -1180,7 +1180,7 @@ export default function DailyPage() {
                               );
                               updateChildReport(activeChildReport.child_id, { excretions: newExs });
                             }} 
-                            style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF' }}>
+                            style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
                             <X size={14} />
                           </button>
                         </div>
@@ -1189,7 +1189,7 @@ export default function DailyPage() {
                   </div>
 
                   {/* Food & Fruit */}
-                  <div style={{ background: '#EBF7F0', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
+                  <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
                     <Sec icon={<Utensils size={14} color="#4CAF76" />} label="ปริมาณที่รับประทาน" color="#4CAF76" />
                     <AmountSelect
                       label={form.food ? form.food : "ปริมาณอาหาร"}
@@ -1218,7 +1218,7 @@ export default function DailyPage() {
                   </div>
 
                   {/* Milk */}
-                  <div style={{ background: '#FEF0EB', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
+                  <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '14px 16px', marginBottom: 12 }}>
                     <Sec icon={<Utensils size={14} color="#E8754A" />} label="นม" color="#E8754A" />
                     <AmountSelect label="นม มื้อ 1" 
                       value={activeChildReport.reportForm.milk1} 
@@ -1243,12 +1243,12 @@ export default function DailyPage() {
                   </div>
 
                   {/* Teacher selector */}
-                  <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '12px 14px', marginBottom: 12 }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <UserIcon size={14} color="#9CA3AF" /> ครูผู้บันทึก
                     </p>
                     {teachers.length === 0 ? (
-                      <p style={{ fontSize: 12, color: '#9CA3AF' }}>
+                      <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                         ยังไม่มีครูในระบบ
                       </p>
                     ) : (

@@ -32,7 +32,7 @@ export interface Cohort {
 }
 export interface Enrollment {
   id: string; child_id: string; cohort_id: string;
-  start_date: string; end_date: string | null; graduated: boolean; created_at: string;
+  start_date: string; end_date: string | null; graduated: boolean; hidden: boolean; created_at: string;
   child?: Child; cohort?: Cohort;
 }
 export interface Daily {

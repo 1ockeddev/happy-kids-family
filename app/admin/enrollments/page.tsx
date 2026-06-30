@@ -113,19 +113,19 @@ export default function EnrollmentsPage() {
           { key: 'child', label: 'นักเรียน', render: r => (
             <div>
               <div style={{ fontWeight: 500 }}>{r.child?.nickname_th ?? '-'}</div>
-              <div style={{ fontSize: 12, color: '#9CA3AF' }}>{r.child?.nickname_en}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{r.child?.nickname_en}</div>
             </div>
           )},
           { key: 'cohort', label: 'ห้องเรียน', render: r => (
             <div>
               <span className="badge badge-teacher">{r.cohort?.name}</span>
-              <span style={{ marginLeft: 6, fontSize: 12, color: '#9CA3AF' }}>{r.cohort?.level}</span>
+              <span style={{ marginLeft: 6, fontSize: 12, color: 'var(--text-secondary)' }}>{r.cohort?.level}</span>
             </div>
           )},
           { key: 'start_date', label: 'วันเริ่ม', render: r => new Date(r.start_date).toLocaleDateString('th-TH') },
           { key: 'end_date', label: 'วันสิ้นสุด', render: r => r.end_date
             ? new Date(r.end_date).toLocaleDateString('th-TH')
-            : <span style={{ color: '#9CA3AF' }}>ปัจจุบัน</span> },
+            : <span style={{ color: 'var(--text-secondary)' }}>ปัจจุบัน</span> },
           { key: 'graduated', label: 'สถานะ', render: r => (
             <span className={`badge ${r.graduated ? 'badge-active' : 'badge-leave'}`} style={{ display: 'flex', alignItems: 'center', gap: 4, width: 'fit-content' }}>
               {r.graduated ? <><GraduationCap size={12} /> สำเร็จแล้ว</> : <><BookOpen size={12} /> กำลังเรียน</>}
@@ -179,13 +179,13 @@ export default function EnrollmentsPage() {
             <label className="form-label">
               นักเรียน <span style={{ color: '#E85C5C' }}>*</span>
               {form.cohort_id && (
-                <span style={{ color: '#9CA3AF', fontWeight: 400, marginLeft: 6, fontSize: 12 }}>
+                <span style={{ color: 'var(--text-secondary)', fontWeight: 400, marginLeft: 6, fontSize: 12 }}>
                   ({availableChildren.length} คนที่ยังไม่ได้ลงทะเบียน)
                 </span>
               )}
             </label>
             {!form.cohort_id ? (
-              <p style={{ fontSize: 13, color: '#9CA3AF', padding: '10px 12px', background: '#F9FAFB', borderRadius: 8 }}>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', padding: '10px 12px', background: 'var(--bg-secondary)', borderRadius: 8 }}>
                 เลือกห้องเรียนก่อน
               </p>
             ) : availableChildren.length === 0 ? (
@@ -213,11 +213,11 @@ export default function EnrollmentsPage() {
 
         {/* Read-only info for edit */}
         {modal === 'edit' && selected && (
-          <div style={{ padding: '10px 14px', background: '#F7F5F2', borderRadius: 8, fontSize: 14, color: '#6B7280', display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div style={{ padding: '10px 14px', background: 'var(--bg-secondary)', borderRadius: 8, fontSize: 14, color: '#6B7280', display: 'flex', gap: 12, alignItems: 'center' }}>
             <User size={16} color="#6B7280" />
-            <span><strong style={{ color: '#1A1A2E' }}>{selected.child?.name_th}</strong></span>
+            <span><strong style={{ color: 'var(--text-primary)' }}>{selected.child?.name_th}</strong></span>
             <Building size={16} color="#6B7280" />
-            <span><strong style={{ color: '#1A1A2E' }}>{selected.cohort?.name}</strong></span>
+            <span><strong style={{ color: 'var(--text-primary)' }}>{selected.cohort?.name}</strong></span>
           </div>
         )}
 
@@ -245,7 +245,7 @@ export default function EnrollmentsPage() {
             <span style={{ fontWeight: 600, fontSize: 14, color: form.graduated ? '#4CAF76' : '#6B7280', display: 'flex', alignItems: 'center', gap: 6 }}>
               <GraduationCap size={16} color={form.graduated ? '#4CAF76' : '#6B7280'} /> สำเร็จการศึกษาแล้ว
             </span>
-            <p style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>ติ๊กเมื่อนักเรียนจบการศึกษาจากห้องนี้</p>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>ติ๊กเมื่อนักเรียนจบการศึกษาจากห้องนี้</p>
           </div>
         </label>
       </Modal>

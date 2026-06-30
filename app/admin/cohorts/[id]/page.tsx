@@ -34,7 +34,7 @@ export default function CohortDetailPage({ params }: { params: Promise<{ id: str
     try {
       const [cohortRes, enrollRes] = await Promise.all([
         fetch(`/api/cohorts/${id}`),
-        fetch(`/api/enrollments?cohort_id=${id}`),
+        fetch(`/api/enrollments?cohort_id=${id}&include_hidden=true`),
       ]);
       const cohortJson = await cohortRes.json();
       const enrollJson = await enrollRes.json();
@@ -127,24 +127,69 @@ export default function CohortDetailPage({ params }: { params: Promise<{ id: str
     // แสดงชื่อตามลำดับความสำคัญ
     const displayName = e.child?.nickname_th || '-';
     const displayNameEn = e.child?.nickname_en || '-';
+    const isHidden = e.hidden || false;
+    
+    const handleToggleHidden = async () => {
+      const newHiddenState = !isHidden;
+      
+      // Optimistic update - update state immediately
+      setEnrollments(prev => prev.map(enrollment => 
+        enrollment.id === e.id 
+          ? { ...enrollment, hidden: newHiddenState } 
+          : enrollment
+      ));
+      
+      try {
+        await fetch(`/api/enrollments/${e.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hidden: newHiddenState }),
+        });
+      } catch {
+        // Revert on error
+        setEnrollments(prev => prev.map(enrollment => 
+          enrollment.id === e.id 
+            ? { ...enrollment, hidden: isHidden } 
+            : enrollment
+        ));
+        alert('เกิดข้อผิดพลาด');
+      }
+    };
     
     return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 14,
-      padding: '12px 20px', borderBottom: '1px solid #F3F4F6',
+      padding: '12px 20px', borderBottom: '1px solid var(--border-color)',
+      opacity: isHidden ? 0.5 : 1,
+      transition: 'opacity 0.2s ease'
     }}>
       <div style={{
         width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-        background: e.graduated ? '#EBF7F0' : '#FEF0EB',
+        background: e.graduated ? '#EBF7F0' : (isHidden ? '#F3F4F6' : '#FEF0EB'),
         display: 'flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'background 0.2s ease'
       }}>
-        {e.graduated ? <GraduationCap size={18} color="#4CAF76" /> : <User size={18} color="#E8754A" />}
+        {e.graduated ? <GraduationCap size={18} color="#4CAF76" /> : <User size={18} color={isHidden ? '#94a3b8' : '#E8754A'} />}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 600, fontSize: 14 }}>{displayName}</div>
-        <div style={{ fontSize: 12, color: '#9CA3AF' }}>{displayNameEn}</div>
+        <div style={{ fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+          {displayName}
+          {isHidden && (
+            <span style={{
+              fontSize: 10,
+              padding: '2px 6px',
+              borderRadius: 4,
+              background: '#fef3c7',
+              color: '#92400e',
+              fontWeight: 600
+            }}>
+              ซ่อน
+            </span>
+          )}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{displayNameEn}</div>
       </div>
-      <div style={{ fontSize: 12, color: '#9CA3AF', display: 'flex', alignItems: 'center', gap: 4 }}>
+      <div style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
         <Calendar size={11} />
         {new Date(e.start_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
       </div>
@@ -154,6 +199,33 @@ export default function CohortDetailPage({ params }: { params: Promise<{ id: str
         </span>
       ) : (
         <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            className="btn btn-ghost btn-sm"
+            style={{ 
+              color: isHidden ? '#6366f1' : '#f59e0b', 
+              borderColor: isHidden ? '#6366f1' : '#f59e0b', 
+              fontSize: 12 
+            }}
+            onClick={handleToggleHidden}
+            title={isHidden ? 'แสดงในรายการเลือก' : 'ซ่อนจากรายการเลือก'}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              {isHidden ? (
+                <>
+                  <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </>
+              ) : (
+                <>
+                  <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
+                  <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
+                  <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/>
+                  <line x1="2" x2="22" y1="2" y2="22"/>
+                </>
+              )}
+            </svg>
+            {isHidden ? 'แสดง' : 'ซ่อน'}
+          </button>
           <button
             className="btn btn-ghost btn-sm"
             style={{ color: '#4CAF76', borderColor: '#4CAF76', fontSize: 12 }}
@@ -176,8 +248,8 @@ export default function CohortDetailPage({ params }: { params: Promise<{ id: str
   if (loading) {
     return (
       <div style={{ padding: 32 }}>
-        <div style={{ height: 32, width: 200, background: '#F3F4F6', borderRadius: 8, marginBottom: 24, animation: 'pulse 1.5s infinite' }} />
-        {[1,2,3].map(i => <div key={i} style={{ height: 60, background: '#F3F4F6', borderRadius: 8, marginBottom: 8, animation: 'pulse 1.5s infinite' }} />)}
+        <div style={{ height: 32, width: 200, background: 'var(--bg-secondary)', borderRadius: 8, marginBottom: 24, animation: 'pulse 1.5s infinite' }} />
+        {[1,2,3].map(i => <div key={i} style={{ height: 60, background: 'var(--bg-secondary)', borderRadius: 8, marginBottom: 8, animation: 'pulse 1.5s infinite' }} />)}
         <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}`}</style>
       </div>
     );
@@ -186,22 +258,22 @@ export default function CohortDetailPage({ params }: { params: Promise<{ id: str
   return (
     <>
       {/* Header */}
-      <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E5E7EB', padding: '20px 32px' }}>
+      <div style={{ background: 'var(--bg-primary)', borderBottom: '1px solid var(--border-color)', padding: '20px 32px' }}>
         <button
           onClick={() => router.push('/admin/cohorts')}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', fontSize: 13, marginBottom: 12, padding: 0 }}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 13, marginBottom: 12, padding: 0 }}
         >
           <ArrowLeft size={14} /> กลับรายการห้องเรียน
         </button>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1A1A2E', fontFamily: 'Prompt, sans-serif' }}>
+              <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'Prompt, sans-serif' }}>
                 {cohort?.name ?? '—'}
               </h1>
               <span className="badge badge-teacher">{cohort?.level}</span>
             </div>
-            <p style={{ color: '#9CA3AF', fontSize: 13, marginTop: 4 }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4 }}>
               ปีการศึกษา {cohort?.academic_year} ·{' '}
               {cohort?.start_date && new Date(cohort.start_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
               {' – '}
@@ -240,12 +312,12 @@ export default function CohortDetailPage({ params }: { params: Promise<{ id: str
       <div style={{ padding: '24px 32px', display: 'flex', flexDirection: 'column', gap: 20 }}>
         {/* Active students */}
         <div className="card" style={{ overflow: 'hidden' }}>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <Users size={15} style={{ color: '#E8754A' }} />
             <h3 style={{ fontSize: 14, fontWeight: 600 }}>นักเรียนที่กำลังเรียน ({active.length})</h3>
           </div>
           {active.length === 0 ? (
-            <div style={{ padding: '32px 20px', textAlign: 'center', color: '#9CA3AF', fontSize: 14 }}>
+            <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
                 <Users size={32} color="#9CA3AF" />
               </div>
@@ -259,7 +331,7 @@ export default function CohortDetailPage({ params }: { params: Promise<{ id: str
         {/* Graduated */}
         {grads.length > 0 && (
           <div className="card" style={{ overflow: 'hidden' }}>
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <GraduationCap size={15} style={{ color: '#4CAF76' }} />
               <h3 style={{ fontSize: 14, fontWeight: 600 }}>จบการศึกษาแล้ว ({grads.length})</h3>
             </div>
@@ -292,12 +364,12 @@ export default function CohortDetailPage({ params }: { params: Promise<{ id: str
         </div>
 
         {availableChildren.length === 0 ? (
-          <div style={{ padding: '16px', background: '#F9FAFB', borderRadius: 8, textAlign: 'center', color: '#9CA3AF', fontSize: 14 }}>
+          <div style={{ padding: '16px', background: 'var(--bg-secondary)', borderRadius: 8, textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>
             {allChildren.length === 0 ? 'ยังไม่มีนักเรียนในระบบ' : 'นักเรียนทุกคนลงทะเบียนในห้องนี้แล้ว'}
           </div>
         ) : (
           <>
-            <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 6 }}>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
               เลือกได้หลายคน · เลือกแล้ว {selectedChildIds.length} คน
             </div>
             <div style={{

@@ -149,11 +149,11 @@ export default function HolidaysPage() {
   return (
     <div style={{ padding: '24px' }}>
       <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0f172a', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: 8 }}>
           <CalendarIcon size={24} color="#6366f1" />
           จัดการวันหยุด
         </h1>
-        <p style={{ color: '#64748b', fontSize: '0.875rem' }}>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
           กำหนดวันหยุดราชการ วันหยุดโรงเรียน และวันปิดทำการ
         </p>
       </div>

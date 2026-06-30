@@ -180,7 +180,7 @@ export default function UsersPage() {
 
   // Format last activity
   const formatLastActivity = (timestamp: string | null | undefined) => {
-    if (!timestamp) return <span style={{ color: '#9CA3AF', fontSize: 12 }}>ไม่เคยใช้งาน</span>;
+    if (!timestamp) return <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>ไม่เคยใช้งาน</span>;
     const date = new Date(timestamp);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -191,14 +191,14 @@ export default function UsersPage() {
     if (diffMins < 1) return <span style={{ color: '#10B981', fontSize: 12 }}>เมื่อสักครู่</span>;
     if (diffMins < 60) return <span style={{ color: '#10B981', fontSize: 12 }}>{diffMins} นาทีที่แล้ว</span>;
     if (diffHours < 24) return <span style={{ color: '#F59E0B', fontSize: 12 }}>{diffHours} ชั่วโมงที่แล้ว</span>;
-    if (diffDays < 7) return <span style={{ color: '#9CA3AF', fontSize: 12 }}>{diffDays} วันที่แล้ว</span>;
-    return <span style={{ color: '#9CA3AF', fontSize: 12 }}>{date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}</span>;
+    if (diffDays < 7) return <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{diffDays} วันที่แล้ว</span>;
+    return <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}</span>;
   };
 
   return (
     <>
       {/* Tabs */}
-      <div style={{ background: 'white', borderBottom: '1px solid #E5E7EB', padding: '0 20px' }}>
+      <div style={{ background: 'var(--bg-primary)', borderBottom: '1px solid var(--border-color)', padding: '0 20px' }}>
         <div style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
           {[
             { key: 'all', label: 'ทั้งหมด', icon: '📋', count: counts.all },
@@ -260,12 +260,12 @@ export default function UsersPage() {
                 <div style={{ fontWeight: 600, fontSize: 14 }}>
                   {r.display_name ?? '(ยังไม่มีชื่อ)'}
                   {r.line_display_name && r.line_display_name !== r.display_name && (
-                    <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 400, marginLeft: 6 }}>
+                    <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400, marginLeft: 6 }}>
                       (LINE: {r.line_display_name})
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
                   {r.line_user_id
                     ? <><CheckCircle size={11} color="#10B981" /> <span style={{ color: '#10B981' }}>{r.line_user_id}</span></>
                     : <><AlertCircle size={11} color="#F59E0B" /> <span style={{ color: '#F59E0B', fontSize: 11 }}>รอผูก LINE</span></>
@@ -292,7 +292,7 @@ export default function UsersPage() {
             );
           }},
           { key: 'children', label: 'ลูกที่ผูก', render: r => {
-            if (r.role !== 'parent') return <span style={{ color: '#9CA3AF', fontSize: 12 }}>-</span>;
+            if (r.role !== 'parent') return <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>-</span>;
             const kids = r.children ?? [];
             if (kids.length === 0) return (
               <span style={{ fontSize: 12, color: '#F5A623', background: '#FEF6E6', padding: '2px 8px', borderRadius: 99, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -302,7 +302,7 @@ export default function UsersPage() {
             return (
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                 {kids.map(c => (
-                  <span key={c.id} style={{ fontSize: 12, background: '#EBF7F0', color: '#4CAF76', padding: '2px 8px', borderRadius: 99 }}>{c.name_th}</span>
+                  <span key={c.id} style={{ fontSize: 12, background: 'var(--bg-secondary)', color: '#4CAF76', padding: '2px 8px', borderRadius: 99 }}>{c.name_th}</span>
                 ))}
               </div>
             );
@@ -373,7 +373,7 @@ export default function UsersPage() {
             ชื่อที่แสดง
             {modal === 'add' && <span style={{ color: '#E85C5C' }}> *</span>}
             {modal === 'edit' && selected?.line_display_name && (
-              <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 400, marginLeft: 6 }}>
+              <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400, marginLeft: 6 }}>
                 (ชื่อ LINE: {selected.line_display_name})
               </span>
             )}
@@ -389,7 +389,7 @@ export default function UsersPage() {
             }
             autoFocus
           />
-          <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
+          <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
             {modal === 'edit' && selected?.line_display_name ? 
               '💡 ปล่อยว่างเพื่อใช้ชื่อ LINE อัตโนมัติ หรือใส่ชื่อที่ต้องการแทน' :
               modal === 'add' ?
@@ -402,7 +402,7 @@ export default function UsersPage() {
         <div className="form-group">
           <label className="form-label">
             LINE User ID
-            <span style={{ fontSize: 11, color: '#9CA3AF', marginLeft: 6, fontWeight: 400 }}>
+            <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginLeft: 6, fontWeight: 400 }}>
               (ไม่บังคับ)
             </span>
           </label>
@@ -428,7 +428,7 @@ export default function UsersPage() {
           )}
           
           {modal === 'edit' && !form.line_user_id && (
-            <div style={{ marginTop: 8, padding: '8px 12px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, display: 'flex', gap: 8 }}>
+            <div style={{ marginTop: 8, padding: '8px 12px', background: 'var(--bg-secondary)', border: '1px solid #FECACA', borderRadius: 8, display: 'flex', gap: 8 }}>
               <div style={{ flexShrink: 0, marginTop: 1 }}>
                 <AlertCircle size={14} color="#991B1B" />
               </div>
@@ -481,7 +481,7 @@ export default function UsersPage() {
 
         {/* คำแนะนำเพิ่มเติมสำหรับผู้ปกครอง */}
         {form.role === 'parent' && modal === 'add' && (
-          <div style={{ marginTop: 12, padding: '10px 12px', background: '#F0EEFF', border: '1px solid #DDD6FE', borderRadius: 8, display: 'flex', gap: 10 }}>
+          <div style={{ marginTop: 12, padding: '10px 12px', background: 'var(--accent-bg)', border: '1px solid #DDD6FE', borderRadius: 8, display: 'flex', gap: 10 }}>
             <div style={{ flexShrink: 0, marginTop: 2 }}>
               <PencilSquare size={16} color="#5B21B6" />
             </div>
@@ -496,7 +496,7 @@ export default function UsersPage() {
 
         {/* ตั้งค่า Cohort สำหรับครู */}
         {form.role === 'teacher' && (
-          <div style={{ marginTop: 16, padding: '14px 16px', background: '#F0EEFF', border: '1px solid #DDD6FE', borderRadius: 12 }}>
+          <div style={{ marginTop: 16, padding: '14px 16px', background: 'var(--accent-bg)', border: '1px solid #DDD6FE', borderRadius: 12 }}>
             <h4 style={{ fontSize: 14, fontWeight: 700, color: '#5B21B6', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
               <Building size={16} color="#5B21B6" />
               ตั้งค่าห้องเรียน (Teacher Mode)
@@ -510,7 +510,7 @@ export default function UsersPage() {
                   onChange={e => setForm(f => ({ ...f, can_select_cohort: e.target.checked }))}
                   style={{ width: 18, height: 18, cursor: 'pointer' }}
                 />
-                <span style={{ fontSize: 14, fontWeight: 600, color: '#1A1A2E' }}>
+                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
                   อนุญาตให้เลือกห้องเรียนใน User Side
                 </span>
               </label>
@@ -548,7 +548,7 @@ export default function UsersPage() {
             </div>
 
             {!form.can_select_cohort && !form.default_cohort_id && (
-              <div style={{ padding: '8px 12px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ padding: '8px 12px', background: 'var(--bg-secondary)', border: '1px solid #FECACA', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <AlertCircle size={12} color="#991B1B" />
                 <p style={{ fontSize: 11, color: '#991B1B', margin: 0 }}>
                   กรุณาเลือกห้องเรียน Default เมื่อปิดการเลือกห้อง
@@ -566,16 +566,16 @@ export default function UsersPage() {
         confirmLabel={saving ? 'กำลังบันทึก...' : `บันทึก (${linkedIds.length} คน)`}>
 
         {/* ผู้ปกครอง info */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#F7F5F2', borderRadius: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--bg-secondary)', borderRadius: 10 }}>
           {selected?.picture_url
             ? <img src={selected.picture_url} style={{ width: 40, height: 40, borderRadius: '50%' }} />
-            : <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#FEF0EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            : <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <User size={20} color="#E8754A" />
               </div>
           }
           <div>
             <p style={{ fontWeight: 600, fontSize: 14, margin: 0 }}>{selected?.display_name ?? '(ยังไม่มีชื่อ)'}</p>
-            <p style={{ fontSize: 11, color: '#9CA3AF', margin: 0, fontFamily: 'monospace' }}>{selected?.line_user_id ?? '(ยังไม่ผูก LINE)'}</p>
+            <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0, fontFamily: 'monospace' }}>{selected?.line_user_id ?? '(ยังไม่ผูก LINE)'}</p>
           </div>
         </div>
 
@@ -595,7 +595,7 @@ export default function UsersPage() {
               {linkedIds.map(id => {
                 const c = allChildren.find(c => c.id === id);
                 return (
-                  <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#EBF7F0', border: '1px solid #D1FAE5', padding: '4px 10px', borderRadius: 99 }}>
+                  <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-secondary)', border: '1px solid #D1FAE5', padding: '4px 10px', borderRadius: 99 }}>
                     <span style={{ fontSize: 13, fontWeight: 600, color: '#065F46' }}>{c?.name_th ?? id.slice(0, 8)}</span>
                     <button type="button" onClick={() => toggleChild(id)}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6B7280', display: 'flex', padding: 0 }}>
@@ -612,18 +612,18 @@ export default function UsersPage() {
         <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
           {filteredChildren.filter(c => !linkedIds.includes(c.id)).map(c => (
             <button key={c.id} type="button" onClick={() => toggleChild(c.id)}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, border: '1px solid #F3F4F6', background: '#FAFAFA', cursor: 'pointer', textAlign: 'left', transition: 'all .15s' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, border: '1px solid #F3F4F6', background: 'var(--bg-secondary)', cursor: 'pointer', textAlign: 'left', transition: 'all .15s' }}>
               <div style={{ flexShrink: 0 }}>
                 <PlusIcon size={14} color="#9CA3AF" />
               </div>
               <div>
                 <div style={{ fontWeight: 500, fontSize: 14 }}>{c.name_th}</div>
-                {c.name_en && <div style={{ fontSize: 12, color: '#9CA3AF' }}>{c.name_en}</div>}
+                {c.name_en && <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{c.name_en}</div>}
               </div>
             </button>
           ))}
           {filteredChildren.filter(c => !linkedIds.includes(c.id)).length === 0 && (
-            <p style={{ textAlign: 'center', color: '#9CA3AF', fontSize: 13, padding: '16px 0' }}>ไม่พบนักเรียน</p>
+            <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13, padding: '16px 0' }}>ไม่พบนักเรียน</p>
           )}
         </div>
       </Modal>

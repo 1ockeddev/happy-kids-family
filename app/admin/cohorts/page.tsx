@@ -68,8 +68,8 @@ export default function CohortsPage() {
                 onClick={() => router.push(`/admin/cohorts/${r.id}`)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}
               >
-                <div style={{ fontWeight: 600, fontSize: 14, color: '#1A1A2E' }}>{r.name}</div>
-                <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>{r.name}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
                   {r.start_date && parseLocalDate(r.start_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
                   {' – '}
                   {r.end_date && parseLocalDate(r.end_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}

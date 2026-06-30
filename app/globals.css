@@ -10,6 +10,17 @@
   --topbar-h: 56px;
   --bottomnav-h: 64px;
   
+  /* Theme Colors - Light Mode (Default) */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-hover: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --border-color: #e2e8f0;
+  --border-hover: #cbd5e1;
+  --accent-bg: #f0eeff;
+  --accent-color: #6c5ce7;
+  
   /* Colors */
   --color-primary: #6366f1;
   --color-primary-dark: #4f46e5;
@@ -68,6 +79,50 @@
   --icon-2xl: 40px;
 }
 
+/* ── Dark Theme ─────────────────────────────────────────────────── */
+.dark-theme {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-hover: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --border-color: #334155;
+  --border-hover: #475569;
+  --accent-bg: #312e81;
+  --accent-color: #a78bfa;
+  
+  --gray-50: #f1f5f9;
+  --gray-100: #e2e8f0;
+  --gray-200: #cbd5e1;
+  --gray-300: #94a3b8;
+  --gray-400: #64748b;
+  --gray-500: #475569;
+  --gray-600: #cbd5e1;
+  --gray-700: #e2e8f0;
+  --gray-800: #f1f5f9;
+  --gray-900: #f8fafc;
+}
+
+/* Force headings to use text-primary in dark mode */
+.dark-theme h1,
+.dark-theme h2,
+.dark-theme h3,
+.dark-theme h4,
+.dark-theme h5,
+.dark-theme h6 {
+  color: var(--text-primary) !important;
+}
+
+/* Force page-title to use text-primary in dark mode */
+.dark-theme .page-title {
+  color: var(--text-primary) !important;
+}
+
+/* Force paragraphs in dark mode */
+.dark-theme p {
+  color: var(--text-primary);
+}
+
 /* ── Base Styles ────────────────────────────────────────────────── */
 * {
   box-sizing: border-box;
@@ -83,17 +138,18 @@ body {
   font-family: 'Sarabun', 'Helvetica Neue', Arial, sans-serif;
   font-size: 16px;
   line-height: 1.5;
-  color: var(--gray-900);
-  background: var(--gray-50);
+  color: var(--text-primary);
+  background: var(--bg-secondary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background 0.3s, color 0.3s;
 }
 
 /* ── Typography ─────────────────────────────────────────────────── */
 h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
   line-height: 1.2;
-  color: var(--gray-900);
+  color: var(--text-primary);
 }
 
 h1 { font-size: 1.8rem; }
@@ -163,12 +219,12 @@ a:hover {
 }
 
 .btn-secondary {
-  background: var(--gray-200);
-  color: var(--gray-700);
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .btn-secondary:hover {
-  background: var(--gray-300);
+  background: var(--border-hover);
 }
 
 .btn-success {
@@ -187,24 +243,24 @@ a:hover {
 
 .btn-ghost {
   background: transparent;
-  color: var(--gray-700);
+  color: var(--text-primary);
   border: 1px solid transparent;
 }
 
 .btn-ghost:hover {
-  background: var(--gray-100);
-  border-color: var(--gray-200);
+  background: var(--bg-hover);
+  border-color: var(--border-color);
 }
 
 .btn-outline {
   background: transparent;
-  border: 2px solid var(--gray-300);
-  color: var(--gray-700);
+  border: 2px solid var(--border-color);
+  color: var(--text-primary);
 }
 
 .btn-outline:hover {
-  border-color: var(--gray-400);
-  background: var(--gray-50);
+  border-color: var(--border-hover);
+  background: var(--bg-hover);
 }
 
 /* ── Form Elements (Mobile-First) ───────────────────────────────── */
@@ -217,7 +273,7 @@ a:hover {
   margin-bottom: 6px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--gray-700);
+  color: var(--text-primary);
 }
 
 .form-input,
@@ -228,10 +284,10 @@ a:hover {
   min-height: var(--touch-target-min);
   font-size: 16px; /* Prevents iOS zoom */
   font-family: inherit;
-  border: 2px solid var(--gray-200);
+  border: 2px solid var(--border-color);
   border-radius: 10px;
-  background: white;
-  color: var(--gray-900);
+  background: var(--bg-primary);
+  color: var(--text-primary);
   transition: all 0.15s;
 }
 
@@ -246,8 +302,8 @@ a:hover {
 .form-input:disabled,
 .form-select:disabled,
 .form-textarea:disabled {
-  background: var(--gray-100);
-  color: var(--gray-500);
+  background: var(--bg-hover);
+  color: var(--text-secondary);
   cursor: not-allowed;
 }
 
@@ -264,11 +320,11 @@ a:hover {
 
 /* ── Cards ──────────────────────────────────────────────────────── */
 .card {
-  background: white;
-  border: 1px solid var(--gray-200);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   overflow: hidden;
-  transition: box-shadow 0.15s;
+  transition: box-shadow 0.15s, background 0.3s, border-color 0.3s;
 }
 
 .card:hover {
@@ -277,9 +333,9 @@ a:hover {
 
 .card-header {
   padding: 16px 20px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--border-color);
   font-weight: 600;
-  color: var(--gray-900);
+  color: var(--text-primary);
 }
 
 .card-body {
@@ -288,8 +344,8 @@ a:hover {
 
 .card-footer {
   padding: 14px 20px;
-  border-top: 1px solid var(--gray-100);
-  background: var(--gray-50);
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-secondary);
 }
 
 /* ── Tables (Mobile-First) ──────────────────────────────────────── */
@@ -302,11 +358,13 @@ a:hover {
 table {
   width: 100%;
   border-collapse: collapse;
-  background: white;
+  background: var(--bg-primary);
+  transition: background 0.3s;
 }
 
 thead {
-  background: var(--gray-50);
+  background: var(--bg-secondary);
+  transition: background 0.3s;
 }
 
 th {
@@ -316,19 +374,20 @@ th {
   text-align: left;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--gray-600);
-  border-bottom: 2px solid var(--gray-200);
+  color: var(--text-secondary);
+  border-bottom: 2px solid var(--border-color);
 }
 
 td {
   padding: 14px 16px;
   font-size: 15px;
-  border-bottom: 1px solid var(--gray-100);
-  color: var(--gray-800);
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
 }
 
 tr:hover {
-  background: var(--gray-50);
+  background: var(--bg-hover);
+  transition: background 0.15s;
 }
 
 /* Desktop optimizations */
@@ -361,9 +420,19 @@ tr:hover {
   color: #15803d;
 }
 
+.dark-theme .badge-active {
+  background: #14532d;
+  color: #86efac;
+}
+
 .badge-inactive {
   background: #fee2e2;
   color: #991b1b;
+}
+
+.dark-theme .badge-inactive {
+  background: #7f1d1d;
+  color: #fca5a5;
 }
 
 .badge-leave {
@@ -371,14 +440,29 @@ tr:hover {
   color: #1e40af;
 }
 
+.dark-theme .badge-leave {
+  background: #1e3a8a;
+  color: #93c5fd;
+}
+
 .badge-primary {
   background: #e0e7ff;
   color: #4338ca;
 }
 
+.dark-theme .badge-primary {
+  background: #312e81;
+  color: #c7d2fe;
+}
+
 .badge-warning {
   background: #fef3c7;
   color: #b45309;
+}
+
+.dark-theme .badge-warning {
+  background: #78350f;
+  color: #fcd34d;
 }
 
 /* Attendance status badges */
@@ -387,14 +471,29 @@ tr:hover {
   color: #15803d;
 }
 
+.dark-theme .badge-present {
+  background: #14532d;
+  color: #86efac;
+}
+
 .badge-absent {
   background: #fee2e2;
   color: #991b1b;
 }
 
+.dark-theme .badge-absent {
+  background: #7f1d1d;
+  color: #fca5a5;
+}
+
 .badge-sick {
   background: #fef3c7;
   color: #b45309;
+}
+
+.dark-theme .badge-sick {
+  background: #78350f;
+  color: #fcd34d;
 }
 
 /* Role badges */
@@ -406,11 +505,23 @@ tr:hover {
   box-shadow: 0 2px 4px rgba(251, 191, 36, 0.2);
 }
 
+.dark-theme .badge-super-admin {
+  background: linear-gradient(135deg, #78350f 0%, #92400e 100%);
+  color: #fcd34d;
+  border: 1px solid #f59e0b;
+}
+
 .badge-admin {
   background: #e0e7ff;
   color: #4338ca;
   font-weight: 600;
   border: 1px solid #c7d2fe;
+}
+
+.dark-theme .badge-admin {
+  background: #312e81;
+  color: #c7d2fe;
+  border: 1px solid #4f46e5;
 }
 
 .badge-teacher {
@@ -419,10 +530,36 @@ tr:hover {
   font-weight: 600;
 }
 
+.dark-theme .badge-teacher {
+  background: #312e81;
+  color: #a78bfa;
+}
+
 .badge-parent {
   background: #fef0eb;
   color: #e8754a;
   font-weight: 600;
+}
+
+.dark-theme .badge-parent {
+  background: #7c2d12;
+  color: #fdba74;
+}
+
+/* ── Inline Badge Variants ──────────────────────────────────────── */
+.badge-success-inline {
+  font-size: 12px;
+  color: #4CAF76;
+  background: #EBF7F0;
+  padding: 2px 10px;
+  border-radius: 99px;
+  display: inline-block;
+  transition: background 0.3s, color 0.3s;
+}
+
+.dark-theme .badge-success-inline {
+  background: #14532d !important;
+  color: #86efac !important;
 }
 
 /* ── Modals (Mobile-First) ──────────────────────────────────────── */
@@ -450,7 +587,7 @@ tr:hover {
 }
 
 .modal {
-  background: white;
+  background: var(--bg-primary);
   border-radius: 24px 24px 0 0;
   width: 100%;
   max-width: 100%;
@@ -459,6 +596,7 @@ tr:hover {
   display: flex;
   flex-direction: column;
   animation: slideUp 0.25s ease-out;
+  transition: background 0.3s;
 }
 
 @media (min-width: 768px) {
@@ -481,7 +619,7 @@ tr:hover {
 
 .modal-header {
   padding: 20px;
-  border-bottom: 1px solid var(--gray-200);
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -497,7 +635,7 @@ tr:hover {
 .modal-title {
   font-size: 1.1rem;
   font-weight: 700;
-  color: var(--gray-900);
+  color: var(--text-primary);
 }
 
 .modal-close {
@@ -508,7 +646,7 @@ tr:hover {
   justify-content: center;
   border: none;
   background: transparent;
-  color: var(--gray-500);
+  color: var(--text-secondary);
   font-size: 24px;
   cursor: pointer;
   border-radius: 8px;
@@ -517,8 +655,8 @@ tr:hover {
 }
 
 .modal-close:hover {
-  background: var(--gray-100);
-  color: var(--gray-700);
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .modal-body {
@@ -538,12 +676,12 @@ tr:hover {
 
 .modal-footer {
   padding: 16px 20px;
-  border-top: 1px solid var(--gray-200);
+  border-top: 1px solid var(--border-color);
   display: flex;
   gap: 10px;
   justify-content: flex-end;
   flex-shrink: 0;
-  background: white;
+  background: var(--bg-primary);
 }
 
 @media (min-width: 768px) {
@@ -555,8 +693,9 @@ tr:hover {
 /* ── Page Layout ────────────────────────────────────────────────── */
 .page-header {
   padding: 16px 18px;
-  background: white;
-  border-bottom: 1px solid var(--gray-200);
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.3s, border-color 0.3s;
 }
 
 @media (min-width: 768px) {
@@ -578,23 +717,28 @@ tr:hover {
 .page-title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--gray-900);
+  color: var(--text-primary);
   margin-bottom: 8px;
 }
 
 .page-subtitle {
   font-size: 0.875rem;
-  color: var(--gray-500);
+  color: var(--text-secondary);
 }
 
 /* ── Utility Classes ────────────────────────────────────────────── */
 .text-center { text-align: center; }
 .text-right { text-align: right; }
-.text-muted { color: var(--gray-500); }
+.text-muted { color: var(--text-secondary); }
 .text-primary { color: var(--color-primary); }
 .text-success { color: var(--color-success); }
 .text-danger { color: var(--color-danger); }
 .text-warning { color: var(--color-warning); }
+
+/* Additional text color utilities for migration from hard-coded colors */
+.text-dark { color: var(--text-primary); }
+.text-gray { color: var(--text-secondary); }
+.text-gray-600 { color: var(--text-secondary); }
 
 .mt-0 { margin-top: 0; }
 .mt-1 { margin-top: 0.25rem; }
@@ -651,7 +795,7 @@ tr:hover {
 }
 
 .shimmer {
-  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background: linear-gradient(90deg, var(--bg-hover) 25%, var(--border-color) 50%, var(--bg-hover) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.4s infinite;
 }
@@ -690,9 +834,10 @@ tr:hover {
   flex-direction: column;
   gap: 8px;
   padding: 12px 14px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: 10px;
+  transition: background 0.3s, border-color 0.3s;
 }
 
 .food-label {
@@ -709,15 +854,15 @@ tr:hover {
   display: block;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--text-primary);
 }
 
 .food-note {
   font-size: 0.75rem;
-  color: #475569;
+  color: var(--text-secondary);
   line-height: 1.5;
   padding: 8px 10px;
-  background: white;
+  background: var(--bg-primary);
   border-radius: 6px;
   border-left: 3px solid #10b981;
 }
@@ -832,13 +977,13 @@ tr:hover {
   gap: 12px;
   padding: 12px 14px;
   border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
   transition: all 0.15s;
 }
 
 .behavior-card:hover {
-  border-color: #cbd5e1;
+  border-color: var(--border-hover);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
@@ -854,16 +999,16 @@ tr:hover {
 .behavior-name {
   font-size: 0.9rem;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--text-primary);
 }
 
 .behavior-note {
   font-size: 0.75rem;
-  color: #475569;
+  color: var(--text-secondary);
   line-height: 1.5;
   margin-top: 8px;
   padding: 8px 10px;
-  background: white;
+  background: var(--bg-primary);
   border-radius: 6px;
   border-left: 3px solid #6366f1;
 }
@@ -906,7 +1051,7 @@ tr:hover {
   line-height: 1.5;
   margin-top: 8px;
   padding: 8px 10px;
-  background: white;
+  background: var(--bg-primary);
   border-radius: 6px;
   border-left: 3px solid #0ea5e9;
 }
@@ -951,7 +1096,7 @@ tr:hover {
   color: #92400e;
   line-height: 1.5;
   padding: 8px 10px;
-  background: white;
+  background: var(--bg-primary);
   border-radius: 6px;
   border-left: 3px solid #f59e0b;
   margin-top: 8px;
@@ -1030,10 +1175,10 @@ tr:hover {
   left: 0;
   width: var(--sidebar-w);
   height: 100dvh;
-  background: white;
-  border-right: 1px solid var(--gray-200);
+  background: var(--bg-primary);
+  border-right: 1px solid var(--border-color);
   transform: translateX(-100%);
-  transition: transform 0.3s ease;
+  transition: transform 0.3s ease, background 0.3s, border-color 0.3s;
   z-index: 1001;
   overflow-y: auto;
 }
@@ -1053,13 +1198,14 @@ tr:hover {
   position: sticky;
   top: 0;
   height: var(--topbar-h);
-  background: white;
-  border-bottom: 1px solid var(--gray-200);
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
   z-index: 100;
+  transition: background 0.3s, border-color 0.3s;
 }
 
 /* ── Admin Bottom Navigation ────────────────────────────────────── */
@@ -1069,13 +1215,14 @@ tr:hover {
   left: 0;
   right: 0;
   height: var(--bottomnav-h);
-  background: white;
-  border-top: 1px solid var(--gray-200);
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-around;
   padding: 8px max(8px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-right));
   z-index: 100;
+  transition: background 0.3s, border-color 0.3s;
 }
 
 @media (min-width: 768px) {
@@ -1095,7 +1242,7 @@ tr:hover {
   max-width: 80px;
   border: none;
   background: transparent;
-  color: var(--gray-500);
+  color: var(--text-secondary);
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
@@ -1106,8 +1253,8 @@ tr:hover {
 }
 
 .admin-bottomnav-item:hover {
-  background: var(--gray-50);
-  color: var(--gray-700);
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .admin-bottomnav-item.active {
@@ -1134,19 +1281,20 @@ tr:hover {
 
 /* ── Admin Card ─────────────────────────────────────────────────── */
 .admin-card {
-  background: white;
-  border: 1px solid var(--gray-200);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   overflow: hidden;
   margin-bottom: 20px;
+  transition: background 0.3s, border-color 0.3s;
 }
 
 .admin-card-header {
   padding: 16px 20px;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--border-color);
   font-weight: 600;
   font-size: 15px;
-  color: var(--gray-900);
+  color: var(--text-primary);
 }
 
 .admin-card-body {
@@ -1164,7 +1312,7 @@ tr:hover {
   .admin-table-wrapper {
     margin: 0;
     border-radius: 8px;
-    border: 1px solid var(--gray-200);
+    border: 1px solid var(--border-color);
   }
 }
 
@@ -1189,8 +1337,8 @@ tr:hover {
 }
 
 .admin-stat-card {
-  background: white;
-  border: 1px solid var(--gray-200);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 18px 20px;
   display: flex;
@@ -1201,7 +1349,7 @@ tr:hover {
 
 .admin-stat-card:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  border-color: var(--gray-300);
+  border-color: var(--border-hover);
 }
 
 .admin-stat-icon {
@@ -1221,13 +1369,13 @@ tr:hover {
 
 .admin-stat-label {
   font-size: 13px;
-  color: var(--gray-600);
+  color: var(--text-secondary);
   margin-bottom: 4px;
 }
 
 .admin-stat-value {
   font-size: 24px;
   font-weight: 700;
-  color: var(--gray-900);
+  color: var(--text-primary);
 }
 

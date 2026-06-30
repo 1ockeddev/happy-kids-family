@@ -246,7 +246,7 @@ export default function AnalyticsPage() {
       <div style={{ padding: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
         <div style={{ textAlign: 'center' }}>
           <div className="shimmer" style={{ width: 40, height: 40, borderRadius: '50%', margin: '0 auto 12px' }} />
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>กำลังโหลดสถิติ...</p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>กำลังโหลดสถิติ...</p>
         </div>
       </div>
     );
@@ -263,14 +263,14 @@ export default function AnalyticsPage() {
   return (
     <>
       {/* Header */}
-      <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E5E7EB', padding: '16px 20px' }}>
+      <div style={{ background: 'var(--bg-primary)', borderBottom: '1px solid var(--border-color)', padding: '16px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#1A1A2E', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: 8 }}>
               <BarChart3 size={22} color="#6366f1" />
               Analytics Dashboard
             </h1>
-            <p style={{ color: '#9CA3AF', fontSize: '14px' }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
               {selectedUserId 
                 ? `สถิติการใช้งานของ: ${(stats?.topActiveUsers ?? []).find(u => u.user_id === selectedUserId)?.display_name || 'ผู้ใช้'}`
                 : 'สถิติการใช้งานระบบทั้งหมด'
@@ -282,7 +282,7 @@ export default function AnalyticsPage() {
               className="btn btn-sm"
               onClick={() => setSelectedUserId(null)}
               style={{ 
-                background: '#f3f4f6', 
+                background: 'var(--bg-secondary)', 
                 color: '#6b7280', 
                 display: 'flex', 
                 alignItems: 'center', 
@@ -307,15 +307,15 @@ export default function AnalyticsPage() {
                 <Users size={24} color="#6366f1" />
               </div>
               <div>
-                <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>ผู้ใช้งานทั้งหมด</p>
-                <p style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1e293b' }}>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>ผู้ใช้งานทั้งหมด</p>
+                <p style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)' }}>
                   {stats?.topActiveUsers?.length ?? 0}
                 </p>
               </div>
             </div>
             {/* User names list */}
             {(stats?.topActiveUsers?.length ?? 0) > 0 && (
-              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
+              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                   {(stats?.topActiveUsers ?? []).slice(0, 10).map((user, idx) => (
                     <div 
@@ -354,7 +354,7 @@ export default function AnalyticsPage() {
                   {(stats?.topActiveUsers?.length ?? 0) > 10 && (
                     <div style={{ 
                       fontSize: '0.7rem', 
-                      color: '#94a3b8',
+                      color: 'var(--text-secondary)',
                       padding: '4px 8px', 
                       fontStyle: 'italic'
                     }}>
@@ -375,8 +375,8 @@ export default function AnalyticsPage() {
                     <Activity size={24} color="#10b981" />
                   </div>
                   <div>
-                    <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>การเข้าชมทั้งหมด</p>
-                    <p style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1e293b' }}>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>การเข้าชมทั้งหมด</p>
+                    <p style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)' }}>
                       {userActivities.filter(a => a.event_type === 'page_view').length}
                     </p>
                   </div>
@@ -389,8 +389,8 @@ export default function AnalyticsPage() {
                     <MousePointer size={24} color="#f59e0b" />
                   </div>
                   <div>
-                    <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>คลิกทั้งหมด</p>
-                    <p style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1e293b' }}>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>คลิกทั้งหมด</p>
+                    <p style={{ fontSize: '1.5rem', fontWeight: '700', color: 'var(--text-primary)' }}>
                       {userActivities.filter(a => a.event_type === 'click').length}
                     </p>
                   </div>
@@ -419,7 +419,7 @@ export default function AnalyticsPage() {
                   onClick={() => setSelectedUserId(user.user_id)}
                   style={{
                     padding: '12px 20px',
-                    borderBottom: '1px solid #f1f5f9',
+                    borderBottom: '1px solid var(--border-color)',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
@@ -431,10 +431,10 @@ export default function AnalyticsPage() {
                   onMouseLeave={(e) => e.currentTarget.style.background = selectedUserId === user.user_id ? '#f0f9ff' : 'transparent'}
                 >
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: '600', fontSize: '0.85rem', color: '#1e293b', marginBottom: '2px' }}>
+                    <div style={{ fontWeight: '600', fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '2px' }}>
                       {user.display_name}
                     </div>
-                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
                       {user.role === 'parent' ? 'ผู้ปกครอง' : user.role === 'teacher' ? 'ครู' : 'Admin'}
                     </div>
                   </div>
@@ -442,7 +442,7 @@ export default function AnalyticsPage() {
                     <div style={{ fontWeight: '700', fontSize: '1rem', color: '#10b981' }}>
                       {user.total_events}
                     </div>
-                    <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>
                       {formatDuration(user.total_time_seconds)}
                     </div>
                   </div>
@@ -492,17 +492,17 @@ export default function AnalyticsPage() {
                       key={idx}
                       style={{
                         padding: '12px 20px',
-                        borderBottom: '1px solid #f1f5f9',
+                        borderBottom: '1px solid var(--border-color)',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
                       }}
                     >
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: '600', fontSize: '0.85rem', color: '#1e293b', marginBottom: '2px' }}>
+                        <div style={{ fontWeight: '600', fontSize: '0.85rem', color: 'var(--text-primary)', marginBottom: '2px' }}>
                           {elem.element_label || 'ไม่ระบุ'}
                         </div>
-                        <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
                           {elem.element_type} • {getPageLabel(elem.page_path)}
                         </div>
                       </div>
@@ -510,14 +510,14 @@ export default function AnalyticsPage() {
                         <div style={{ fontWeight: '700', fontSize: '1rem', color: '#f59e0b' }}>
                           {elem.count}
                         </div>
-                        <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>
                           คลิก
                         </div>
                       </div>
                     </div>
                   ))}
                 {userActivities.filter(a => a.event_type === 'click' && a.element_label).length === 0 && (
-                  <div style={{ padding: '40px 20px', textAlign: 'center', color: '#94a3b8' }}>
+                  <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                     ยังไม่มีข้อมูลการคลิก
                   </div>
                 )}
@@ -547,12 +547,12 @@ export default function AnalyticsPage() {
             </div>
             <div style={{ padding: '20px' }}>
               {loadingUserActivities ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
                   <div className="shimmer" style={{ width: 40, height: 40, borderRadius: '50%', margin: '0 auto 12px' }} />
                   กำลังโหลด...
                 </div>
               ) : userActivities.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
                   ไม่มีข้อมูลกิจกรรม
                 </div>
               ) : (
@@ -564,7 +564,7 @@ export default function AnalyticsPage() {
                     top: '0',
                     bottom: '0',
                     width: '2px',
-                    background: '#e5e7eb'
+                    background: 'var(--bg-secondary)'
                   }} />
                   
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
@@ -627,19 +627,19 @@ export default function AnalyticsPage() {
                           {/* Content */}
                           <div style={{ flex: 1, paddingTop: '4px' }}>
                             <div style={{ 
-                              background: '#fafafa', 
+                              background: 'var(--bg-secondary)', 
                               padding: '12px 16px', 
                               borderRadius: '12px',
                               border: '1px solid #f1f5f9'
                             }}>
-                              <div style={{ fontWeight: '600', fontSize: '0.9rem', color: '#1e293b', marginBottom: '4px' }}>
+                              <div style={{ fontWeight: '600', fontSize: '0.9rem', color: 'var(--text-primary)', marginBottom: '4px' }}>
                                 {label}
                               </div>
-                              <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                                 {time} • {date}
                               </div>
                               {activity.page_path && activity.event_type !== 'page_view' && (
-                                <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '4px' }}>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
                                   หน้า: {getPageLabel(activity.page_path)}
                                 </div>
                               )}

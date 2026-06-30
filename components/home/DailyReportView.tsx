@@ -23,7 +23,7 @@ const getStatusBadgeStyle = (status: MilkStatus) => {
     all: { bg: '#dcfce7', color: '#15803d', border: '#86efac' },      // เขียว
     some: { bg: '#fef3c7', color: '#b45309', border: '#fcd34d' },     // เหลือง
     not_must: { bg: '#fed7aa', color: '#c2410c', border: '#fdba74' }, // ส้ม
-    skip: { bg: '#e2e8f0', color: '#64748b', border: '#cbd5e1' }      // เทา
+    skip: { bg: '#e2e8f0', color: 'var(--text-secondary)', border: '#cbd5e1' }      // เทา
   };
   return styles[status] || styles.skip;
 };
@@ -148,7 +148,7 @@ function AttendanceCard({ attendance, report }: AttendanceCardProps) {
           style={{
             fontSize: '0.9rem',
             fontWeight: 700,
-            color: '#334155',
+            color: 'var(--text-primary)',
             fontFamily: 'Prompt, sans-serif'
           }}
         >
@@ -175,7 +175,7 @@ function AttendanceCard({ attendance, report }: AttendanceCardProps) {
             background: '#f8fafc',
             borderRadius: 10,
             fontSize: '0.8rem',
-            color: '#475569',
+            color: 'var(--text-secondary)',
             lineHeight: 1.5
           }}
         >
@@ -207,7 +207,7 @@ function ActivityCard({ activity, currentEntry }: ActivityCardProps) {
       }}
     >
       {currentEntry && (
-        <p style={{ fontSize: '0.72rem', color: '#94a3b8', margin: '0 0 12px 0' }}>
+        <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', margin: '0 0 12px 0' }}>
           {thDate(currentEntry.date)}
         </p>
       )}
@@ -228,7 +228,7 @@ function ActivityCard({ activity, currentEntry }: ActivityCardProps) {
         style={{
           fontSize: '1.2rem',
           fontWeight: 700,
-          color: '#0f172a',
+          color: 'var(--text-primary)',
           margin: 0,
           letterSpacing: '-0.2px'
         }}
@@ -262,7 +262,7 @@ function TeacherNoteCard({ note }: TeacherNoteCardProps) {
           fontWeight: 700,
           fontSize: '1rem',
           marginBottom: 10,
-          color: '#334155',
+          color: 'var(--text-primary)',
           gap: 8,
           fontFamily: 'Prompt, sans-serif'
         }}
@@ -281,7 +281,7 @@ function TeacherNoteCard({ note }: TeacherNoteCardProps) {
         </svg>
         ข้อความจากครู
       </div>
-      <p style={{ color: '#475569', lineHeight: 1.6, margin: 0 }}>{note}</p>
+      <p style={{ color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>{note}</p>
     </div>
   );
 }
@@ -323,7 +323,7 @@ function FoodMilkSection({ report }: FoodMilkSectionProps) {
           fontWeight: 700,
           fontSize: '1rem',
           marginBottom: 16,
-          color: '#334155',
+          color: 'var(--text-primary)',
           gap: 8,
           fontFamily: 'Prompt, sans-serif'
         }}
@@ -371,7 +371,7 @@ function FoodMilkSection({ report }: FoodMilkSectionProps) {
                     <path d="M7 2v20" />
                     <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" />
                   </svg>
-                  <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#334155' }}>อาหารกลางวัน</span>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>อาหารกลางวัน</span>
                 </div>
                 {report.food_amount && report.food_amount !== 'skip' && (
                   <span
@@ -401,7 +401,7 @@ function FoodMilkSection({ report }: FoodMilkSectionProps) {
                         background: 'white',
                         borderRadius: 10,
                         fontSize: '0.85rem',
-                        color: '#475569',
+                        color: 'var(--text-secondary)',
                         fontWeight: 600,
                         border: '1px solid #cbd5e1',
                         boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
@@ -416,7 +416,7 @@ function FoodMilkSection({ report }: FoodMilkSectionProps) {
                 <div
                   style={{
                     fontSize: '0.8rem',
-                    color: '#64748b',
+                    color: 'var(--text-secondary)',
                     lineHeight: 1.5,
                     marginTop: 10,
                     paddingLeft: 10,
@@ -450,7 +450,7 @@ function FoodMilkSection({ report }: FoodMilkSectionProps) {
                   <svg width="20" height="20" viewBox="0 0 512 512" fill="#64748b" opacity="0.8">
                     <path d="M445.618,228.059h-42.029l27.986-43.14c1.954-3.012,1.096-7.037-1.916-8.991c-3.011-1.953-7.036-1.097-8.99,1.916l-32.576,50.215h-70.124c-2.758-63.71-45.818-114.503-98.357-114.503c-46.697,0-86.652,40.321-96.29,95.396C95.139,188.996,75.1,164.417,70.731,143.56c-1.033-4.947-4.933-8.683-9.936-9.518c-4.923-0.823-9.735,1.366-12.333,5.579c-0.116,0.18-0.21,0.344-0.287,0.487c-8.978,15.282-11.588,33.751-7.811,52.788c-4.686-4.875-8.418-9.9-10.996-14.962c-2.297-4.498-7.044-7.077-12.088-6.572c-5.022,0.502-9.144,3.953-10.5,8.801l-0.047,0.17c-7.67,27.815,2.96,57.899,27.076,81.47c-5.247-2.475-9.847-5.33-13.638-8.552c-3.893-3.31-9.313-3.891-13.809-1.481c-4.399,2.358-6.863,7.083-6.276,12.036l0.034,0.276c2.977,23.833,18.146,44.562,42.713,58.368c18.833,10.583,41.506,16.112,65.323,16.111c6.442,0,12.972-0.405,19.526-1.223c15.844-1.979,30.252-5.563,42.955-10.496c14.35,7.672,31.206,11.714,48.975,11.714c26.114,0,49.632-8.628,66.982-24.424c16.946,15.588,39.94,24.427,67.025,24.427c58.916,0,98.5-41.794,98.5-104C452.118,230.969,449.208,228.059,445.618,228.059z M201.131,133.386c0,0.477-2,2.5-6,2.5c-3.508,0-5.476-1.555-5.908-2.259c2.088-1.007,4.215-1.91,6.375-2.711C199.273,131.07,201.131,132.928,201.131,133.386z" />
                   </svg>
-                  <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#334155' }}>ผลไม้</span>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>ผลไม้</span>
                 </div>
                 {report.fruit_amount && report.fruit_amount !== 'skip' && (
                   <span
@@ -480,7 +480,7 @@ function FoodMilkSection({ report }: FoodMilkSectionProps) {
                         background: 'white',
                         borderRadius: 10,
                         fontSize: '0.85rem',
-                        color: '#475569',
+                        color: 'var(--text-secondary)',
                         fontWeight: 600,
                         border: '1px solid #cbd5e1',
                         boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
@@ -495,7 +495,7 @@ function FoodMilkSection({ report }: FoodMilkSectionProps) {
                 <div
                   style={{
                     fontSize: '0.8rem',
-                    color: '#64748b',
+                    color: 'var(--text-secondary)',
                     lineHeight: 1.5,
                     marginTop: 10,
                     paddingLeft: 10,
@@ -517,7 +517,7 @@ function FoodMilkSection({ report }: FoodMilkSectionProps) {
             style={{
               fontSize: '0.85rem',
               fontWeight: 700,
-              color: '#475569',
+              color: 'var(--text-secondary)',
               marginBottom: 10,
               display: 'flex',
               alignItems: 'center',
@@ -548,7 +548,7 @@ function FoodMilkSection({ report }: FoodMilkSectionProps) {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>{m.label}</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{m.label}</span>
                     {m.val !== 'skip' && (
                       <span
                         style={{
@@ -567,7 +567,7 @@ function FoodMilkSection({ report }: FoodMilkSectionProps) {
                     )}
                   </div>
                   {m.note && (
-                    <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 8, lineHeight: 1.5, paddingLeft: 10, borderLeft: '2px solid #94a3b8' }}>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: 8, lineHeight: 1.5, paddingLeft: 10, borderLeft: '2px solid #94a3b8' }}>
                       {m.note}
                     </div>
                   )}
@@ -603,7 +603,7 @@ function BehaviorSection({ behaviorGroups }: BehaviorSectionProps) {
           fontWeight: 700,
           fontSize: '1rem',
           marginBottom: 16,
-          color: '#334155',
+          color: 'var(--text-primary)',
           gap: 8,
           fontFamily: 'Prompt, sans-serif'
         }}
@@ -665,12 +665,12 @@ function BehaviorSection({ behaviorGroups }: BehaviorSectionProps) {
                   >
                     <div style={{ flexShrink: 0 }}>{faceIcon}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}>{s.name_th}</div>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>{s.name_th}</div>
                       {s.note && (
                         <div
                           style={{
                             fontSize: '0.75rem',
-                            color: '#475569',
+                            color: 'var(--text-secondary)',
                             lineHeight: 1.5,
                             marginTop: 8,
                             padding: '8px 10px',
@@ -742,7 +742,7 @@ function NapTimeline({ report }: NapTimelineProps) {
             alignItems: 'center',
             fontWeight: 700,
             fontSize: '1rem',
-            color: '#334155',
+            color: 'var(--text-primary)',
             gap: 8,
             fontFamily: 'Prompt, sans-serif'
           }}
@@ -871,7 +871,7 @@ function NapTimeline({ report }: NapTimelineProps) {
               {/* Timeline */}
               <div style={{ flex: 1, position: 'relative', paddingTop: 15 }}>
                 {/* Top time labels */}
-                <div style={{ position: 'absolute', top: 0, width: '100%', fontSize: '0.65rem', color: '#94a3b8', fontWeight: 700 }}>
+                <div style={{ position: 'absolute', top: 0, width: '100%', fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 700 }}>
                   <span style={{ position: 'absolute', left: 0, transform: 'translateX(-50%)' }}>09:00</span>
                   <span style={{ position: 'absolute', left: `${bgLeftPercent}%`, transform: 'translateX(-50%)' }}>12:00</span>
                   <span style={{ position: 'absolute', right: 0, transform: 'translateX(50%)' }}>14:30</span>
@@ -930,7 +930,7 @@ function NapTimeline({ report }: NapTimelineProps) {
           );
         })()
       ) : (
-        <div style={{ color: '#94a3b8', fontSize: 14 }}>
+        <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
           <p style={{ marginBottom: report.nap_note ? 6 : 0 }}>ไม่ได้นอนกลางวัน</p>
           {report.nap_note && (
             <div
@@ -968,6 +968,19 @@ interface ExcretionSectionProps {
 }
 
 function ExcretionSection({ exDiaper, exPotty }: ExcretionSectionProps) {
+  // Combine and sort all excretions by time
+  const allExcretions = [
+    ...exDiaper.map(e => ({ ...e, method: 'diaper' as const })),
+    ...exPotty.map(e => ({ ...e, method: 'potty' as const }))
+  ].sort((a, b) => {
+    if (!a.time || !b.time) return 0;
+    return a.time.localeCompare(b.time);
+  });
+
+  // Count totals
+  const totalPee = allExcretions.filter(e => e.type === 'pee').length;
+  const totalPoo = allExcretions.filter(e => e.type === 'poo').length;
+
   return (
     <div
       style={{
@@ -985,70 +998,135 @@ function ExcretionSection({ exDiaper, exPotty }: ExcretionSectionProps) {
           fontWeight: 700,
           fontSize: '1rem',
           marginBottom: 14,
-          color: '#334155',
+          color: 'var(--text-primary)',
           gap: 8,
           fontFamily: 'Prompt, sans-serif'
         }}
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M9 11l3 3L22 4" />
-          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-        </svg>
-        การขับถ่าย
+        <Toilet size={20} color="#334155" />
+        การขับถ่าย (Toilet)
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {exDiaper.length > 0 && (
-          <div style={{ background: '#fff7ed', padding: 14, borderRadius: 14, border: '1px solid #ffedd5' }}>
-            <p style={{ fontSize: '0.85rem', fontWeight: 800, color: '#c2410c', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Diaper size={16} color="#c2410c" />
-              ผ้าอ้อม (Diapers)
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {[
-                { label: 'ฉี่ (Wet)', items: exDiaper.filter((e) => e.type === 'pee') },
-                { label: 'อึ (Soiled)', items: exDiaper.filter((e) => e.type === 'poo') }
-              ]
-                .filter((g) => g.items.length > 0)
-                .map((g) => (
-                  <div key={g.label} style={{ background: 'white', padding: 8, borderRadius: 10, textAlign: 'center' }}>
-                    <span style={{ display: 'block', fontSize: '0.7rem', color: '#9a3412' }}>{g.label}</span>
-                    <span style={{ fontWeight: 700, color: '#4a5568' }}>{g.items.length} ครั้ง</span>
-                    <small style={{ display: 'block', fontSize: '0.65rem', color: '#94a3b8' }}>
-                      {g.items
-                        .map((e) => e.time?.slice(0, 5))
-                        .filter(Boolean)
-                        .join(', ') || '-'}
-                    </small>
-                  </div>
-                ))}
+
+      {/* Summary Box */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        background: '#f8fafc',
+        border: '1px solid #e2e8f0',
+        borderRadius: 12,
+        padding: '12px 16px',
+        marginBottom: 16
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          fontSize: '0.85rem',
+          fontWeight: 700,
+          color: '#0369a1'
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+          </svg>
+          ฉี่รวม: {totalPee} ครั้ง
+        </div>
+        <div style={{ width: 1, background: '#e2e8f0' }}></div>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          fontSize: '0.85rem',
+          fontWeight: 700,
+          color: '#a16207'
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C9 2 7 4 7 6.5c0 1.7.7 3 1.5 4.5C9.3 12.5 10 14 10 16c0 2.2 1.8 4 4 4s4-1.8 4-4c0-2-.7-3.5-1.5-5-.8-1.5-1.5-2.8-1.5-4.5C15 4 13 2 12 2z"/>
+          </svg>
+          อึรวม: {totalPoo} ครั้ง
+        </div>
+      </div>
+
+      {/* Timeline */}
+      <div style={{
+        position: 'relative',
+        paddingLeft: 20,
+        marginLeft: 10,
+        borderLeft: '2px dashed #cbd5e1',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 14
+      }}>
+        {allExcretions.map((e, idx) => {
+          const isPee = e.type === 'pee';
+          const isDiaper = e.method === 'diaper';
+          
+          return (
+            <div key={idx} style={{
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              {/* Timeline dot */}
+              <div style={{
+                position: 'absolute',
+                left: -25,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: isPee ? '#38bdf8' : '#a16207',
+                border: '2px solid #ffffff',
+                boxShadow: isPee ? '0 0 0 2px #bae6fd' : '0 0 0 2px #fef08a'
+              }} />
+              
+              {/* Time label */}
+              <span style={{
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                color: 'var(--text-secondary)'
+              }}>
+                {e.time ? e.time.slice(0, 5) : '-'} น.
+              </span>
+              
+              {/* Type badge */}
+              <span style={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                padding: '4px 12px',
+                borderRadius: 20,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                background: isPee ? '#e0f2fe' : '#fef9c3',
+                color: isPee ? '#0369a1' : '#a16207',
+                border: isPee ? '1px solid #bae6fd' : '1px solid #fef08a'
+              }}>
+                {isPee ? (
+                  <>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+                    </svg>
+                    ฉี่
+                  </>
+                ) : (
+                  <>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2C9 2 7 4 7 6.5c0 1.7.7 3 1.5 4.5C9.3 12.5 10 14 10 16c0 2.2 1.8 4 4 4s4-1.8 4-4c0-2-.7-3.5-1.5-5-.8-1.5-1.5-2.8-1.5-4.5C15 4 13 2 12 2z"/>
+                    </svg>
+                    อึ
+                  </>
+                )}
+                {' '}({isDiaper ? 'ผ้าอ้อม' : 'กระโถน'})
+              </span>
             </div>
-          </div>
-        )}
-        {exPotty.length > 0 && (
-          <div style={{ background: '#f0fdf4', padding: 14, borderRadius: 14, border: '1px solid #dcfce7' }}>
-            <p style={{ fontSize: '0.85rem', fontWeight: 800, color: '#15803d', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Toilet size={16} color="#15803d" />
-              นั่งกระโถน (Potty)
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {[
-                { label: 'ฉี่ (Pee)', items: exPotty.filter((e) => e.type === 'pee') },
-                { label: 'อึ (Poo)', items: exPotty.filter((e) => e.type === 'poo') }
-              ]
-                .filter((g) => g.items.length > 0)
-                .map((g) => (
-                  <div key={g.label} style={{ background: 'white', padding: 8, borderRadius: 10, textAlign: 'center' }}>
-                    <span style={{ display: 'block', fontSize: '0.7rem', color: '#166534' }}>{g.label}</span>
-                    <span style={{ fontWeight: 700, color: '#4a5568' }}>{g.items.length} ครั้ง</span>
-                    <small style={{ display: 'block', fontSize: '0.65rem', color: '#94a3b8' }}>
-                      {g.items
-                        .map((e) => e.time?.slice(0, 5))
-                        .filter(Boolean)
-                        .join(', ') || '-'}
-                    </small>
-                  </div>
-                ))}
-            </div>
+          );
+        })}
+        
+        {allExcretions.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+            ไม่มีข้อมูลการขับถ่าย
           </div>
         )}
       </div>
@@ -1066,8 +1144,8 @@ interface TeacherFooterProps {
 function TeacherFooter({ teacher, currentEntry, selectedChild }: TeacherFooterProps) {
   return (
     <div style={{ textAlign: 'center', marginTop: 24, paddingTop: 16, borderTop: '1px solid #f1f5f9' }}>
-      <p style={{ margin: '2px 0', color: '#94a3b8', fontSize: '0.8rem' }}>บันทึกโดยคุณครู</p>
-      <p style={{ margin: '2px 0', color: '#475569', fontWeight: 600, fontSize: '0.88rem' }}>
+      <p style={{ margin: '2px 0', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>บันทึกโดยคุณครู</p>
+      <p style={{ margin: '2px 0', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.88rem' }}>
         {teacher?.display_name ?? 'Happy Kids'}
       </p>
     </div>

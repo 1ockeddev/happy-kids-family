@@ -87,11 +87,11 @@ function ScoreInput({ item, score, onChange, onNoteChange }: {
   const max = Math.min(item.max_score, 3); // cap at 3 for FaceIcon
 
   return (
-    <div style={{ padding: '10px 0', borderBottom: '1px solid #F3F4F6' }}>
+    <div style={{ padding: '10px 0', borderBottom: '1px solid var(--border-color)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ flex: 1, fontSize: 13 }}>
           <span>{item.name_th}</span>
-          <span style={{ color: '#9CA3AF', fontSize: 11, marginLeft: 6 }}>{item.name_en}</span>
+          <span style={{ color: 'var(--text-secondary)', fontSize: 11, marginLeft: 6 }}>{item.name_en}</span>
         </div>
         {/* Face buttons */}
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -939,7 +939,7 @@ export default function ReportsPage() {
           visibleColumns.child ? { key: 'child', label: 'นักเรียน', render: (r: DailyReport) => (
             <div>
               <div style={{ fontWeight: 500 }}>{r.child?.name_th ?? '-'}</div>
-              <div style={{ fontSize: 12, color: '#9CA3AF' }}>{r.daily?.cohort?.name}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{r.daily?.cohort?.name}</div>
             </div>
           )} : null,
           visibleColumns.date ? { key: 'date', label: 'วันที่', render: (r: DailyReport) => r.daily?.date ? new Date(r.daily.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }) : '-' } : null,
@@ -977,7 +977,7 @@ export default function ReportsPage() {
           <button 
             className="btn btn-sm" 
             onClick={() => setModal('columns')}
-            style={{ background: '#F3F4F6', color: '#6B7280', display: 'flex', alignItems: 'center', gap: 6 }}
+            style={{ background: 'var(--bg-secondary)', color: '#6B7280', display: 'flex', alignItems: 'center', gap: 6 }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="3" width="7" height="7"></rect>
@@ -1006,7 +1006,7 @@ export default function ReportsPage() {
 
         {/* ── cohort (add) ── */}
         {modal === 'add' && (
-          <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '14px 16px' }}>
+          <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '14px 16px' }}>
             <Sec emoji="🏫" label="1 · เลือกรุ่น" color="#9CA3AF" />
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {cohorts.map(c => (
@@ -1021,9 +1021,9 @@ export default function ReportsPage() {
 
         {/* ── day (add) ── */}
         {modal === 'add' && form.cohort_id && (
-          <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '14px 16px' }}>
+          <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '14px 16px' }}>
             <Sec emoji="📅" label="2 · เลือกวัน" color="#9CA3AF" />
-            {dailiesForCohort.length === 0 ? <p style={{ fontSize: 13, color: '#9CA3AF' }}>ยังไม่มีบันทึกในรุ่นนี้</p> : (
+            {dailiesForCohort.length === 0 ? <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>ยังไม่มีบันทึกในรุ่นนี้</p> : (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {dailiesForCohort.map(d => (
                   <button key={d.id} type="button" onClick={() => setForm(f => ({ ...f, daily_id: d.id }))}
@@ -1040,14 +1040,14 @@ export default function ReportsPage() {
         {selectedDaily && (selectedDaily.activity || selectedDaily.food || selectedDaily.fruit) && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {selectedDaily.activity && <div style={{ flex: '1 1 100%', background: '#EBF4FA', borderRadius: 8, padding: '10px 14px' }}><p style={{ fontSize: 11, fontWeight: 700, color: '#4A90B8', marginBottom: 4 }}>กิจกรรม</p><p style={{ fontSize: 14, fontWeight: 600 }}>{selectedDaily.activity}</p></div>}
-            {selectedDaily.food   && <div style={{ flex: 1, background: '#EBF7F0', borderRadius: 8, padding: '10px 14px' }}><p style={{ fontSize: 11, fontWeight: 700, color: '#4CAF76', marginBottom: 4 }}>อาหาร</p><p style={{ fontSize: 14, fontWeight: 600 }}>{selectedDaily.food}</p></div>}
-            {selectedDaily.fruit  && <div style={{ flex: 1, background: '#EBF7F0', borderRadius: 8, padding: '10px 14px' }}><p style={{ fontSize: 11, fontWeight: 700, color: '#4CAF76', marginBottom: 4 }}>ผลไม้</p><p style={{ fontSize: 14, fontWeight: 600 }}>{selectedDaily.fruit}</p></div>}
+            {selectedDaily.food   && <div style={{ flex: 1, background: 'var(--bg-secondary)', borderRadius: 8, padding: '10px 14px' }}><p style={{ fontSize: 11, fontWeight: 700, color: '#4CAF76', marginBottom: 4 }}>อาหาร</p><p style={{ fontSize: 14, fontWeight: 600 }}>{selectedDaily.food}</p></div>}
+            {selectedDaily.fruit  && <div style={{ flex: 1, background: 'var(--bg-secondary)', borderRadius: 8, padding: '10px 14px' }}><p style={{ fontSize: 11, fontWeight: 700, color: '#4CAF76', marginBottom: 4 }}>ผลไม้</p><p style={{ fontSize: 14, fontWeight: 600 }}>{selectedDaily.fruit}</p></div>}
           </div>
         )}
 
         {/* ── student (add) ── */}
         {modal === 'add' && form.daily_id && (
-          <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '14px 16px' }}>
+          <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '14px 16px' }}>
             <Sec emoji="👧" label="3 · เลือกนักเรียน" color="#9CA3AF" />
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {childrenForCohort.map(c => (
@@ -1061,15 +1061,15 @@ export default function ReportsPage() {
         )}
 
         {modal === 'edit' && selected && (
-          <div style={{ padding: '10px 14px', background: '#F7F5F2', borderRadius: 8, fontSize: 14, color: '#6B7280', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <span>👧 <strong style={{ color: '#1A1A2E' }}>{selected.child?.name_th}</strong></span>
-            {selected.daily?.date && <span>📅 <strong style={{ color: '#1A1A2E' }}>{new Date(selected.daily.date).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long' })}</strong></span>}
+          <div style={{ padding: '10px 14px', background: 'var(--bg-secondary)', borderRadius: 8, fontSize: 14, color: '#6B7280', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <span>👧 <strong style={{ color: 'var(--text-primary)' }}>{selected.child?.name_th}</strong></span>
+            {selected.daily?.date && <span>📅 <strong style={{ color: 'var(--text-primary)' }}>{new Date(selected.daily.date).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long' })}</strong></span>}
           </div>
         )}
 
         {/* ── Behaviors ── */}
         {sortedBehaviors.map(cat => (
-          <div key={cat.id} style={{ background: '#FAFAFA', border: '1px solid #F3F4F6', borderRadius: 8, padding: '14px 16px' }}>
+          <div key={cat.id} style={{ background: 'var(--bg-secondary)', border: '1px solid #F3F4F6', borderRadius: 8, padding: '14px 16px' }}>
             <Sec emoji="🧠" label={`${cat.name_th}  ${cat.name_en}`} color="#6C5CE7" />
             {(cat as BehaviorCategory & { items?: BehaviorItem[] }).items?.map(item => (
               <ScoreInput key={item.id} item={item}
@@ -1081,7 +1081,7 @@ export default function ReportsPage() {
         ))}
 
         {/* ── Nap ── */}
-        <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '14px 16px' }}>
+        <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '14px 16px' }}>
           <Sec emoji="😴" label="การนอน" color="#9CA3AF" />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="form-group"><label className="form-label">เริ่มนอน</label><input className="form-input" type="time" value={form.nap_from} onChange={e => setForm(f => ({ ...f, nap_from: e.target.value }))} /></div>
@@ -1114,15 +1114,15 @@ export default function ReportsPage() {
         </div>
 
         {/* ── Excretions ── */}
-        <div style={{ background: '#F0EEFF', borderRadius: 8, padding: '14px 16px' }}>
+        <div style={{ background: 'var(--accent-bg)', borderRadius: 8, padding: '14px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <Sec emoji="🚽" label="การขับถ่าย" color="#6C5CE7" />
             <button type="button" className="btn btn-sm" style={{ background: '#6C5CE7', color: 'white', fontSize: 12 }} onClick={addEx}><Plus size={12} /> เพิ่ม</button>
           </div>
-          {visibleEx.length === 0 && <p style={{ color: '#9CA3AF', fontSize: 13 }}>ยังไม่มีบันทึก</p>}
+          {visibleEx.length === 0 && <p style={{ color: 'var(--text-secondary)', fontSize: 13 }}>ยังไม่มีบันทึก</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {visibleEx.map(ex => (
-              <div key={ex.id} style={{ background: 'white', borderRadius: 8, padding: '8px 12px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div key={ex.id} style={{ background: 'var(--bg-primary)', borderRadius: 8, padding: '8px 12px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <input type="time" className="form-input" value={ex.time ?? ''} onChange={e => updEx(ex.id, { time: e.target.value || null })} style={{ width: 100, padding: '5px 8px', fontSize: 13 }} />
                 <div style={{ display: 'flex', gap: 4 }}>
                   {(['pee', 'poo'] as ExcretionType[]).map(t => (
@@ -1140,14 +1140,14 @@ export default function ReportsPage() {
                     </button>
                   ))}
                 </div>
-                <button type="button" onClick={() => delEx(ex.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF' }}><X size={14} /></button>
+                <button type="button" onClick={() => delEx(ex.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}><X size={14} /></button>
               </div>
             ))}
           </div>
         </div>
 
         {/* ── Food & Fruit ── */}
-        <div style={{ background: '#EBF7F0', borderRadius: 8, padding: '14px 16px' }}>
+        <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '14px 16px' }}>
           <Sec emoji="🍱" label="ปริมาณที่รับประทาน" color="#4CAF76" />
           <AmountSelect 
             label={selectedDaily?.food ? selectedDaily.food : "ปริมาณอาหาร"} 
@@ -1166,7 +1166,7 @@ export default function ReportsPage() {
         </div>
 
         {/* ── Milk ── */}
-        <div style={{ background: '#FEF0EB', borderRadius: 8, padding: '14px 16px' }}>
+        <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '14px 16px' }}>
           <Sec emoji="🍼" label="นม" color="#E8754A" />
           <AmountSelect label="นม มื้อ 1" value={form.milk1} noteValue={form.milk1_note}
             onAmountChange={v => setForm(f => ({ ...f, milk1: v }))}
@@ -1179,12 +1179,12 @@ export default function ReportsPage() {
         </div>
 
         {/* ── Teacher selector ── */}
-        <div style={{ background: '#F7F5F2', borderRadius: 8, padding: '12px 14px' }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+        <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '12px 14px' }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
             👩‍🏫 ครูผู้บันทึก
           </p>
           {teachers.length === 0 ? (
-            <p style={{ fontSize: 12, color: '#9CA3AF' }}>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
               ยังไม่มีครูในระบบ — เพิ่มได้ที่{' '}
               <a href="/admin/users" style={{ color: '#6C5CE7', textDecoration: 'underline' }}>จัดการผู้ใช้</a>
             </p>
@@ -1213,7 +1213,7 @@ export default function ReportsPage() {
                     }
                     {t.display_name ?? t.line_user_id?.slice(0, 8) ?? "(ไม่มีชื่อ)"}
                     {t.display_name?.includes(DEFAULT_TEACHER_NAME) && !active && (
-                      <span style={{ fontSize: 10, color: '#9CA3AF' }}>(default)</span>
+                      <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>(default)</span>
                     )}
                   </button>
                 );
@@ -1274,8 +1274,8 @@ export default function ReportsPage() {
                 onChange={(e) => setVisibleColumns(v => ({ ...v, [col.key]: e.target.checked }))}
                 style={{ width: 18, height: 18, cursor: col.disabled ? 'not-allowed' : 'pointer' }}
               />
-              <span style={{ fontSize: 14, fontWeight: 500, color: '#1A1A2E' }}>{col.label}</span>
-              {col.disabled && <span style={{ fontSize: 11, color: '#9CA3AF', marginLeft: 'auto' }}>(จำเป็น)</span>}
+              <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{col.label}</span>
+              {col.disabled && <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginLeft: 'auto' }}>(จำเป็น)</span>}
             </label>
           ))}
         </div>

@@ -68,11 +68,11 @@ export default function BehaviorsPage() {
 
   return (
     <>
-      <div style={{ background: '#FFFFFF', borderBottom: '1px solid #E5E7EB', padding: '20px 32px' }}>
+      <div style={{ background: 'var(--bg-primary)', borderBottom: '1px solid var(--border-color)', padding: '20px 32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#1A1A2E', fontFamily: 'Prompt, sans-serif' }}>ประเมินพฤติกรรม</h1>
-            <p style={{ color: '#9CA3AF', fontSize: '14px', marginTop: '2px' }}>จัดการหมวดหมู่และรายการประเมิน ผูกกับห้องเรียน</p>
+            <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', fontFamily: 'Prompt, sans-serif' }}>ประเมินพฤติกรรม</h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '2px' }}>จัดการหมวดหมู่และรายการประเมิน ผูกกับห้องเรียน</p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-ghost" onClick={load}><RefreshCw size={14} /></button>
@@ -91,10 +91,10 @@ export default function BehaviorsPage() {
 
         {loading ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {[1,2,3].map(i => <div key={i} style={{ height: 56, background: 'white', borderRadius: 12, animation: 'pulse 1.5s infinite' }} />)}
+            {[1,2,3].map(i => <div key={i} style={{ height: 56, background: 'var(--bg-primary)', borderRadius: 12, animation: 'pulse 1.5s infinite' }} />)}
           </div>
         ) : categories.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '48px 24px', color: '#9CA3AF' }}>
+          <div style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-secondary)' }}>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
               <Brain size={40} color="#9CA3AF" />
             </div>
@@ -113,16 +113,16 @@ export default function BehaviorsPage() {
                     style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', borderBottom: isOpen ? '1px solid #F3F4F6' : 'none' }}
                     onClick={() => setExpandedCat(isOpen ? null : cat.id)}
                   >
-                    {isOpen ? <ChevronDown size={16} style={{ color: '#9CA3AF', flexShrink: 0 }} /> : <ChevronRight size={16} style={{ color: '#9CA3AF', flexShrink: 0 }} />}
+                    {isOpen ? <ChevronDown size={16} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} /> : <ChevronRight size={16} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         <span style={{ fontWeight: 600, fontSize: 15 }}>{cat.name_th}</span>
-                        <span style={{ color: '#9CA3AF', fontSize: 13 }}>{cat.name_en}</span>
+                        <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{cat.name_en}</span>
                       </div>
                       {/* cohort badges */}
                       <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
                         {catCohorts.length === 0 ? (
-                          <span style={{ fontSize: 11, color: '#9CA3AF', background: '#F3F4F6', padding: '1px 8px', borderRadius: 99 }}>ทุกห้อง</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-secondary)', background: 'var(--bg-secondary)', padding: '1px 8px', borderRadius: 99 }}>ทุกห้อง</span>
                         ) : catCohorts.map(c => (
                           <span key={c.id} style={{ fontSize: 11, color: '#4A90B8', background: '#EBF4FA', padding: '1px 8px', borderRadius: 99 }}>{c.name} ({c.level})</span>
                         ))}
@@ -147,14 +147,14 @@ export default function BehaviorsPage() {
                   {isOpen && (
                     <div>
                       {items.length === 0
-                        ? <p style={{ padding: '14px 20px', color: '#9CA3AF', fontSize: 14 }}>ยังไม่มีรายการ</p>
+                        ? <p style={{ padding: '14px 20px', color: 'var(--text-secondary)', fontSize: 14 }}>ยังไม่มีรายการ</p>
                         : items.map(item => (
                           <div key={item.id} style={{ padding: '11px 20px 11px 52px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid #F9FAFB' }}>
                             <div style={{ flex: 1 }}>
                               <span style={{ fontSize: 14 }}>{item.name_th}</span>
-                              <span style={{ color: '#9CA3AF', fontSize: 12, marginLeft: 8 }}>{item.name_en}</span>
+                              <span style={{ color: 'var(--text-secondary)', fontSize: 12, marginLeft: 8 }}>{item.name_en}</span>
                             </div>
-                            <span style={{ fontSize: 12, color: '#9CA3AF', flexShrink: 0 }}>
+                            <span style={{ fontSize: 12, color: 'var(--text-secondary)', flexShrink: 0 }}>
                               max {item.max_score} คะแนน
                             </span>
                             <div style={{ display: 'flex', gap: 4 }}>
@@ -200,11 +200,11 @@ export default function BehaviorsPage() {
         {/* Cohort selector */}
         <div className="form-group">
           <label className="form-label">ผูกกับห้องเรียน</label>
-          <p style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 8 }}>
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
             ไม่เลือก = ใช้กับทุกห้องเรียน
           </p>
           {cohorts.length === 0 ? (
-            <p style={{ fontSize: 13, color: '#9CA3AF' }}>ยังไม่มีห้องเรียนในระบบ</p>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>ยังไม่มีห้องเรียนในระบบ</p>
           ) : (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {cohorts.map(c => {

@@ -37,7 +37,7 @@ const TABLE_COLUMNS: Record<string, string[]> = {
   cohort:               ['id','name','level','academic_year','start_date','end_date','created_at'],
   parent_child:         ['parent_id','child_id'],
   teacher_permission:   ['user_id','can_manage_daily','can_manage_attendance','can_manage_report'],
-  enrollment:           ['id','child_id','cohort_id','start_date','end_date','graduated','created_at'],
+  enrollment:           ['id','child_id','cohort_id','start_date','end_date','graduated','hidden','created_at'],
   daily:                ['id','cohort_id','date','activity','food','fruit','note','created_by','updated_by','updated_at','created_at'],
   attendance:           ['id','daily_id','child_id','status','note','created_by','updated_by','updated_at','created_at'],
   daily_report:         ['id','daily_id','child_id','nap_from','nap_to','nap_note','milk1','milk1_note','milk2','milk2_note','food_amount','food_note','fruit_amount','fruit_note','note','created_by','updated_by','updated_at','created_at'],
@@ -519,7 +519,7 @@ export default function DatabasePage() {
   const totalOverwritten = importResult?.stats ? Object.values(importResult.stats).reduce((a,b)=>a+b.overwritten,0) : 0;
 
   const SBox = ({ style = {} }: { style?: React.CSSProperties }) => (
-    <div style={{ background: 'white', borderRadius: 20, border: '1px solid #f0f0f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', marginBottom: 16, overflow: 'hidden', ...style }} />
+    <div style={{ background: 'var(--bg-primary)', borderRadius: 20, border: '1px solid #f0f0f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', marginBottom: 16, overflow: 'hidden', ...style }} />
   );
   void SBox;
 
@@ -529,8 +529,8 @@ export default function DatabasePage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Database size={20} style={{ color: '#6C5CE7' }} />
           <div>
-            <h1 style={{ fontSize: 18, fontWeight: 700, color: '#1A1A2E', fontFamily: 'Prompt, sans-serif' }}>นำเข้า / ส่งออกข้อมูล</h1>
-            <p style={{ color: '#9CA3AF', fontSize: 12 }}>Backup และ Restore ฐานข้อมูลทั้งหมด</p>
+            <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'Prompt, sans-serif' }}>นำเข้า / ส่งออกข้อมูล</h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Backup และ Restore ฐานข้อมูลทั้งหมด</p>
           </div>
         </div>
       </div>
@@ -539,7 +539,7 @@ export default function DatabasePage() {
 
         {/* ── Export ── */}
         <div className="card" style={{ overflow: 'hidden' }}>
-          <div style={{ background: '#F0EEFF', padding: '14px 18px', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ background: 'var(--accent-bg)', padding: '14px 18px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: 10 }}>
             <Download size={18} style={{ color: '#6C5CE7' }} />
             <div>
               <h2 style={{ fontSize: 15, fontWeight: 700, color: '#4C1D95' }}>ส่งออกข้อมูล (Export)</h2>
@@ -601,12 +601,12 @@ export default function DatabasePage() {
                 </button>
               </div>
               {exportFormat === 'csv' && (
-                <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 6 }}>
+                <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 6 }}>
                   CSV จะ export เป็นไฟล์ ZIP (แต่ละ table แยกไฟล์)
                 </p>
               )}
               {exportFormat === 'sql' && (
-                <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 6 }}>
+                <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 6 }}>
                   SQL จะสร้าง INSERT statements สำหรับนำเข้าข้อมูล
                 </p>
               )}
@@ -625,7 +625,7 @@ export default function DatabasePage() {
                   </button>
                 </div>
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, maxHeight: 200, overflowY: 'auto', padding: 8, background: '#F9FAFB', borderRadius: 8 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: 8, background: 'var(--bg-secondary)', borderRadius: 8 }}>
                 {Object.entries(TABLE_LABELS).map(([t, l]) => (
                   <label key={t} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', padding: '4px 10px', borderRadius: 6, background: selectedExportTables.has(t) ? '#E0E7FF' : 'white', border: '1px solid', borderColor: selectedExportTables.has(t) ? '#6C5CE7' : '#E5E7EB' }}>
                     <input
@@ -636,12 +636,12 @@ export default function DatabasePage() {
                     />
                     <span style={{ fontSize: 12, color: selectedExportTables.has(t) ? '#4C1D95' : '#6B7280', fontWeight: selectedExportTables.has(t) ? 600 : 400 }}>
                       {l}
-                      <span style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 400, marginLeft: 4 }}>({t})</span>
+                      <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 400, marginLeft: 4 }}>({t})</span>
                     </span>
                   </label>
                 ))}
               </div>
-              <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 6 }}>
+              <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 6 }}>
                 เลือกแล้ว: {selectedExportTables.size} / {Object.keys(TABLE_LABELS).length} ตาราง
               </p>
             </div>
@@ -660,9 +660,9 @@ export default function DatabasePage() {
           <div 
             onClick={() => setShowUpdate(!showUpdate)}
             style={{ 
-              background: '#E0E7FF', 
+              background: 'var(--accent-bg)', 
               padding: '14px 18px', 
-              borderBottom: '1px solid #E5E7EB', 
+              borderBottom: '1px solid var(--border-color)', 
               display: 'flex', 
               alignItems: 'center', 
               gap: 10,
@@ -694,9 +694,9 @@ export default function DatabasePage() {
                     width: '100%', 
                     padding: '8px 12px', 
                     borderRadius: 8, 
-                    border: '1px solid #E5E7EB',
+                    border: '1px solid var(--border-color)',
                     fontSize: 14,
-                    background: 'white'
+                    background: 'var(--bg-primary)'
                   }}>
                   <option value="">-- เลือก Table --</option>
                   {Object.entries(TABLE_LABELS).map(([table, label]) => (
@@ -721,10 +721,10 @@ export default function DatabasePage() {
                         flex: 1,
                         padding: '8px 12px', 
                         borderRadius: 8, 
-                        border: '1px solid #E5E7EB',
+                        border: '1px solid var(--border-color)',
                         fontSize: 13,
                         fontFamily: 'monospace',
-                        background: 'white'
+                        background: 'var(--bg-primary)'
                       }}
                     />
                     <button 
@@ -737,7 +737,7 @@ export default function DatabasePage() {
                         : <>โหลดข้อมูล</>}
                     </button>
                   </div>
-                  <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
+                  <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
                     💡 กดโหลดข้อมูลเพื่อแสดงฟิลด์ที่สามารถแก้ไขได้
                   </p>
                 </div>
@@ -754,9 +754,9 @@ export default function DatabasePage() {
                     maxHeight: 400, 
                     overflowY: 'auto', 
                     padding: 12, 
-                    background: '#F9FAFB', 
+                    background: 'var(--bg-secondary)', 
                     borderRadius: 8,
-                    border: '1px solid #E5E7EB'
+                    border: '1px solid var(--border-color)'
                   }}>
                     {Object.entries(updateFields).map(([field, value]) => {
                       const isReadOnly = ['id', 'created_at', 'updated_at'].includes(field);
@@ -774,7 +774,7 @@ export default function DatabasePage() {
                             gap: 6
                           }}>
                             {field}
-                            {isReadOnly && <span style={{ fontSize: 10, color: '#9CA3AF', fontWeight: 400 }}>(read-only)</span>}
+                            {isReadOnly && <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 400 }}>(read-only)</span>}
                           </label>
                           {isJsonField ? (
                             <textarea
@@ -792,7 +792,7 @@ export default function DatabasePage() {
                               style={{ 
                                 padding: '6px 10px', 
                                 borderRadius: 6, 
-                                border: '1px solid #E5E7EB',
+                                border: '1px solid var(--border-color)',
                                 fontSize: 11,
                                 fontFamily: 'monospace',
                                 background: isReadOnly ? '#F3F4F6' : 'white',
@@ -810,7 +810,7 @@ export default function DatabasePage() {
                               style={{ 
                                 padding: '6px 10px', 
                                 borderRadius: 6, 
-                                border: '1px solid #E5E7EB',
+                                border: '1px solid var(--border-color)',
                                 fontSize: 12,
                                 fontFamily: 'monospace',
                                 background: isReadOnly ? '#F3F4F6' : 'white',
@@ -822,7 +822,7 @@ export default function DatabasePage() {
                       );
                     })}
                   </div>
-                  <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 6 }}>
+                  <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 6 }}>
                     ⚠️ ฟิลด์ id, created_at, updated_at จะไม่ถูกแก้ไข
                   </p>
                 </div>
@@ -860,7 +860,7 @@ export default function DatabasePage() {
                     </p>
                   </div>
                   {updateResult.success && updateResult.data && updateResult.data.length > 0 && (
-                    <div style={{ marginTop: 8, padding: 8, background: 'white', borderRadius: 6, fontSize: 11, fontFamily: 'monospace' }}>
+                    <div style={{ marginTop: 8, padding: 8, background: 'var(--bg-primary)', borderRadius: 6, fontSize: 11, fontFamily: 'monospace' }}>
                       <pre style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#374151' }}>
                         {JSON.stringify(updateResult.data[0], null, 2)}
                       </pre>
@@ -877,9 +877,9 @@ export default function DatabasePage() {
           <div 
             onClick={() => setShowSqlBuilder(!showSqlBuilder)}
             style={{ 
-              background: '#FEF3C7', 
+              background: 'var(--bg-secondary)', 
               padding: '14px 18px', 
-              borderBottom: '1px solid #E5E7EB', 
+              borderBottom: '1px solid var(--border-color)', 
               display: 'flex', 
               alignItems: 'center', 
               gap: 10,
@@ -911,9 +911,9 @@ export default function DatabasePage() {
                     width: '100%', 
                     padding: '8px 12px', 
                     borderRadius: 8, 
-                    border: '1px solid #E5E7EB',
+                    border: '1px solid var(--border-color)',
                     fontSize: 14,
-                    background: 'white'
+                    background: 'var(--bg-primary)'
                   }}>
                   <option value="">-- เลือก Table --</option>
                   {Object.entries(TABLE_LABELS).map(([table, label]) => (
@@ -951,7 +951,7 @@ export default function DatabasePage() {
                     maxHeight: 200, 
                     overflowY: 'auto', 
                     padding: 8, 
-                    background: '#F9FAFB', 
+                    background: 'var(--bg-secondary)', 
                     borderRadius: 8 
                   }}>
                     {(TABLE_COLUMNS[sqlTable] || []).map((field) => (
@@ -991,7 +991,7 @@ export default function DatabasePage() {
                       </label>
                     ))}
                   </div>
-                  <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 6 }}>
+                  <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 6 }}>
                     เลือกแล้ว: {sqlFields.length} / {(TABLE_COLUMNS[sqlTable] || []).length} fields
                     {sqlFields.length === 0 && ' (จะเลือกทั้งหมด)'}
                   </p>
@@ -1011,13 +1011,13 @@ export default function DatabasePage() {
                       width: '100%', 
                       padding: '8px 12px', 
                       borderRadius: 8, 
-                      border: '1px solid #E5E7EB',
+                      border: '1px solid var(--border-color)',
                       fontSize: 13,
                       fontFamily: 'monospace',
-                      background: 'white'
+                      background: 'var(--bg-primary)'
                     }}
                   />
-                  <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
+                  <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
                     ⚠️ ใช้ syntax SQL ธรรมดา (ห้ามมี DROP, DELETE, TRUNCATE, ALTER, CREATE, INSERT, UPDATE)
                   </p>
                 </div>
@@ -1037,9 +1037,9 @@ export default function DatabasePage() {
                       width: '100%', 
                       padding: '8px 12px', 
                       borderRadius: 8, 
-                      border: '1px solid #E5E7EB',
+                      border: '1px solid var(--border-color)',
                       fontSize: 13,
-                      background: 'white'
+                      background: 'var(--bg-primary)'
                     }}
                   />
                 </div>
@@ -1061,7 +1061,7 @@ export default function DatabasePage() {
               {/* Error display */}
               {sqlError && (
                 <div style={{ 
-                  background: '#FEF2F2', 
+                  background: 'var(--bg-secondary)', 
                   border: '1px solid #FCA5A5', 
                   borderRadius: 8, 
                   padding: 12 
@@ -1076,12 +1076,12 @@ export default function DatabasePage() {
               {/* Result display */}
               {sqlResult && (
                 <div style={{ 
-                  border: '1px solid #E5E7EB', 
+                  border: '1px solid var(--border-color)', 
                   borderRadius: 12, 
                   overflow: 'hidden' 
                 }}>
                   <div style={{ 
-                    background: '#F0FDF4', 
+                    background: 'var(--bg-secondary)', 
                     padding: '12px 16px', 
                     display: 'flex', 
                     alignItems: 'center', 
@@ -1108,7 +1108,7 @@ export default function DatabasePage() {
                       overflowX: 'auto', 
                       maxHeight: 400, 
                       overflowY: 'auto',
-                      background: 'white'
+                      background: 'var(--bg-primary)'
                     }}>
                       <table style={{ 
                         width: '100%', 
@@ -1116,7 +1116,7 @@ export default function DatabasePage() {
                         fontSize: 12
                       }}>
                         <thead style={{ 
-                          background: '#F9FAFB', 
+                          background: 'var(--bg-secondary)', 
                           position: 'sticky', 
                           top: 0,
                           zIndex: 1
@@ -1140,7 +1140,7 @@ export default function DatabasePage() {
                         <tbody>
                           {sqlResult.map((row, idx) => (
                             <tr key={idx} style={{ 
-                              borderBottom: '1px solid #F3F4F6',
+                              borderBottom: '1px solid var(--border-color)',
                               background: idx % 2 === 0 ? 'white' : '#F9FAFB'
                             }}>
                               {Object.values(row).map((val: any, colIdx) => (
@@ -1154,7 +1154,7 @@ export default function DatabasePage() {
                                   textOverflow: 'ellipsis',
                                   whiteSpace: 'nowrap'
                                 }}>
-                                  {val === null ? <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>NULL</span> : String(val)}
+                                  {val === null ? <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>NULL</span> : String(val)}
                                 </td>
                               ))}
                             </tr>
@@ -1163,7 +1163,7 @@ export default function DatabasePage() {
                       </table>
                     </div>
                   ) : (
-                    <div style={{ padding: 24, textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>
+                    <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>
                       ไม่พบข้อมูล
                     </div>
                   )}
@@ -1175,7 +1175,7 @@ export default function DatabasePage() {
 
         {/* ── Import ── */}
         <div className="card" style={{ overflow: 'hidden' }}>
-          <div style={{ background: '#EBF7F0', padding: '14px 18px', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ background: 'var(--bg-secondary)', padding: '14px 18px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: 10 }}>
             <Upload size={18} style={{ color: '#059669' }} />
             <div>
               <h2 style={{ fontSize: 15, fontWeight: 700, color: '#064E3B' }}>นำเข้าข้อมูล (Import)</h2>
@@ -1196,16 +1196,16 @@ export default function DatabasePage() {
                   <p style={{ fontWeight: 600, color: '#065F46', fontSize: 14 }}>{file.name}</p>
                   <p style={{ color: '#6B7280', fontSize: 12, marginTop: 4 }}>{(file.size/1024).toFixed(1)} KB · คลิกเพื่อเปลี่ยนไฟล์</p></>
               ) : (
-                <><Upload size={28} style={{ color: '#9CA3AF', margin: '0 auto 8px' }} />
+                <><Upload size={28} style={{ color: 'var(--text-secondary)', margin: '0 auto 8px' }} />
                   <p style={{ color: '#6B7280', fontSize: 14, fontWeight: 500 }}>คลิกหรือลากไฟล์ JSON มาวาง</p>
-                  <p style={{ color: '#9CA3AF', fontSize: 12, marginTop: 4 }}>เฉพาะไฟล์จากการ Export เท่านั้น</p></>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 4 }}>เฉพาะไฟล์จากการ Export เท่านั้น</p></>
               )}
             </div>
 
             {/* File preview */}
             {preview && (
-              <div style={{ background: '#F8FAFC', borderRadius: 10, padding: '12px 14px', border: '1px solid #E2E8F0' }}>
-                <p style={{ fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8 }}>
+              <div style={{ background: 'var(--bg-secondary)', borderRadius: 10, padding: '12px 14px', border: '1px solid #E2E8F0' }}>
+                <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>
                   📦 ข้อมูลในไฟล์
                   {preview.exported_at && <span style={{ fontWeight: 400, color: '#94A3B8', marginLeft: 8 }}>({new Date(preview.exported_at).toLocaleString('th-TH')})</span>}
                 </p>
@@ -1231,16 +1231,16 @@ export default function DatabasePage() {
                 </button>
                 
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center', margin: '8px 0' }}>
-                  <div style={{ flex: 1, height: 1, background: '#E5E7EB' }} />
-                  <span style={{ padding: '0 12px', fontSize: 11, color: '#9CA3AF', fontWeight: 600 }}>หรือ</span>
-                  <div style={{ flex: 1, height: 1, background: '#E5E7EB' }} />
+                  <div style={{ flex: 1, height: 1, background: 'var(--bg-secondary)' }} />
+                  <span style={{ padding: '0 12px', fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600 }}>หรือ</span>
+                  <div style={{ flex: 1, height: 1, background: 'var(--bg-secondary)' }} />
                 </div>
                 
                 <button className="btn btn-primary" onClick={handleBatchImport} disabled={analyzing}
                   style={{ width: '100%', justifyContent: 'center', background: '#6C5CE7' }}>
                   <Database size={15} /> Batch Import โดยตรง (ไฟล์ใหญ่)
                 </button>
-                <div style={{ background: '#F0EEFF', borderRadius: 8, padding: 10, border: '1px solid #E9D5FF' }}>
+                <div style={{ background: 'var(--accent-bg)', borderRadius: 8, padding: 10, border: '1px solid #E9D5FF' }}>
                   <p style={{ fontSize: 11, color: '#7C3AED', margin: 0, lineHeight: 1.4 }}>
                     💡 <strong>Batch Import:</strong> ใช้สำหรับไฟล์ใหญ่ที่อาจ timeout<br/>
                     • ข้ามขั้นตอนวิเคราะห์<br/>
@@ -1253,7 +1253,7 @@ export default function DatabasePage() {
 
             {/* ── Conflict report (dry_run result) ── */}
             {dryStats && (
-              <div style={{ border: '1px solid #E5E7EB', borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ border: '1px solid var(--border-color)', borderRadius: 12, overflow: 'hidden' }}>
                 {/* summary header */}
                 <div style={{ background: totalConflicts > 0 ? '#FFFBEB' : '#ECFDF5', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
                   {totalConflicts > 0
@@ -1270,7 +1270,7 @@ export default function DatabasePage() {
                 </div>
 
                 {/* per-table conflict list */}
-                <div style={{ background: 'white' }}>
+                <div style={{ background: 'var(--bg-primary)' }}>
                   {Object.entries(dryStats).filter(([,s]) => s.inserted > 0 || s.conflicts.length > 0).map(([table, s]) => {
                     const hasConflict = s.conflicts.length > 0;
                     const willOverwrite = overwriteTables.has(table);
@@ -1298,7 +1298,7 @@ export default function DatabasePage() {
                                 }}>
                                 <div style={{
                                   position: 'absolute', top: 3, left: willOverwrite ? 21 : 3,
-                                  width: 16, height: 16, borderRadius: '50%', background: 'white',
+                                  width: 16, height: 16, borderRadius: '50%', background: 'var(--bg-primary)',
                                   transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
                                 }} />
                               </div>
@@ -1334,7 +1334,7 @@ export default function DatabasePage() {
 
                 {/* Select all / none */}
                 {totalConflicts > 0 && (
-                  <div style={{ padding: '10px 16px', background: '#F8FAFC', borderTop: '1px solid #F1F5F9', display: 'flex', gap: 10 }}>
+                  <div style={{ padding: '10px 16px', background: 'var(--bg-secondary)', borderTop: '1px solid #F1F5F9', display: 'flex', gap: 10 }}>
                     <button className="btn btn-ghost btn-sm" onClick={() => setOverwriteTables(new Set(Object.entries(dryStats).filter(([,s]) => s.conflicts.length > 0).map(([t]) => t)))}>
                       เขียนทับทั้งหมด
                     </button>
@@ -1359,7 +1359,7 @@ export default function DatabasePage() {
                   style={{ width: '100%', justifyContent: 'center', fontSize: 12 }}>
                   <Database size={13} /> Batch Import (สำหรับไฟล์ใหญ่)
                 </button>
-                <p style={{ fontSize: 11, color: '#9CA3AF', textAlign: 'center' }}>
+                <p style={{ fontSize: 11, color: 'var(--text-secondary)', textAlign: 'center' }}>
                   ใช้ Batch Import ถ้าไฟล์ใหญ่เกิน 60 วินาที
                 </p>
               </div>
@@ -1367,7 +1367,7 @@ export default function DatabasePage() {
 
             {/* Batch Progress */}
             {batchProgress && (
-              <div style={{ background: '#F0EEFF', borderRadius: 12, padding: 16, border: '1px solid #E9D5FF' }}>
+              <div style={{ background: 'var(--accent-bg)', borderRadius: 12, padding: 16, border: '1px solid #E9D5FF' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                   <Loader2 size={16} style={{ color: '#6C5CE7', animation: 'spin 1s linear infinite' }} />
                   <p style={{ fontSize: 13, fontWeight: 600, color: '#4C1D95' }}>
@@ -1400,7 +1400,7 @@ export default function DatabasePage() {
                   </p>
                 </div>
                 {importResult.ok && importResult.stats && (
-                  <div style={{ padding: '12px 16px', background: 'white', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div style={{ padding: '12px 16px', background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {Object.entries(importResult.stats).filter(([,s]) => s.inserted > 0 || s.overwritten > 0 || s.skipped > 0).map(([t, s]: [string, any]) => (
                       <div key={t}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '3px 0', borderBottom: '1px solid #F1F5F9' }}>
@@ -1412,7 +1412,7 @@ export default function DatabasePage() {
                           </span>
                         </div>
                         {s.errors && s.errors.length > 0 && (
-                          <div style={{ fontSize: 10, color: '#DC2626', padding: '4px 8px', background: '#FEF2F2', borderRadius: 4, marginTop: 4 }}>
+                          <div style={{ fontSize: 10, color: '#DC2626', padding: '4px 8px', background: 'var(--bg-secondary)', borderRadius: 4, marginTop: 4 }}>
                             <strong>Errors:</strong>
                             {s.errors.slice(0, 3).map((err: string, i: number) => (
                               <div key={i} style={{ marginTop: 2 }}>• {err}</div>
@@ -1424,8 +1424,8 @@ export default function DatabasePage() {
                     ))}
                   </div>
                 )}
-                {importResult.error && <div style={{ padding: '10px 16px', background: 'white', fontSize: 13, color: '#DC2626' }}>{importResult.error}</div>}
-                <div style={{ padding: '10px 16px', background: 'white', borderTop: '1px solid #F1F5F9' }}>
+                {importResult.error && <div style={{ padding: '10px 16px', background: 'var(--bg-primary)', fontSize: 13, color: '#DC2626' }}>{importResult.error}</div>}
+                <div style={{ padding: '10px 16px', background: 'var(--bg-primary)', borderTop: '1px solid #F1F5F9' }}>
                   <button className="btn btn-ghost btn-sm" onClick={() => { setFile(null); setDryStats(null); setImportResult(null); setPreview(null); setOverwriteTables(new Set()); if (fileRef.current) fileRef.current.value = ''; }}>
                     <RefreshCw size={12} /> import ไฟล์ใหม่
                   </button>

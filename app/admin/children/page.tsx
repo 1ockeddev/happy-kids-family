@@ -179,7 +179,7 @@ export default function ChildrenPage() {
           { key: 'nickname_en', label: 'nickname', render: r => (
             <div>
               <div style={{ fontWeight: 600 }}>{r.nickname_en ?? '-'}</div>
-              <div style={{ fontSize: 12, color: '#9CA3AF' }}>{r.nickname_th ?? '-'}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{r.nickname_th ?? '-'}</div>
             </div>
           )},
           { key: 'birthdate', label: 'Birthday', hideOnMobile: true,

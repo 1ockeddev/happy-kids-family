@@ -28,16 +28,17 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
     const body = await req.json();
-    const { child_id, cohort_id, start_date, end_date, graduated } = body;
+    const { child_id, cohort_id, start_date, end_date, graduated, hidden } = body;
     const row = await queryOne(
       `UPDATE enrollment SET
         child_id = COALESCE($1, child_id),
         cohort_id = COALESCE($2, cohort_id),
         start_date = COALESCE($3, start_date),
         end_date = $4,
-        graduated = COALESCE($5, graduated)
-       WHERE id = $6 RETURNING *`,
-      [child_id ?? null, cohort_id ?? null, start_date ?? null, end_date ?? null, graduated ?? null, id]
+        graduated = COALESCE($5, graduated),
+        hidden = COALESCE($6, hidden)
+       WHERE id = $7 RETURNING *`,
+      [child_id ?? null, cohort_id ?? null, start_date ?? null, end_date ?? null, graduated ?? null, hidden ?? null, id]
     );
     if (!row) return notFound('ไม่พบการลงทะเบียน');
     return ok(row);

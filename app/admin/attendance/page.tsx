@@ -52,9 +52,9 @@ export default function AttendancePage() {
       <CrudTable<Attendance>
         title="การเข้าเรียน" description="บันทึกและจัดการสถานะการเข้าเรียนของนักเรียน"
         columns={[
-          { key: 'child', label: 'นักเรียน', render: (r) => <div><div style={{ fontWeight: 500 }}>{(r.child as Child)?.name_th}</div><div style={{ fontSize: 12, color: '#9CA3AF' }}>{(r.child as Child)?.name_en}</div></div> },
+          { key: 'child', label: 'นักเรียน', render: (r) => <div><div style={{ fontWeight: 500 }}>{(r.child as Child)?.name_th}</div><div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{(r.child as Child)?.name_en}</div></div> },
           { key: 'status', label: 'สถานะ', render: (r) => <span className={`badge badge-${r.status}`}>{statusLabels[r.status]}</span> },
-          { key: 'note', label: 'หมายเหตุ', render: (r) => r.note ?? <span style={{ color: '#9CA3AF' }}>-</span> },
+          { key: 'note', label: 'หมายเหตุ', render: (r) => r.note ?? <span style={{ color: 'var(--text-secondary)' }}>-</span> },
           { key: 'created_at', label: 'วันที่', render: (r) => new Date(r.created_at).toLocaleDateString('th-TH') },
         ]}
         data={data} loading={loading} error={error} onRefresh={load}

@@ -84,7 +84,7 @@ export default function ExcretionSummaryPage() {
             showEmptyState={!!childId && !!enrollmentPeriod}
             shimmerComponent={<ExcretionSummarySkeleton />}
           >
-            <div style={{display:'flex',flexDirection:'column',gap:16}}>
+            <div style={{display:'flex',flexDirection:'column',gap:14,fontFamily:'Sarabun, sans-serif'}}>
               <>
                 {/* First Potty Date */}
                 {firstPottyDate && (
@@ -129,126 +129,134 @@ export default function ExcretionSummaryPage() {
                     <path d="M7 11h10M7 15h6"/>
                     <rect x="3" y="3" width="18" height="18" rx="2"/>
                   </svg>
-                  <div style={{fontSize:'2rem',fontWeight:800,color:'#0f172a',marginBottom:8}}>
+                  <div style={{fontSize:'1.1rem',fontWeight:600,color:'#64748b',marginBottom:4}}>
+                    ทั้งหมด
+                  </div>
+                  <div style={{fontSize:'2rem',fontWeight:800,color:'#0f172a',marginBottom:4}}>
                     {totalCount}
                   </div>
-                  <div style={{fontSize:'0.85rem',color:'#64748b'}}>
-                    ครั้งทั้งหมด
+                  <div style={{fontSize:'1rem',fontWeight:600,color:'#64748b'}}>
+                    ครั้ง
                   </div>
                 </div>
 
-                {/* Type Statistics */}
+                {/* 1. SUMMARY STATS (GRID) */}
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-                  <div style={{background:'#fef3c7',padding:20,borderRadius:16,border:'1px solid #f59e0b22',textAlign:'center'}}>
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" style={{margin:'0 auto 8px'}}>
-                      <circle cx="12" cy="12" r="10" fill="#fbbf24"/>
-                      <path d="M8 14s1.5 2 4 2 4-2 4-2" stroke="#78350f" strokeWidth="2" strokeLinecap="round"/>
-                      <circle cx="9" cy="9" r="1" fill="#78350f"/>
-                      <circle cx="15" cy="9" r="1" fill="#78350f"/>
-                    </svg>
-                    <div style={{fontSize:'1.8rem',fontWeight:800,color:'#f59e0b',marginBottom:4}}>
-                      {peeTotal}
+                  {/* Card: ฉี่ */}
+                  <div style={{background:'#f0f9ff',padding:16,borderRadius:14,border:'1px solid #bae6fd',display:'flex',alignItems:'center',gap:12}}>
+                    <div style={{width:40,height:40,background:'#e0f2fe',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="#38bdf8">
+                        <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+                      </svg>
                     </div>
-                    <div style={{fontSize:'0.75rem',color:'#64748b',fontWeight:600}}>
-                      ปัสสาวะ
+                    <div>
+                      <span style={{fontSize:'0.75rem',color:'#0369a1',fontWeight:500,display:'block',marginBottom:2}}>ฉี่ (ปัสสาวะ)</span>
+                      <span style={{fontSize:'1.4rem',fontWeight:800,color:'#0369a1',lineHeight:1}}>
+                        {peeTotal} <span style={{fontSize:'0.8rem',fontWeight:500,color:'#6b7280'}}>ครั้ง</span>
+                      </span>
                     </div>
                   </div>
-                  <div style={{background:'#fef2f2',padding:20,borderRadius:16,border:'1px solid #ef444422',textAlign:'center'}}>
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" style={{margin:'0 auto 8px'}}>
-                      <ellipse cx="12" cy="16" rx="6" ry="5" fill="#b45309"/>
-                      <ellipse cx="12" cy="13" rx="5" ry="4" fill="#d97706"/>
-                      <ellipse cx="12" cy="10" rx="4" ry="3" fill="#f59e0b"/>
-                      <path d="M10 8c0-1 .5-2 2-2s2 1 2 2" stroke="#78350f" strokeWidth="1.5" fill="none"/>
-                    </svg>
-                    <div style={{fontSize:'1.8rem',fontWeight:800,color:'#ef4444',marginBottom:4}}>
-                      {pooTotal}
+
+                  {/* Card: อึ */}
+                  <div style={{background:'#fffbeb',padding:16,borderRadius:14,border:'1px solid #fef08a',display:'flex',alignItems:'center',gap:12}}>
+                    <div style={{width:40,height:40,background:'#fef9c3',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="#a16207">
+                        <path d="M12 2C9 2 7 4 7 6.5c0 1.7.7 3 1.5 4.5C9.3 12.5 10 14 10 16c0 2.2 1.8 4 4 4s4-1.8 4-4c0-2-.7-3.5-1.5-5-.8-1.5-1.5-2.8-1.5-4.5C15 4 13 2 12 2z"/>
+                      </svg>
                     </div>
-                    <div style={{fontSize:'0.75rem',color:'#64748b',fontWeight:600}}>
-                      อุจจาระ
+                    <div>
+                      <span style={{fontSize:'0.75rem',color:'#a16207',fontWeight:500,display:'block',marginBottom:2}}>อึ (อุจจาระ)</span>
+                      <span style={{fontSize:'1.4rem',fontWeight:800,color:'#a16207',lineHeight:1}}>
+                        {pooTotal} <span style={{fontSize:'0.8rem',fontWeight:500,color:'#6b7280'}}>ครั้ง</span>
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Action Statistics */}
-                <div style={{background:'white',padding:16,borderRadius:16,border:'1px solid #e2e8f0'}}>
-                  <div style={{fontSize:'0.9rem',fontWeight:700,color:'#0f172a',marginBottom:12}}>วิธีการขับถ่าย</div>
-                  <div style={{display:'flex',flexDirection:'column',gap:12}}>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:12,background:'#f8fafc',borderRadius:10}}>
-                      <div style={{display:'flex',alignItems:'center',gap:8}}>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="3" y="3" width="18" height="18" rx="2"/>
-                          <path d="M9 3v18"/>
-                          <path d="M15 3v18"/>
-                        </svg>
-                        <span style={{fontSize:'0.85rem',fontWeight:600,color:'#475569'}}>ผ้าอ้อม</span>
+                {/* 2. DETAILS CARD (METHODS & RATIO) */}
+                <div style={{background:'#ffffff',padding:18,borderRadius:16,border:'1px solid #e2e8f0'}}>
+                  {/* 2.1: สัดส่วนการขับถ่ายแบบ Segmented Bar */}
+                  {totalCount > 0 && (
+                    <div style={{marginBottom:20,borderBottom:'1px dashed #e2e8f0',paddingBottom:18}}>
+                      <span style={{fontSize:'0.8rem',fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:'0.5px',display:'block',marginBottom:12}}>
+                        สัดส่วนการขับถ่าย
+                      </span>
+                      
+                      {/* Segmented Progress Bar */}
+                      <div style={{width:'100%',height:12,background:'#f1f5f9',borderRadius:6,overflow:'hidden',display:'flex',marginBottom:12}}>
+                        <div 
+                          style={{
+                            width:`${(peeTotal / totalCount) * 100}%`,
+                            height:'100%',
+                            background:'#38bdf8',
+                            transition:'width 0.5s'
+                          }} 
+                          title={`ฉี่ ${Math.round((peeTotal / totalCount) * 100)}%`}
+                        />
+                        <div 
+                          style={{
+                            width:`${(pooTotal / totalCount) * 100}%`,
+                            height:'100%',
+                            background:'#a16207',
+                            transition:'width 0.5s'
+                          }} 
+                          title={`อึ ${Math.round((pooTotal / totalCount) * 100)}%`}
+                        />
                       </div>
-                      <span style={{fontSize:'1.2rem',fontWeight:800,color:'#6366f1'}}>{diaperCount}</span>
-                    </div>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:12,background:'#f8fafc',borderRadius:10}}>
-                      <div style={{display:'flex',alignItems:'center',gap:8}}>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="10"/>
-                          <path d="M8 15h8"/>
-                          <path d="M9 9h.01"/>
-                          <path d="M15 9h.01"/>
-                        </svg>
-                        <span style={{fontSize:'0.85rem',fontWeight:600,color:'#475569'}}>กระโถน</span>
-                      </div>
-                      <span style={{fontSize:'1.2rem',fontWeight:800,color:'#10b981'}}>{pottyCount}</span>
-                    </div>
-                  </div>
-                </div>
 
-                {/* Percentage Breakdown */}
-                {totalCount > 0 && (
-                  <div style={{background:'white',padding:16,borderRadius:16,border:'1px solid #e2e8f0'}}>
-                    <div style={{fontSize:'0.9rem',fontWeight:700,color:'#0f172a',marginBottom:12}}>สัดส่วน</div>
-                    <div style={{display:'flex',flexDirection:'column',gap:10}}>
-                      <div>
-                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
-                          <div style={{display:'flex',alignItems:'center',gap:6}}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="#fbbf24">
-                              <circle cx="12" cy="12" r="10"/>
-                            </svg>
-                            <span style={{fontSize:'0.75rem',color:'#64748b'}}>ปัสสาวะ</span>
-                          </div>
-                          <span style={{fontSize:'0.75rem',fontWeight:700,color:'#f59e0b'}}>
+                      {/* Legend Labels */}
+                      <div style={{display:'flex',gap:16,alignItems:'center',flexWrap:'wrap'}}>
+                        {/* ฉี่ */}
+                        <div style={{display:'flex',alignItems:'center',gap:6}}>
+                          <span style={{width:8,height:8,background:'#38bdf8',borderRadius:'50%'}}/>
+                          <span style={{fontSize:'0.75rem',fontWeight:600,color:'#334155'}}>ฉี่ (ปัสสาวะ)</span>
+                          <span style={{fontSize:'0.75rem',fontWeight:700,color:'#0369a1',background:'#e0f2fe',padding:'1px 6px',borderRadius:4}}>
                             {Math.round((peeTotal / totalCount) * 100)}%
                           </span>
                         </div>
-                        <div style={{width:'100%',height:8,background:'#f1f5f9',borderRadius:4,overflow:'hidden'}}>
-                          <div style={{
-                            width:`${(peeTotal / totalCount) * 100}%`,
-                            height:'100%',
-                            background:'#f59e0b',
-                            transition:'width 0.5s ease'
-                          }}/>
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
-                          <div style={{display:'flex',alignItems:'center',gap:6}}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="#b45309">
-                              <ellipse cx="12" cy="14" rx="6" ry="6"/>
-                            </svg>
-                            <span style={{fontSize:'0.75rem',color:'#64748b'}}>อุจจาระ</span>
-                          </div>
-                          <span style={{fontSize:'0.75rem',fontWeight:700,color:'#ef4444'}}>
+                        
+                        {/* อึ */}
+                        <div style={{display:'flex',alignItems:'center',gap:6}}>
+                          <span style={{width:8,height:8,background:'#a16207',borderRadius:'50%'}}/>
+                          <span style={{fontSize:'0.75rem',fontWeight:600,color:'#334155'}}>อึ (อุจจาระ)</span>
+                          <span style={{fontSize:'0.75rem',fontWeight:700,color:'#a16207',background:'#fef9c3',padding:'1px 6px',borderRadius:4}}>
                             {Math.round((pooTotal / totalCount) * 100)}%
                           </span>
                         </div>
-                        <div style={{width:'100%',height:8,background:'#f1f5f9',borderRadius:4,overflow:'hidden'}}>
-                          <div style={{
-                            width:`${(pooTotal / totalCount) * 100}%`,
-                            height:'100%',
-                            background:'#ef4444',
-                            transition:'width 0.5s ease'
-                          }}/>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 2.2: วิธีการขับถ่าย (Minimal List) */}
+                  <div>
+                    <span style={{fontSize:'0.8rem',fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:'0.5px',display:'block',marginBottom:10}}>
+                      วิธีการขับถ่าย (รวม {totalCount} ครั้ง)
+                    </span>
+                    <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                      {/* แถวผ้าอ้อม */}
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',opacity:diaperCount > 0 ? 1 : 0.4}}>
+                        <div style={{display:'flex',alignItems:'center',gap:8}}>
+                          <i className="bi bi-grid-3x3-gap" style={{color:'#6366f1',fontSize:'1rem'}}/>
+                          <span style={{fontSize:'0.85rem',color:'#475569',fontWeight:500}}>ใส่ผ้าอ้อม</span>
                         </div>
+                        <span style={{fontSize:'0.95rem',fontWeight:diaperCount > 0 ? 700 : 600,color:diaperCount > 0 ? '#1e293b' : '#64748b'}}>
+                          {diaperCount} ครั้ง
+                        </span>
+                      </div>
+
+                      {/* แถวกระโถน */}
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',opacity:pottyCount > 0 ? 1 : 0.4}}>
+                        <div style={{display:'flex',alignItems:'center',gap:8}}>
+                          <i className="bi bi-emoji-smile" style={{color:'#10b981',fontSize:'1rem'}}/>
+                          <span style={{fontSize:'0.85rem',color:'#475569',fontWeight:500}}>นั่งกระโถน</span>
+                        </div>
+                        <span style={{fontSize:'0.95rem',fontWeight:pottyCount > 0 ? 700 : 600,color:pottyCount > 0 ? '#1e293b' : '#64748b'}}>
+                          {pottyCount} ครั้ง
+                        </span>
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
               </>
             </div>
           </LoadingWrapper>

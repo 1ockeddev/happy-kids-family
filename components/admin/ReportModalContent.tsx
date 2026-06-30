@@ -273,7 +273,7 @@ export default function ReportModalContent({
             {visibleEx.length === 0 && <p style={{ color: '#9CA3AF', fontSize: 13 }}>ยังไม่มีบันทึก</p>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {visibleEx.map(ex => (
-                <div key={ex.id} style={{ background: 'white', borderRadius: 8, padding: '8px 12px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div key={ex.id} style={{ background: 'var(--bg-primary)', borderRadius: 8, padding: '8px 12px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <input type="time" className="form-input" value={ex.time ?? ''} onChange={e => onExcretionUpdate(ex.id, { time: e.target.value || null })} style={{ width: 100, padding: '5px 8px', fontSize: 13 }} />
                   <div style={{ display: 'flex', gap: 4 }}>
                     {(['pee', 'poo'] as ExcretionType[]).map(t => (
