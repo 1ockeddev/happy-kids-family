@@ -123,6 +123,18 @@
   color: var(--text-primary);
 }
 
+/* Warning/Alert boxes with light backgrounds need dark text always */
+.warning-box h3,
+.warning-box .warning-box-title {
+  color: #92400e !important;
+}
+
+.warning-box ul,
+.warning-box .warning-box-text,
+.warning-box li {
+  color: #78350f !important;
+}
+
 /* ── Base Styles ────────────────────────────────────────────────── */
 * {
   box-sizing: border-box;

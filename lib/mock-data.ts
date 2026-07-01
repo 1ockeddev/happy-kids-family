@@ -17,22 +17,22 @@ export const mockCohorts: Cohort[] = [
 
 export const mockEnrollments: Enrollment[] = [
   { 
-    id: '1', child_id: '1', cohort_id: '1', start_date: '2024-05-16', end_date: null, graduated: false, created_at: '2024-05-01',
+    id: '1', child_id: '1', cohort_id: '1', start_date: '2024-05-16', end_date: null, graduated: false, hidden: false, created_at: '2024-05-01',
     child: { id: '1', name_en: 'Emma Johnson', name_th: 'เอมมา จอห์นสัน', firstname_en: null, lastname_en: null, firstname_th: null, lastname_th: null, nickname_en: null, nickname_th: null, birthdate: null, photo_url: null, deleted_at: null, created_at: '2024-05-01' },
     cohort: mockCohorts[0]
   },
   { 
-    id: '2', child_id: '2', cohort_id: '1', start_date: '2024-05-16', end_date: null, graduated: false, created_at: '2024-05-01',
+    id: '2', child_id: '2', cohort_id: '1', start_date: '2024-05-16', end_date: null, graduated: false, hidden: false, created_at: '2024-05-01',
     child: { id: '2', name_en: 'Liam Smith', name_th: 'เลียม สมิธ', firstname_en: null, lastname_en: null, firstname_th: null, lastname_th: null, nickname_en: null, nickname_th: null, birthdate: null, photo_url: null, deleted_at: null, created_at: '2024-05-01' },
     cohort: mockCohorts[0]
   },
   { 
-    id: '3', child_id: '3', cohort_id: '2', start_date: '2024-05-16', end_date: null, graduated: false, created_at: '2024-05-01',
+    id: '3', child_id: '3', cohort_id: '2', start_date: '2024-05-16', end_date: null, graduated: false, hidden: false, created_at: '2024-05-01',
     child: { id: '3', name_en: 'Olivia Brown', name_th: 'โอลิเวีย บราวน์', firstname_en: null, lastname_en: null, firstname_th: null, lastname_th: null, nickname_en: null, nickname_th: null, birthdate: null, photo_url: null, deleted_at: null, created_at: '2024-05-01' },
     cohort: mockCohorts[1]
   },
   { 
-    id: '4', child_id: '4', cohort_id: '2', start_date: '2024-05-16', end_date: null, graduated: false, created_at: '2024-05-01',
+    id: '4', child_id: '4', cohort_id: '2', start_date: '2024-05-16', end_date: null, graduated: false, hidden: false, created_at: '2024-05-01',
     child: { id: '4', name_en: 'Noah Davis', name_th: 'โนอาห์ เดวิส', firstname_en: null, lastname_en: null, firstname_th: null, lastname_th: null, nickname_en: null, nickname_th: null, birthdate: null, photo_url: null, deleted_at: null, created_at: '2024-05-01' },
     cohort: mockCohorts[1]
   },

@@ -158,7 +158,7 @@ export default function HolidaysPage() {
         </p>
       </div>
 
-      <div style={{
+      <div className="warning-box" style={{
         background: '#fef3c7',
         border: '1px solid #fbbf24',
         borderRadius: '12px',
@@ -169,10 +169,10 @@ export default function HolidaysPage() {
       }}>
         <AlertCircle size={24} color="#f59e0b" style={{ flexShrink: 0 }} />
         <div style={{ flex: 1 }}>
-          <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#92400e', marginBottom: '4px' }}>
+          <h3 className="warning-box-title" style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '4px' }}>
             คำแนะนำ
           </h3>
-          <ul style={{ fontSize: '0.8rem', color: '#78350f', margin: 0, paddingLeft: '20px' }}>
+          <ul className="warning-box-text" style={{ fontSize: '0.8rem', margin: 0, paddingLeft: '20px' }}>
             <li>วันหยุดที่เลือก "ทุกห้อง" จะใช้กับทุกห้องเรียน</li>
             <li>วันหยุดที่เลือกห้องเฉพาะจะใช้เฉพาะห้องนั้น</li>
             <li>วันหยุดจะไม่แสดงในกราฟสรุปการเข้าเรียน</li>
